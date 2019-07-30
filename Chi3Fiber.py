@@ -157,12 +157,17 @@ class Chi3Fiber:
     s.pumpGridTime[-1, :] = ifft(s.pumpGridFreq[-1, :])
 
 
-  def runSignalSimulation(s, freqProf):
+  def runSignalSimulation(s, inputProf, freqSignal=True):
     """
     Simulate propagation of signal field
-    :param freqProf: Frequency profile of input pulse
+    :param inputProf: Frequency profile of input pulse
+    :param freqSignal: input is in frequency domain if true, otherwise in time domain.
     """
-    s.signalGridFreq[0, :] = freqProf * np.exp(0.5j * s._dispersionSign * s._dz)
+    if freqSignal:
+      s.signalGridFreq[0, :] = inputProf * np.exp(0.5j * s._dispersionSign * s._dz)
+    else:
+      s.signalGridFreq[0, :] = fft(inputProf) * np.exp(0.5j * s._dispersionSign * s._dz)
+
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
 
     for i in range(1, s._nZSteps):
