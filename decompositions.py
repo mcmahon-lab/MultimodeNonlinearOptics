@@ -84,7 +84,6 @@ def takagi(N, tol=1e-13, rounding=13):
         raise ValueError("The input matrix must be square")
     error = np.linalg.norm(N - np.transpose(np.conj(N))) / n
     if error >= tol:
-        print(N)
         raise ValueError("The input matrix is not symmetric (error = %f)" % error)
 
     v, l, ws = np.linalg.svd(N)
@@ -595,7 +594,7 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
         st1 = np.eye(2*n)
         v1 = np.eye(2*n)
 
-    return ut1, st1, v1
+    return ut1.real, st1.real, v1.real
 
 
 def covmat_to_hamil(V, tol=1e-10):  # pragma: no cover
