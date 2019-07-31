@@ -14,7 +14,7 @@ class Chi3Fiber:
     :param dispLength:     Dispersion length. Must be kept at one or set to np.inf to remove dispersion.
     :param beta2:          Group velocity dispersion of the pump. Must be +/- 1.
     :param beta2s:         Group velocity dispersion of the signal, relative to the pump.
-    :param pulseType:      0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
+    :param pulseType:      Pump profile, 0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
     :param beta1:          Group velocity difference for pump relative to simulation window.
     :param beta1s:         Group velocity difference for signal relative to simulation window.
     :param chirp:          Initial chirp for pump pulse.
@@ -157,17 +157,17 @@ class Chi3Fiber:
     s.pumpGridTime[-1, :] = ifft(s.pumpGridFreq[-1, :])
 
 
-  def runSignalSimulation(s, inputProf, freqSignal=True):
+  def runSignalSimulation(s, inputProf, timeSignal=True):
     """
     Simulate propagation of signal field
-    :param inputProf: Frequency profile of input pulse
-    :param freqSignal: input is in frequency domain if true, otherwise in time domain.
+    :param inputProf: Profile of input pulse. Can be time or frequency domain.
+    Note: Input frequency domain is assumed to be centered and "true" frequency (since there are phase issues associated with FFT a noncentered array)
+    :param timeSignal: Specify if input is in frequency or frequency domain. True for time, false for frequency.
     """
-    if freqSignal:
-      s.signalGridFreq[0, :] = inputProf * np.exp(0.5j * s._dispersionSign * s._dz)
-    else:
-      s.signalGridFreq[0, :] = fft(inputProf) * np.exp(0.5j * s._dispersionSign * s._dz)
 
+    inputProfFreq = (fft(inputProf) if timeSignal else fft(fftshift(ifft(ifftshift(inputProf)))))
+
+    s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
 
     for i in range(1, s._nZSteps):
@@ -190,7 +190,7 @@ class Chi3Fiber:
     s.signalGridTime[-1, :] = ifft(s.signalGridFreq[-1, :])
 
 
-  def computeGreensFunction(s):
+  def computeGreensFunction(s, runPump=True):
     """
     Solve a(L, w) = C a(0, w) + S [a(0, w)]^t for C and S
     :return: Green's functions C, S
@@ -199,28 +199,25 @@ class Chi3Fiber:
     greenC = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
     greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
 
-    s.runPumpSimulation()
+    if runPump: s.runPumpSimulation()
 
     # Calculate Green's functions with real and imaginary impulse response
     for i in range(s._nFreqs):
       s.signalGridFreq[0, :] = 0
       s.signalGridFreq[0, i] = 1
-      s.runSignalSimulation(s.signalGridFreq[0])
+      s.signalGridFreq[0, i] = fftshift(s.signalGridFreq[0, i])
+      s.runSignalSimulation(s.signalGridFreq[0], False)
   
-      greenC[i, :] += fftshift(s.signalGridFreq[-1, :] * 0.5)
-      greenS[i, :] += fftshift(s.signalGridFreq[-1, :] * 0.5)
+      greenC[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5
+      greenS[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5
   
       s.signalGridFreq[0, :] = 0
       s.signalGridFreq[0, i] = 1j
-      s.runSignalSimulation(s.signalGridFreq[0])
+      s.signalGridFreq[0, i] = fftshift(s.signalGridFreq[0, i])
+      s.runSignalSimulation(s.signalGridFreq[0], False)
 
-      greenC[i, :] -= fftshift(s.signalGridFreq[-1, :] * 0.5j)
-      greenS[i, :] += fftshift(s.signalGridFreq[-1, :] * 0.5j)
-
-    # Center Green's Functions
-    for i in range(s._nFreqs):
-      greenC[:, i] = fftshift(greenC[:, i])
-      greenS[:, i] = fftshift(greenS[:, i])
+      greenC[i, :] -= fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5j
+      greenS[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5j
 
     greenC = greenC.T
     greenS = greenS.T
