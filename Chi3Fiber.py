@@ -79,7 +79,11 @@ class Chi3Fiber:
     # helper values
     self._nlStep = 1j * self._Nsquared * self._dz
 
-    # TODO reset grids
+    # Reset grids -- skip during construction
+    try:
+      self.resetGrids()
+    except AttributeError:
+      pass
 
 
   def resetGrids(self, nFreqs=None, tMax=None):
@@ -98,7 +102,11 @@ class Chi3Fiber:
       self._tau = np.arange(-Nt / 2, Nt / 2) * dt
       self._omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
 
-      # TODO reset dispersion and pulse
+      # Reset dispersion and pulse
+      try:
+        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1)
+      except AttributeError:
+        pass
 
     # Grids for PDE propagation
     self.pumpGridFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
@@ -161,7 +169,8 @@ class Chi3Fiber:
     """
     Simulate propagation of signal field
     :param inputProf: Profile of input pulse. Can be time or frequency domain.
-    Note: Input frequency domain is assumed to be centered and "true" frequency (since there are phase issues associated with FFT a noncentered array)
+    Note: Frequency domain input is assumed to be "true" frequency with omega as its axis (since there are phase issues
+    associated with FFT on a non-centered array, since FFT considers the center the first and last elements).
     :param timeSignal: Specify if input is in frequency or frequency domain. True for time, false for frequency.
     """
 
