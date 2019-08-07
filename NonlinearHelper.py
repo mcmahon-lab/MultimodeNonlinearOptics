@@ -38,7 +38,7 @@ def calcCovarianceMtx(Z, tol=1e-4):
   return cov
 
 
-def calcLOSqueezing(C, pumpTimeProf):
+def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
   freqDomain = fftshift(fft(ifftshift(pumpTimeProf)))
 
   localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
@@ -50,6 +50,8 @@ def calcLOSqueezing(C, pumpTimeProf):
   covMatrix[0,1] = covMatrix[1,0] = (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
 
   variances = np.linalg.eigvals(covMatrix)
+
+  assert abs(covMatrix[0,0] - 1) < tol, "C_xx = %f" % covMatrix[0,0]
 
   variances[0], variances[1] = np.min(variances), np.max(variances)
   return variances
