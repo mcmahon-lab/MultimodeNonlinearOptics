@@ -39,7 +39,7 @@ def calcCovarianceMtx(Z, tol=1e-4):
 
 
 def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
-  freqDomain = fftshift(fft(ifftshift(pumpTimeProf)))
+  freqDomain = fftshift(fft(pumpTimeProf))
 
   localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
   localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / np.linalg.norm(freqDomain)

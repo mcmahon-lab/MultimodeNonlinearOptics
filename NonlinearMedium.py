@@ -99,7 +99,7 @@ class _NonlinearMedium:
       dt = 2 * self._tMax / Nt
 
       # time and frequency axes
-      self._tau = np.arange(-Nt / 2, Nt / 2) * dt
+      self._tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
       self._omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
 
       # Reset dispersion and pulse
@@ -181,24 +181,22 @@ class _NonlinearMedium:
     for i in range(s._nFreqs):
       s.signalGridFreq[0, :] = 0
       s.signalGridFreq[0, i] = 1
-      s.signalGridFreq[0, i] = fftshift(s.signalGridFreq[0, i])
       s.runSignalSimulation(s.signalGridFreq[0], False)
   
-      greenC[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5
-      greenS[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5
+      greenC[i, :] += s.signalGridFreq[-1, :] * 0.5
+      greenS[i, :] += s.signalGridFreq[-1, :] * 0.5
   
       s.signalGridFreq[0, :] = 0
       s.signalGridFreq[0, i] = 1j
-      s.signalGridFreq[0, i] = fftshift(s.signalGridFreq[0, i])
       s.runSignalSimulation(s.signalGridFreq[0], False)
 
-      greenC[i, :] -= fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5j
-      greenS[i, :] += fftshift(fft(ifftshift(s.signalGridTime[-1, :]))) * 0.5j
+      greenC[i, :] -= s.signalGridFreq[-1, :] * 0.5j
+      greenS[i, :] += s.signalGridFreq[-1, :] * 0.5j
 
     greenC = greenC.T
     greenS = greenS.T
 
-    return greenC, greenS
+    return fftshift(greenC), fftshift(greenS)
 
 
 class Chi3(_NonlinearMedium):
@@ -223,7 +221,7 @@ class Chi3(_NonlinearMedium):
   def runSignalSimulation(s, inputProf, timeSignal=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
 
-    inputProfFreq = (fft(inputProf) if timeSignal else fft(fftshift(ifft(ifftshift(inputProf)))))
+    inputProfFreq = (fft(inputProf) if timeSignal else inputProf)
 
     s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
@@ -263,7 +261,7 @@ class Chi2(_NonlinearMedium):
   def runSignalSimulation(s, inputProf, timeSignal=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
 
-    inputProfFreq = (fft(inputProf) if timeSignal else fft(fftshift(ifft(ifftshift(inputProf)))))
+    inputProfFreq = (fft(inputProf) if timeSignal else inputProf)
 
     halfPumpStep = np.sqrt(s._dispStepPump)
 
