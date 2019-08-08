@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.fft import fft, ifft, fftshift, ifftshift
-from scipy.linalg import det, sqrtm, inv, eig
+from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
+from scipy.linalg import det, sqrtm, inv, eig, norm, dft
 
 
 def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None, refractiveInd=1):
@@ -64,6 +64,28 @@ def blochMessiahEigs(Z):
 
   sortedEig = np.sort(eigenvalues).real
   return sortedEig
+
+
+def calcLOSqueezing2(F, G, pumpTimeProf, cutoff=0.01):
+  pTime = pumpTimeProf / norm(pumpTimeProf)
+  term1, term2 = 0, 0
+  n = pumpTimeProf.size
+  for j in range(n):
+    if np.abs(pTime[j]) < cutoff: continue
+    for l in range(n):
+      if np.abs(pTime[l]) < cutoff: continue
+      for k in range(n):
+        term1 += np.real(pTime[l] * np.conj(pTime[j]) * (np.conj(F[l,k]) * F[j,k] + np.conj(G[l,k]) * G[j,k]))
+        term2 += np.abs(np.conj(pTime[l] * pTime[j])  * (F[l,k] * G[j,k] + G[l,k] * F[j,k]))
+  return term1 - term2, term1 + term2
+
+
+def convertGreenFreqToTime(greenC, greenS):
+  nFreqs = greenC.shape[0]
+  dftMat = np.conj(dft(nFreqs))
+  gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
+  gStime = ifftshift(dftMat.T @ fftshift(greenS) @ dftMat / nFreqs)
+  return gCtime, gStime
 
 
 if __name__ == "__main__":
