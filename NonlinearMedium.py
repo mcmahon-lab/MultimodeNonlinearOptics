@@ -166,9 +166,12 @@ class _NonlinearMedium:
     """
     pass
 
-  def computeGreensFunction(s, runPump=True):
+
+  def computeGreensFunction(s, inTimeDomain=False, runPump=True):
     """
-    Solve a(L, w) = C a(0, w) + S [a(0, w)]^t for C and S
+    Solve a(L) = C a(0) + S [a(0)]^t for C and S
+    :param inTimeDomain Compute the Green's function in time or frequency domain.
+    :param runPump      Whether to run pump simulation beforehand.
     :return: Green's functions C, S
     """
     # Green function matrices
@@ -177,21 +180,23 @@ class _NonlinearMedium:
 
     if runPump: s.runPumpSimulation()
 
+    grid = (s.signalGridTime if inTimeDomain else s.signalGridFreq)
+
     # Calculate Green's functions with real and imaginary impulse response
     for i in range(s._nFreqs):
-      s.signalGridFreq[0, :] = 0
-      s.signalGridFreq[0, i] = 1
-      s.runSignalSimulation(s.signalGridFreq[0], False)
+      grid[0, :] = 0
+      grid[0, i] = 1
+      s.runSignalSimulation(grid[0], inTimeDomain)
   
-      greenC[i, :] += s.signalGridFreq[-1, :] * 0.5
-      greenS[i, :] += s.signalGridFreq[-1, :] * 0.5
+      greenC[i, :] += grid[-1, :] * 0.5
+      greenS[i, :] += grid[-1, :] * 0.5
   
-      s.signalGridFreq[0, :] = 0
-      s.signalGridFreq[0, i] = 1j
-      s.runSignalSimulation(s.signalGridFreq[0], False)
+      grid[0, :] = 0
+      grid[0, i] = 1j
+      s.runSignalSimulation(grid[0], inTimeDomain)
 
-      greenC[i, :] -= s.signalGridFreq[-1, :] * 0.5j
-      greenS[i, :] += s.signalGridFreq[-1, :] * 0.5j
+      greenC[i, :] -= grid[-1, :] * 0.5j
+      greenS[i, :] += grid[-1, :] * 0.5j
 
     greenC = greenC.T
     greenS = greenS.T
