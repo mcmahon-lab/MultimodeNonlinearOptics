@@ -268,17 +268,17 @@ class Chi2(_NonlinearMedium):
 
     inputProfFreq = (fft(inputProf) if timeSignal else inputProf)
 
-    halfPumpStep = np.sqrt(s._dispStepPump)
-
     s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
 
     for i in range(1, s._nZSteps):
       # Do a Runge-Kutta step for the non-linear propagation
+      pumpTimeInterp = 0.5 * (s.pumpGridTime[i-1] + s.pumpGridTime[i])
+
       prevConj = np.conj(s.signalGridTime[i-1, :])
       k1 = s._nlStep * s.pumpGridTime[i-1, :] *  prevConj
-      k2 = s._nlStep * s.pumpGridTime[i-1, :] * (prevConj + np.conj(0.5 * k1)) * halfPumpStep
-      k3 = s._nlStep * s.pumpGridTime[i-1, :] * (prevConj + np.conj(0.5 * k2)) * halfPumpStep
+      k2 = s._nlStep * pumpTimeInterp         * (prevConj + np.conj(0.5 * k1))
+      k3 = s._nlStep * pumpTimeInterp         * (prevConj + np.conj(0.5 * k2))
       k4 = s._nlStep * s.pumpGridTime[i,   :] * (prevConj + np.conj(k3))
 
       temp = s.signalGridTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
