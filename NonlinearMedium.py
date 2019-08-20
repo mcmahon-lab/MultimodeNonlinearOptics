@@ -3,10 +3,10 @@ from numpy.fft import fft, ifft, fftshift, ifftshift
 
 class _NonlinearMedium:
   """
-  Bzse class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
+  Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-               beta1=0, beta1s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100):
+               beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100):
     """
     :param relativeLength: Length of fiber in dispersion lengths, or nonlinear lengths if no dispersion.
     :param nlLength:       Nonlinear length in terms of dispersion length.
@@ -17,6 +17,8 @@ class _NonlinearMedium:
     :param pulseType:      Pump profile, 0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
     :param beta1:          Group velocity difference for pump relative to simulation window.
     :param beta1s:         Group velocity difference for signal relative to simulation window.
+    :param beta1:          Pump third order dispersion.
+    :param beta1s:         Signal third order dispersion.
     :param chirp:          Initial chirp for pump pulse.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
@@ -30,6 +32,8 @@ class _NonlinearMedium:
     if not isinstance(beta2s, (int, float)): raise TypeError("beta2s")
     if not isinstance(beta1,  (int, float)): raise TypeError("beta1")
     if not isinstance(beta1s, (int, float)): raise TypeError("beta1s")
+    if not isinstance(beta3,  (int, float)): raise TypeError("beta3")
+    if not isinstance(beta3s, (int, float)): raise TypeError("beta3s")
     if not isinstance(chirp,  (int, float)): raise TypeError("chirp")
     if not isinstance(pulseType, (bool, int)): raise TypeError("pulseType")
     if not isinstance(tMax, int):       raise TypeError("tMax")
@@ -38,7 +42,7 @@ class _NonlinearMedium:
 
     self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
     self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s)
+    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
     self.setPump(pulseType, chirp)
 
     # print("DS", self._DS, "NL", self._NL, "Nt", self._nFreqs, "Nz", self._nZSteps)
@@ -115,7 +119,7 @@ class _NonlinearMedium:
     self.signalGridTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0):
+  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
 
     # positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
     self._beta2  = beta2
@@ -128,12 +132,16 @@ class _NonlinearMedium:
     self._beta1  = beta1
     self._beta1s = beta1s
 
+    # third order dispersion (relative to beta2 and pulse width)
+    self._beta3  = beta3
+    self._beta3s = beta3s
+
     # dispersion profile
     if self._noDispersion:
       self._dispersionPump = self._dispersionSign = 0
     else:
-      self._dispersionPump = 0.5 * beta2  * self._omega**2 - beta1  * self._omega
-      self._dispersionSign = 0.5 * beta2s * self._omega**2 - beta1s * self._omega
+      self._dispersionPump = 0.5 * beta2  * self._omega**2 - beta1  * self._omega + 1/6 * beta3s * self._omega**3
+      self._dispersionSign = 0.5 * beta2s * self._omega**2 - beta1s * self._omega + 1/6 * beta3s * self._omega**3
 
     # helper values
     self._dispStepPump = np.exp(1j * self._dispersionPump * self._dz)
@@ -156,13 +164,13 @@ class _NonlinearMedium:
     pass
 
 
-  def runSignalSimulation(s, inputProf, timeSignal=True):
+  def runSignalSimulation(s, inputProf, inTimeDomain=True):
     """
     Simulate propagation of signal field
     :param inputProf: Profile of input pulse. Can be time or frequency domain.
     Note: Frequency domain input is assumed to be "true" frequency with omega as its axis (since there are phase issues
     associated with FFT on a non-centered array, since FFT considers the center the first and last elements).
-    :param timeSignal: Specify if input is in frequency or frequency domain. True for time, false for frequency.
+    :param inTimeDomain: Specify if input is in frequency or frequency domain. True for time, false for frequency.
     """
     pass
 
@@ -223,10 +231,10 @@ class Chi3(_NonlinearMedium):
     s.pumpGridTime[-1, :] = ifft(s.pumpGridFreq[-1, :])
 
 
-  def runSignalSimulation(s, inputProf, timeSignal=True):
+  def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
 
-    inputProfFreq = (fft(inputProf) if timeSignal else inputProf)
+    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
     s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
@@ -263,10 +271,10 @@ class Chi2(_NonlinearMedium):
       s.pumpGridTime[i, :] = ifft(s.pumpGridFreq[i, :])
 
 
-  def runSignalSimulation(s, inputProf, timeSignal=True):
+  def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
 
-    inputProfFreq = (fft(inputProf) if timeSignal else inputProf)
+    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
     s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
     s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])

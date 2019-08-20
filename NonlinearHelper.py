@@ -63,6 +63,7 @@ def blochMessiahEigs(Z):
   eigenvalues, eigenvectors = eig(sigma)
 
   sortedEig = np.sort(eigenvalues).real
+  # TODO sort eigenvectors together and return
   return sortedEig
 
 
@@ -81,12 +82,19 @@ def calcLOSqueezing2(F, G, pumpTimeProf, cutoff=0.01):
 
 
 def convertGreenFreqToTime(greenC, greenS):
+  # TODO might need some transposition steps
   nFreqs = greenC.shape[0]
   dftMat = np.conj(dft(nFreqs))
   gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
   gStime = ifftshift(dftMat.T @ fftshift(greenS) @ dftMat / nFreqs)
   return gCtime, gStime
 
+
+def calcChirp(z):
+  """
+  Compute chirp coefficient C in exp(-0.5 C T^2). Variable z is in units of dispersion length.
+  """
+  return (0.5 * z) / (1 + 0.25 * z**2)
 
 if __name__ == "__main__":
   print(calculateLengthScales(2, 2000, -20, 0.125, "sech", 1.55))
