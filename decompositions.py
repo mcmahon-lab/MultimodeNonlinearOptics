@@ -82,7 +82,7 @@ def takagi(N, tol=1e-13, rounding=13):
     (n, m) = N.shape
     if n != m:
         raise ValueError("The input matrix must be square")
-    error = np.linalg.norm(N - np.transpose(np.conj(N))) / n
+    error = np.linalg.norm(N - np.transpose(N)) / n
     if error >= tol:
         raise ValueError("The input matrix is not symmetric (error = %f)" % error)
 

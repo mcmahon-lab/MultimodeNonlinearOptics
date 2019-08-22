@@ -1,4 +1,7 @@
 import numpy as np
+from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
+from scipy.linalg import det, sqrtm, inv, eig, norm, dft
+
 
 def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None, refractiveInd=1):
   """
@@ -20,6 +23,78 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
     # DS /= 8 * np.log(2)
   return NL * refractiveInd, DS * refractiveInd
 
+
+def calcQuadratureGreens(greenC, greenS):
+  Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
+                [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
+
+  return Z
+
+
+def calcCovarianceMtx(Z, tol=1e-4):
+  cov = Z @ Z.T
+  determinant = det(cov)
+  assert abs(determinant - 1) < tol, "det(C) = %f" % determinant
+  return cov
+
+
+def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
+  freqDomain = fftshift(fft(pumpTimeProf))
+
+  localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
+  localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / np.linalg.norm(freqDomain)
+
+  covMatrix = np.zeros((2, 2))
+  covMatrix[0,0] = localOscillX.T @ C @ localOscillX
+  covMatrix[1,1] = localOscillP.T @ C @ localOscillP
+  covMatrix[0,1] = covMatrix[1,0] = (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
+
+  variances = np.linalg.eigvals(covMatrix)
+
+  assert abs(covMatrix[0,0] - 1) < tol, "C_xx = %f" % covMatrix[0,0]
+
+  variances[0], variances[1] = np.min(variances), np.max(variances)
+  return variances
+
+
+# simpler version than Xanadu
+def blochMessiahEigs(Z):
+  sigma = sqrtm(Z @ Z.T)
+  eigenvalues, eigenvectors = eig(sigma)
+
+  sortedEig = np.sort(eigenvalues).real
+  # TODO sort eigenvectors together and return
+  return sortedEig
+
+
+def calcLOSqueezing2(F, G, pumpTimeProf, cutoff=0.01):
+  pTime = pumpTimeProf / norm(pumpTimeProf)
+  term1, term2 = 0, 0
+  n = pumpTimeProf.size
+  for j in range(n):
+    if np.abs(pTime[j]) < cutoff: continue
+    for l in range(n):
+      if np.abs(pTime[l]) < cutoff: continue
+      for k in range(n):
+        term1 += np.real(pTime[l] * np.conj(pTime[j]) * (np.conj(F[l,k]) * F[j,k] + np.conj(G[l,k]) * G[j,k]))
+        term2 += np.abs(np.conj(pTime[l] * pTime[j])  * (F[l,k] * G[j,k] + G[l,k] * F[j,k]))
+  return term1 - term2, term1 + term2
+
+
+def convertGreenFreqToTime(greenC, greenS):
+  # TODO might need some transposition steps
+  nFreqs = greenC.shape[0]
+  dftMat = np.conj(dft(nFreqs))
+  gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
+  gStime = ifftshift(dftMat.T @ fftshift(greenS) @ dftMat / nFreqs)
+  return gCtime, gStime
+
+
+def calcChirp(z):
+  """
+  Compute chirp coefficient C in exp(-0.5 C T^2). Variable z is in units of dispersion length.
+  """
+  return (0.5 * z) / (1 + 0.25 * z**2)
 
 if __name__ == "__main__":
   print(calculateLengthScales(2, 2000, -20, 0.125, "sech", 1.55))
