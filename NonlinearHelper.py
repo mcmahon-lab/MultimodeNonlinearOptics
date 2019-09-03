@@ -3,7 +3,7 @@ from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
 from scipy.linalg import det, sqrtm, inv, eig, norm, dft
 
 
-def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None, refractiveInd=1):
+def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None):
   """
   Return dispersion length and nonlinear lengths (meters).
   gamma: nonlinear coefficient (W^-1 km^-1)
@@ -11,7 +11,6 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
   beta2: group velocity dispersion (ps^2 / km)
   fwhm:  width of pulse (ps)
   pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
-  refractiveInd: increase optical path length based on index of refraction
   """
   NL = 1000 / (peakPower * gamma)
   DS = 1000 * timeScale**2 / abs(beta2)
@@ -21,7 +20,7 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
   elif pulseTypeFWHM == "gauss":
     DS /= 4 * np.log(2)
     # DS /= 8 * np.log(2)
-  return NL * refractiveInd, DS * refractiveInd
+  return NL, DS
 
 
 def calcQuadratureGreens(greenC, greenS):
@@ -63,26 +62,27 @@ def blochMessiahEigs(Z):
   eigenvalues, eigenvectors = eig(sigma)
 
   sortedEig = np.sort(eigenvalues).real
-  # TODO sort eigenvectors together and return
   return sortedEig
 
+def blochMessiahVecs(Z):
+  sigma = sqrtm(Z @ Z.T)
+  eigenvalues, eigenvectors = eig(sigma)
 
-def calcLOSqueezing2(F, G, pumpTimeProf, cutoff=0.01):
-  pTime = pumpTimeProf / norm(pumpTimeProf)
-  term1, term2 = 0, 0
-  n = pumpTimeProf.size
-  for j in range(n):
-    if np.abs(pTime[j]) < cutoff: continue
-    for l in range(n):
-      if np.abs(pTime[l]) < cutoff: continue
-      for k in range(n):
-        term1 += np.real(pTime[l] * np.conj(pTime[j]) * (np.conj(F[l,k]) * F[j,k] + np.conj(G[l,k]) * G[j,k]))
-        term2 += np.abs(np.conj(pTime[l] * pTime[j])  * (F[l,k] * G[j,k] + G[l,k] * F[j,k]))
-  return term1 - term2, term1 + term2
+  indices = np.argsort(eigenvalues, )
+
+  sortedEig = eigenvalues[indices].real
+  sortedVec = eigenvectors[indices]
+
+  u = inv(sigma) @ Z
+  eigenvectors_ = eigenvectors.T @ u
+
+  sortedVec_ = eigenvectors_[indices]
+
+  return sortedEig, sortedVec, sortedVec_
 
 
 def convertGreenFreqToTime(greenC, greenS):
-  # TODO might need some transposition steps
+  # TODO might need some transposition steps doesn't seem 100% correct
   nFreqs = greenC.shape[0]
   dftMat = np.conj(dft(nFreqs))
   gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
@@ -97,4 +97,4 @@ def calcChirp(z):
   return (0.5 * z) / (1 + 0.25 * z**2)
 
 if __name__ == "__main__":
-  print(calculateLengthScales(2, 2000, -20, 0.125, "sech", 1.55))
+  print(calculateLengthScales(2, 2000, -20, 0.125, "sech"))
