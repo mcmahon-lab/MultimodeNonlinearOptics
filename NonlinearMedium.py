@@ -6,7 +6,8 @@ class _NonlinearMedium:
   Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-               beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100):
+               beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               customPump=None):
     """
     :param relativeLength: Length of fiber in dispersion lengths, or nonlinear lengths if no dispersion.
     :param nlLength:       Nonlinear length in terms of dispersion length.
@@ -17,12 +18,13 @@ class _NonlinearMedium:
     :param pulseType:      Pump profile, 0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
     :param beta1:          Group velocity difference for pump relative to simulation window.
     :param beta1s:         Group velocity difference for signal relative to simulation window.
-    :param beta1:          Pump third order dispersion.
-    :param beta1s:         Signal third order dispersion.
+    :param beta3:          Pump third order dispersion.
+    :param beta3s:         Signal third order dispersion.
     :param chirp:          Initial chirp for pump pulse.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
     :param zPrecision:     Number of bins per unit length.
+    :param customPump:     Specify a pump profile in time domain..
     """
 
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
@@ -39,11 +41,12 @@ class _NonlinearMedium:
     if not isinstance(tMax, int):       raise TypeError("tMax")
     if not isinstance(tPrecision, int): raise TypeError("tPrecision")
     if not isinstance(zPrecision, int): raise TypeError("zPrecision")
+    if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
 
     self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
     self.resetGrids(tPrecision, tMax)
     self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
-    self.setPump(pulseType, chirp)
+    self.setPump(pulseType, chirp, customPump)
 
     # print("DS", self._DS, "NL", self._NL, "Nt", self._nFreqs, "Nz", self._nZSteps)
 
@@ -125,36 +128,39 @@ class _NonlinearMedium:
     self._beta2  = beta2
     self._beta2s = beta2s
 
-    if abs(self._beta2) != 1 and not self._noDispersion:
-      raise ValueError("Non unit beta2")
-
     # group velocity difference (relative to beta2 and pulse width)
     self._beta1  = beta1
     self._beta1s = beta1s
 
-    # third order dispersion (relative to beta2 and pulse width)
+    # third order dispersion (relative to beta2 and pulse width, unless beta2 is zero, then should be +/- 1)
     self._beta3  = beta3
     self._beta3s = beta3s
+
+    if abs(self._beta2) != 1 and not self._noDispersion:
+      if self._beta2 != 0 or abs(self._beta3) != 1:
+        raise ValueError("Non unit beta2")
 
     # dispersion profile
     if self._noDispersion:
       self._dispersionPump = self._dispersionSign = 0
     else:
-      self._dispersionPump = 0.5 * beta2  * self._omega**2 - beta1  * self._omega + 1/6 * beta3s * self._omega**3
-      self._dispersionSign = 0.5 * beta2s * self._omega**2 - beta1s * self._omega + 1/6 * beta3s * self._omega**3
+      self._dispersionPump = 0.5 * beta2  * self._omega**2 + beta1  * self._omega + 1/6 * beta3  * self._omega**3
+      self._dispersionSign = 0.5 * beta2s * self._omega**2 + beta1s * self._omega + 1/6 * beta3s * self._omega**3
 
     # helper values
     self._dispStepPump = np.exp(1j * self._dispersionPump * self._dz)
     self._dispStepSign = np.exp(1j * self._dispersionSign * self._dz)
 
 
-  def setPump(self, pulseType, chirp=0):
+  def setPump(self, pulseType, chirp=0, customPump=None):
     # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
-    if pulseType:
-      self._env = 1 / np.cosh(self._tau) * np.exp(-0.5j * chirp * self._tau**2)
+    if customPump is not None:
+      self._env = customPump * np.exp(-0.5j * chirp * self._tau**2)
     else:
-      self._env = np.exp(-0.5 * self._tau**2 * (1 + 1j * chirp))
-    # TODO allow custom envelopes
+      if pulseType:
+        self._env = 1 / np.cosh(self._tau) * np.exp(-0.5j * chirp * self._tau**2)
+      else:
+        self._env = np.exp(-0.5 * self._tau**2 * (1 + 1j * chirp))
 
 
   def runPumpSimulation(s):
