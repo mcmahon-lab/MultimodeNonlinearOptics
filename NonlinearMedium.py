@@ -24,6 +24,7 @@ class _NonlinearMedium:
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
     :param zPrecision:     Number of bins per unit length.
+    :param customPump:     Specify a pump profile in time domain..
     """
 
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
@@ -40,11 +41,12 @@ class _NonlinearMedium:
     if not isinstance(tMax, int):       raise TypeError("tMax")
     if not isinstance(tPrecision, int): raise TypeError("tPrecision")
     if not isinstance(zPrecision, int): raise TypeError("zPrecision")
+    if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
 
     self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
     self.resetGrids(tPrecision, tMax)
     self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
-    self.setPump(pulseType, chirp)
+    self.setPump(pulseType, chirp, customPump)
 
     # print("DS", self._DS, "NL", self._NL, "Nt", self._nFreqs, "Nz", self._nZSteps)
 
@@ -150,13 +152,15 @@ class _NonlinearMedium:
     self._dispStepSign = np.exp(1j * self._dispersionSign * self._dz)
 
 
-  def setPump(self, pulseType, chirp=0):
+  def setPump(self, pulseType, chirp=0, customPump=None):
     # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
-    if pulseType:
-      self._env = 1 / np.cosh(self._tau) * np.exp(-0.5j * chirp * self._tau**2)
+    if customPump is not None:
+      self._env = customPump * np.exp(-0.5j * chirp * self._tau**2)
     else:
-      self._env = np.exp(-0.5 * self._tau**2 * (1 + 1j * chirp))
-    # TODO allow custom envelopes
+      if pulseType:
+        self._env = 1 / np.cosh(self._tau) * np.exp(-0.5j * chirp * self._tau**2)
+      else:
+        self._env = np.exp(-0.5 * self._tau**2 * (1 + 1j * chirp))
 
 
   def runPumpSimulation(s):
