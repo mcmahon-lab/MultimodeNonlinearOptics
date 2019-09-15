@@ -37,8 +37,11 @@ def calcCovarianceMtx(Z, tol=1e-4):
   return cov
 
 
-def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
-  freqDomain = fftshift(fft(pumpTimeProf))
+def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
+  if inTimeDomain:
+    freqDomain = fftshift(fft(pumpProf))
+  else:
+    freqDomain = fftshift(pumpProf)
 
   localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
   localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / np.linalg.norm(freqDomain)
@@ -46,7 +49,8 @@ def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
   covMatrix = np.zeros((2, 2))
   covMatrix[0,0] = localOscillX.T @ C @ localOscillX
   covMatrix[1,1] = localOscillP.T @ C @ localOscillP
-  covMatrix[0,1] = covMatrix[1,0] = (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
+  covMatrix[0,1] = covMatrix[1,0] = ((localOscillX + localOscillP).T @ C @ (localOscillX + localOscillP)
+                                     - covMatrix[0,0] - covMatrix[1,1]) / 2
 
   variances = np.linalg.eigvals(covMatrix)
 
@@ -54,6 +58,26 @@ def calcLOSqueezing(C, pumpTimeProf, tol=1e-4):
 
   variances[0], variances[1] = np.min(variances), np.max(variances)
   return variances
+
+
+def obtainFrequencySqueezing(C, bandSize=1):
+
+  nFreqs = C.shape[0] // 2
+  covMatrix = np.zeros((2, 2))
+
+  squeezing = np.zeros(nFreqs)
+  antisqueezing = np.zeros(nFreqs)
+
+  for i in range(nFreqs):
+    covMatrix[0,0] = C[i, i]
+    covMatrix[0,1] = C[i, nFreqs + i]
+    covMatrix[1,0] = C[nFreqs + i, i]
+    covMatrix[1,1] = C[nFreqs + i, nFreqs + i]
+
+    variances = np.linalg.eigvals(covMatrix)
+    squeezing[i], antisqueezing[i] = np.min(variances), np.max(variances)
+
+  return squeezing, antisqueezing
 
 
 # simpler version than Xanadu
