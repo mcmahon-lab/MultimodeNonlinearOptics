@@ -41,8 +41,9 @@ void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float di
   _noDispersion = _DS == std::numeric_limits<float>::infinity() ? true : false;
   _noNonlinear =  _NL == std::numeric_limits<float>::infinity() ? true : false;
 
-  if (_noDispersion)
+  if (_noDispersion) {
     if (_NL != 1) throw std::invalid_argument("Non unit NL");
+  }
   else
     if (_DS != 1) throw std::invalid_argument("Non unit DS");
 
@@ -76,7 +77,6 @@ void _NonlinearMedium::resetGrids(uint nFreqs, float tMax) {
 
   if (nFreqs != 0 || tMax != 0) {
     auto Nt = _nFreqs;
-    float dt = 2 * _tMax / Nt;
 
     // time and frequency axes
     _tau = Eigen::VectorXf::LinSpaced(Nt, -tMax, tMax);
@@ -160,7 +160,7 @@ std::pair<Array2Dcf, Array2Dcf> _NonlinearMedium::computeGreensFunction(bool inT
   auto& grid = inTimeDomain ? signalGridTime : signalGridFreq;
 
   // Calculate Green's functions with real and imaginary impulse response
-  for (int i = 0; i < _nFreqs; i++) {
+  for (uint i = 0; i < _nFreqs; i++) {
     grid.row(0) = 0;
     grid(0, i) = 1;
     runSignalSimulation(grid.row(0), inTimeDomain);
@@ -237,7 +237,7 @@ void Chi3::runPumpSimulation() {
   pumpGridTime.row(0) = ifft(pumpGridFreq.row(0));
 
   Arraycf temp;
-  for (int i = 1; i < _nZSteps; i++) {
+  for (uint i = 1; i < _nZSteps; i++) {
     temp = pumpGridTime.row(i-1) * (_nlStep * pumpGridTime.row(i-1).abs2()).exp();
     pumpGridFreq.row(i) = fft(temp) * _dispStepPump;
     pumpGridTime.row(i) = ifft(pumpGridFreq.row(i));
@@ -256,7 +256,7 @@ void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
 
   Arraycf interpP, k1, k2, k3, k4, temp;
-  for (int i = 1; i < _nZSteps; i++) {
+  for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
     const auto& prev  = signalGridTime.row(i-1);
     const auto& prevP = pumpGridTime.row(i-1);
@@ -286,7 +286,7 @@ void Chi2::runPumpSimulation() {
   pumpGridFreq.row(0) = fft(_env);
   pumpGridTime.row(0) = _env;
 
-  for (int i = 1; i < _nZSteps; i++) {
+  for (uint i = 1; i < _nZSteps; i++) {
     pumpGridFreq.row(i) = pumpGridFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
     pumpGridTime.row(i) = ifft(pumpGridFreq.row(i));
   }
@@ -301,7 +301,7 @@ void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
 
   Arraycf interpP, k1, k2, k3, k4, temp;
-  for (int i = 1; i < _nZSteps; i++) {
+  for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
     const auto& prev =  signalGridTime.row(i-1);
     const auto& prevP = pumpGridTime.row(i-1);
