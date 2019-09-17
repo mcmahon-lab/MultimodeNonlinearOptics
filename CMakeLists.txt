@@ -14,11 +14,12 @@ find_package(pybind11 REQUIRED)
 pybind11_add_module(nonlinearmedium NonlinearMedium.cpp)
 
 # Compile options for optimization
-add_compile_options(-Wall)
-if(NOT CMAKE_BUILD_TYPE MATCHES Debug) # Release mode default
-  add_compile_options(-O3)
-  add_compile_options(-fvisibility=hidden)
+set(COMPILE_FLAGS -Wall)
+if(CMAKE_BUILD_TYPE MATCHES Release) # Release mode default
+  set(COMPILE_FLAGS ${COMPILE_FLAGS} -O3 -DNDEBUG -march=native -fvisibility=hidden)
+#  string(REGEX REPLACE "-O3" "-O2" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}") # O2 instead of O3 hack
 endif()
+target_compile_options(nonlinearmedium PUBLIC ${COMPILE_FLAGS})
 
 # Create the output in the source directory
 set_target_properties(nonlinearmedium PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
