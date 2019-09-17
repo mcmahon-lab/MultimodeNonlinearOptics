@@ -20,4 +20,5 @@ if(NOT CMAKE_BUILD_TYPE MATCHES Debug) # Release mode default
   add_compile_options(-fvisibility=hidden)
 endif()
 
-# TODO move output to parent directory
+# Create the output in the source directory
+set_target_properties(nonlinearmedium PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
