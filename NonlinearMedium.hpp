@@ -20,14 +20,20 @@ class _NonlinearMedium {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   _NonlinearMedium(float relativeLength, float nlLength, float dispLength,
-                   float beta2, float beta2s, int pulseType,
+                   float beta2, float beta2s, int pulseType=0,
+                   float beta1=0, float beta1s=0, float beta3=0, float beta3s=0,
+                   float chirp=0, float tMax=10, uint tPrecision=512, uint zPrecision=100);
+
+  _NonlinearMedium(float relativeLength, float nlLength, float dispLength,
+                   float beta2, float beta2s, const Eigen::Ref<const Arraycf>& customPump, int pulseType=0,
                    float beta1=0, float beta1s=0, float beta3=0, float beta3s=0,
                    float chirp=0, float tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void setLengths(float relativeLength, float nlLength, float dispLength, uint zPrecision=100);
   void resetGrids(uint nFreqs=0, float tMax=0);
   void setDispersion(float beta2, float beta2s, float beta1=0, float beta1s=0, float beta3=0, float beta3s=0);
-  void setPump(float pulseType, float chirp=0);
+  void setPump(int pulseType, float chirp=0);
+  void setPump(const Eigen::Ref<const Arraycf>& customPump, float chirp=0);
 
   virtual void runPumpSimulation() = 0;
   virtual void runSignalSimulation(const Arraycf& inputProf, bool timeSignal=true) = 0;
@@ -107,22 +113,44 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi3> Chi3(m, "Chi3");
   Chi3
     .def(py::init<float, float, float, float, float, int, float, float, float, float, float, float, uint, uint>(),
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a,
+         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a=0,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
-    .def("setLengths", &Chi3::setLengths, "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
-    .def("resetGrids", &Chi3::resetGrids, "nFreqs"_a=0, "tMax"_a=0)
-    .def("setDispersion", &Chi3::setDispersion, "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
-    .def("setPump", &Chi3::setPump, "pulseType"_a, "chirp"_a=0)
+
+    .def(py::init<float, float, float, float, float, Eigen::Ref<const Arraycf>&, int, float, float, float, float, float, float, uint, uint>(),
+         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
+         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
+         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
+
+    .def("setLengths", &Chi3::setLengths,
+         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
+
+    .def("resetGrids", &Chi3::resetGrids,
+         "nFreqs"_a=0, "tMax"_a=0)
+
+    .def("setDispersion", &Chi3::setDispersion,
+         "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
+
+    .def("setPump", (void (Chi3::*)(int, float)) &Chi3::setPump,
+         "pulseType"_a, "chirp"_a=0)
+
+    .def("setPump", (void (Chi3::*)(const Eigen::Ref<const Arraycf>&, float)) &Chi3::setPump,
+         "customPump"_a, "chirp"_a=0)
+
     .def("runPumpSimulation", &Chi3::runPumpSimulation)
-    .def("runSignalSimulation", &Chi3::runSignalSimulation, "inputProf"_a, "timeSignal"_a=true)
-    .def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move, "inTimeDomain"_a=false, "runPump"_a=true)
-    .def_property_readonly("pumpFreq", &Chi3::getPumpFreq, py::return_value_policy::reference)
-    .def_property_readonly("pumpTime", &Chi3::getPumpTime, py::return_value_policy::reference)
+
+    .def("runSignalSimulation", &Chi3::runSignalSimulation,
+         "inputProf"_a, "timeSignal"_a=true)
+
+    .def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move,
+         "inTimeDomain"_a=false, "runPump"_a=true)
+
+    .def_property_readonly("pumpFreq",   &Chi3::getPumpFreq,   py::return_value_policy::reference)
+    .def_property_readonly("pumpTime",   &Chi3::getPumpTime,   py::return_value_policy::reference)
     .def_property_readonly("signalFreq", &Chi3::getSignalFreq, py::return_value_policy::reference)
     .def_property_readonly("signalTime", &Chi3::getSignalTime, py::return_value_policy::reference)
-    .def_property_readonly("omega", &Chi3::getFrequency, py::return_value_policy::reference)
-    .def_property_readonly("tau", &Chi3::getTime, py::return_value_policy::reference);
+    .def_property_readonly("omega",      &Chi3::getFrequency,  py::return_value_policy::reference)
+    .def_property_readonly("tau",        &Chi3::getTime,       py::return_value_policy::reference);
 
   py::class_<Chi2> Chi2(m, "Chi2");
   Chi2
@@ -130,19 +158,43 @@ PYBIND11_MODULE(nonlinearmedium, m) {
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
-    .def("setLengths", &Chi3::setLengths, "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
-    .def("resetGrids", &Chi3::resetGrids, "nFreqs"_a=0, "tMax"_a=0)
-    .def("setDispersion", &Chi3::setDispersion, "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
-    .def("setPump", &Chi3::setPump, "pulseType"_a, "chirp"_a=0)
+
+    .def(py::init<float, float, float, float, float, Eigen::Ref<const Arraycf>&,
+                  int, float, float, float, float, float, float, uint, uint>(),
+         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
+         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
+         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
+
+    .def("setLengths", &Chi3::setLengths,
+         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
+
+    .def("resetGrids", &Chi3::resetGrids,
+         "nFreqs"_a=0, "tMax"_a=0)
+
+    .def("setDispersion", &Chi3::setDispersion,
+         "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
+
+    .def("setPump", (void (Chi2::*)(int, float)) &Chi2::setPump,
+         "pulseType"_a, "chirp"_a=0)
+
+    .def("setPump", (void (Chi2::*)(const Eigen::Ref<const Arraycf>&, float)) &Chi2::setPump,
+         "customPump"_a, "chirp"_a=0)
+
     .def("runPumpSimulation", &Chi2::runPumpSimulation)
-    .def("runSignalSimulation", &Chi2::runSignalSimulation, "inputProf"_a, "timeSignal"_a=true)
-    .def("computeGreensFunction", &Chi2::computeGreensFunction, py::return_value_policy::move, "inTimeDomain"_a=false, "runPump"_a=true)
-    .def_property_readonly("pumpFreq", &Chi2::getPumpFreq, py::return_value_policy::reference)
-    .def_property_readonly("pumpTime", &Chi2::getPumpTime, py::return_value_policy::reference)
+
+    .def("runSignalSimulation", &Chi2::runSignalSimulation,
+         "inputProf"_a, "timeSignal"_a=true)
+
+    .def("computeGreensFunction",
+         &Chi2::computeGreensFunction, py::return_value_policy::move,
+         "inTimeDomain"_a=false, "runPump"_a=true)
+
+    .def_property_readonly("pumpFreq",   &Chi2::getPumpFreq,   py::return_value_policy::reference)
+    .def_property_readonly("pumpTime",   &Chi2::getPumpTime,   py::return_value_policy::reference)
     .def_property_readonly("signalFreq", &Chi2::getSignalFreq, py::return_value_policy::reference)
     .def_property_readonly("signalTime", &Chi2::getSignalTime, py::return_value_policy::reference)
-    .def_property_readonly("omega", &Chi2::getFrequency, py::return_value_policy::reference)
-    .def_property_readonly("tau", &Chi2::getTime, py::return_value_policy::reference);
+    .def_property_readonly("omega",      &Chi2::getFrequency,  py::return_value_policy::reference)
+    .def_property_readonly("tau",        &Chi2::getTime,       py::return_value_policy::reference);
 }
 
 

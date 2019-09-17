@@ -12,6 +12,16 @@ _NonlinearMedium::_NonlinearMedium(float relativeLength, float nlLength, float d
   setPump(pulseType, chirp);
 }
 
+_NonlinearMedium::_NonlinearMedium(float relativeLength, float nlLength, float dispLength,
+                                   float beta2, float beta2s, const Eigen::Ref<const Arraycf>& customPump,
+                                   int pulseType, float beta1, float beta1s, float beta3, float beta3s,
+                                   float chirp, float tMax, uint tPrecision, uint zPrecision) {
+  setLengths(relativeLength, nlLength, dispLength, zPrecision);
+  resetGrids(tPrecision, tMax);
+  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+  setPump(customPump, chirp);
+}
+
 
 void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float dispLength, uint zPrecision) {
   // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = Lds / Lnl
@@ -122,15 +132,20 @@ void _NonlinearMedium::setDispersion(float beta2, float beta2s, float beta1, flo
   _dispStepSign = (1i * _dispersionSign * _dz).exp();
 }
 
-void _NonlinearMedium::setPump(float pulseType, float chirp) {
+void _NonlinearMedium::setPump(int pulseType, float chirp) {
   // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
   if (pulseType)
     _env = 1 / _tau.cosh() * (-0.5i * chirp * _tau.square()).exp();
   else
     _env = (-0.5 * _tau.square() * (1 + 1i * chirp)).exp();
-  // TODO allow custom envelopes
 }
 
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycf>& customPump, float chirp) {
+  // custom initial time domain envelope
+  if (customPump.size() != _nFreqs)
+    throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
+  _env = customPump * (-0.5i * chirp * _tau.square()).exp();
+}
 
 
 std::pair<Array2Dcf, Array2Dcf> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump) {
