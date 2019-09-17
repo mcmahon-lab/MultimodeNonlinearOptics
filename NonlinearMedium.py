@@ -5,7 +5,7 @@ class _NonlinearMedium:
   """
   Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
   """
-  def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+  def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
                beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None):
     """
@@ -106,8 +106,8 @@ class _NonlinearMedium:
       dt = 2 * self._tMax / Nt
 
       # time and frequency axes
-      self._tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
-      self._omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
+      self.tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
+      self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
 
       # Reset dispersion and pulse
       try:
@@ -116,10 +116,10 @@ class _NonlinearMedium:
         pass
 
     # Grids for PDE propagation
-    self.pumpGridFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
-    self.pumpGridTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
-    self.signalGridFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
-    self.signalGridTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+    self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+    self.pumpTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+    self.signalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+    self.signalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
   def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
@@ -144,23 +144,25 @@ class _NonlinearMedium:
     if self._noDispersion:
       self._dispersionPump = self._dispersionSign = 0
     else:
-      self._dispersionPump = 0.5 * beta2  * self._omega**2 + beta1  * self._omega + 1/6 * beta3  * self._omega**3
-      self._dispersionSign = 0.5 * beta2s * self._omega**2 + beta1s * self._omega + 1/6 * beta3s * self._omega**3
+      self._dispersionPump = 0.5 * beta2  * self.omega**2 + beta1  * self.omega + 1/6 * beta3  * self.omega**3
+      self._dispersionSign = 0.5 * beta2s * self.omega**2 + beta1s * self.omega + 1/6 * beta3s * self.omega**3
 
     # helper values
     self._dispStepPump = np.exp(1j * self._dispersionPump * self._dz)
     self._dispStepSign = np.exp(1j * self._dispersionSign * self._dz)
 
 
-  def setPump(self, pulseType, chirp=0, customPump=None):
-    # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
+  def setPump(self, pulseType=0, chirp=0, customPump=None):
+    # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant or custom)
     if customPump is not None:
-      self._env = customPump * np.exp(-0.5j * chirp * self._tau**2)
+      if customPump.size != self._nFreqs:
+        raise ValueError("Custom pump array length does not match number of frequency/time bins")
+      self._env = customPump * np.exp(-0.5j * chirp * self.tau**2)
     else:
       if pulseType:
-        self._env = 1 / np.cosh(self._tau) * np.exp(-0.5j * chirp * self._tau**2)
+        self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
       else:
-        self._env = np.exp(-0.5 * self._tau**2 * (1 + 1j * chirp))
+        self._env = np.exp(-0.5 * self.tau**2 * (1 + 1j * chirp))
 
 
   def runPumpSimulation(s):
@@ -194,7 +196,7 @@ class _NonlinearMedium:
 
     if runPump: s.runPumpSimulation()
 
-    grid = (s.signalGridTime if inTimeDomain else s.signalGridFreq)
+    grid = (s.signalTime if inTimeDomain else s.signalFreq)
 
     # Calculate Green's functions with real and imaginary impulse response
     for i in range(s._nFreqs):
@@ -225,16 +227,16 @@ class Chi3(_NonlinearMedium):
   def runPumpSimulation(s):
     __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
-    s.pumpGridFreq[0, :] = fft(s._env) * np.exp(0.5j * s._dispersionPump * s._dz)
-    s.pumpGridTime[0, :] = ifft(s.pumpGridFreq[0, :])
+    s.pumpFreq[0, :] = fft(s._env) * np.exp(0.5j * s._dispersionPump * s._dz)
+    s.pumpTime[0, :] = ifft(s.pumpFreq[0, :])
 
     for i in range(1, s._nZSteps):
-      temp = s.pumpGridTime[i-1, :] * np.exp(s._nlStep * np.abs(s.pumpGridTime[i-1, :])**2)
-      s.pumpGridFreq[i, :] = fft(temp) * s._dispStepPump
-      s.pumpGridTime[i, :] = ifft(s.pumpGridFreq[i, :])
+      temp = s.pumpTime[i-1, :] * np.exp(s._nlStep * np.abs(s.pumpTime[i-1, :])**2)
+      s.pumpFreq[i, :] = fft(temp) * s._dispStepPump
+      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
 
-    s.pumpGridFreq[-1, :] *= np.exp(-0.5j * s._dispersionPump * s._dz)
-    s.pumpGridTime[-1, :] = ifft(s.pumpGridFreq[-1, :])
+    s.pumpFreq[-1, :] *= np.exp(-0.5j * s._dispersionPump * s._dz)
+    s.pumpTime[-1, :] = ifft(s.pumpFreq[-1, :])
 
 
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
@@ -242,39 +244,39 @@ class Chi3(_NonlinearMedium):
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
-    s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
-    s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
+    s.signalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
+    s.signalTime[0, :] = ifft(s.signalFreq[0, :])
 
     for i in range(1, s._nZSteps):
       # Do a Runge-Kutta step for the non-linear propagation
-      pumpTimeInterp = 0.5 * (s.pumpGridTime[i-1] + s.pumpGridTime[i])
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
-      prevConj = np.conj(s.signalGridTime[i-1, :])
-      k1 = s._nlStep * (2 * np.abs(s.pumpGridTime[i-1])**2 *  s.signalGridTime[i-1, :]             + s.pumpGridTime[i-1]**2 *  prevConj)
-      k2 = s._nlStep * (2 * np.abs(pumpTimeInterp)**2      * (s.signalGridTime[i-1, :] + 0.5 * k1) + pumpTimeInterp**2      * (prevConj + np.conj(0.5 * k1)))
-      k3 = s._nlStep * (2 * np.abs(pumpTimeInterp)**2      * (s.signalGridTime[i-1, :] + 0.5 * k2) + pumpTimeInterp**2      * (prevConj + np.conj(0.5 * k2)))
-      k4 = s._nlStep * (2 * np.abs(s.pumpGridTime[i])**2   * (s.signalGridTime[i-1, :] + k3)       + s.pumpGridTime[i]**2   * (prevConj + np.conj(k3)))
+      prevConj = np.conj(s.signalTime[i-1, :])
+      k1 = s._nlStep * (2 * np.abs(s.pumpTime[i-1])**2 *  s.signalTime[i-1, :]             + s.pumpTime[i-1]**2 *  prevConj)
+      k2 = s._nlStep * (2 * np.abs(pumpTimeInterp)**2  * (s.signalTime[i-1, :] + 0.5 * k1) + pumpTimeInterp**2  * (prevConj + np.conj(0.5 * k1)))
+      k3 = s._nlStep * (2 * np.abs(pumpTimeInterp)**2  * (s.signalTime[i-1, :] + 0.5 * k2) + pumpTimeInterp**2  * (prevConj + np.conj(0.5 * k2)))
+      k4 = s._nlStep * (2 * np.abs(s.pumpTime[i])**2   * (s.signalTime[i-1, :] + k3)       + s.pumpTime[i]**2   * (prevConj + np.conj(k3)))
 
-      temp = s.signalGridTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+      temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
       # Dispersion step
-      s.signalGridFreq[i, :] = fft(temp) * s._dispStepSign
-      s.signalGridTime[i, :] = ifft(s.signalGridFreq[i, :])
+      s.signalFreq[i, :] = fft(temp) * s._dispStepSign
+      s.signalTime[i, :] = ifft(s.signalFreq[i, :])
 
-    s.signalGridFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
-    s.signalGridTime[-1, :] = ifft(s.signalGridFreq[-1, :])
+    s.signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
 class Chi2(_NonlinearMedium):
   def runPumpSimulation(s):
     __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
-    s.pumpGridFreq[0, :] = fft(s._env)
-    s.pumpGridTime[0, :] = s._env
+    s.pumpFreq[0, :] = fft(s._env)
+    s.pumpTime[0, :] = s._env
 
     for i in range(1, s._nZSteps):
-      s.pumpGridFreq[i, :] = s.pumpGridFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
-      s.pumpGridTime[i, :] = ifft(s.pumpGridFreq[i, :])
+      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
+      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
 
 
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
@@ -282,24 +284,24 @@ class Chi2(_NonlinearMedium):
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
-    s.signalGridFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
-    s.signalGridTime[0, :] = ifft(s.signalGridFreq[0, :])
+    s.signalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
+    s.signalTime[0, :] = ifft(s.signalFreq[0, :])
 
     for i in range(1, s._nZSteps):
       # Do a Runge-Kutta step for the non-linear propagation
-      pumpTimeInterp = 0.5 * (s.pumpGridTime[i-1] + s.pumpGridTime[i])
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
-      prevConj = np.conj(s.signalGridTime[i-1, :])
-      k1 = s._nlStep * s.pumpGridTime[i-1, :] *  prevConj
-      k2 = s._nlStep * pumpTimeInterp         * (prevConj + np.conj(0.5 * k1))
-      k3 = s._nlStep * pumpTimeInterp         * (prevConj + np.conj(0.5 * k2))
-      k4 = s._nlStep * s.pumpGridTime[i,   :] * (prevConj + np.conj(k3))
+      prevConj = np.conj(s.signalTime[i-1, :])
+      k1 = s._nlStep * s.pumpTime[i-1, :] *  prevConj
+      k2 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k1))
+      k3 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k2))
+      k4 = s._nlStep * s.pumpTime[i,   :] * (prevConj + np.conj(k3))
 
-      temp = s.signalGridTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+      temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
       # Dispersion step
-      s.signalGridFreq[i, :] = fft(temp) * s._dispStepSign
-      s.signalGridTime[i, :] = ifft(s.signalGridFreq[i, :])
+      s.signalFreq[i, :] = fft(temp) * s._dispStepSign
+      s.signalTime[i, :] = ifft(s.signalFreq[i, :])
 
-    s.signalGridFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
-    s.signalGridTime[-1, :] = ifft(s.signalGridFreq[-1, :])
+    s.signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
