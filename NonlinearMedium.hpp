@@ -11,29 +11,29 @@
 
 // Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
 // Also must specify row-major order for 2D
-typedef Eigen::Array<float, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayf;
-typedef Eigen::Array<std::complex<float>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycf;
-typedef Eigen::Array<std::complex<float>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcf;
+typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayf;
+typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycf;
+typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcf;
 
 
 class _NonlinearMedium {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  _NonlinearMedium(float relativeLength, float nlLength, float dispLength,
-                   float beta2, float beta2s, int pulseType=0,
-                   float beta1=0, float beta1s=0, float beta3=0, float beta3s=0,
-                   float chirp=0, float tMax=10, uint tPrecision=512, uint zPrecision=100);
+  _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
+                   double beta2, double beta2s, int pulseType=0,
+                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
+                   double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
-  _NonlinearMedium(float relativeLength, float nlLength, float dispLength,
-                   float beta2, float beta2s, const Eigen::Ref<const Arraycf>& customPump, int pulseType=0,
-                   float beta1=0, float beta1s=0, float beta3=0, float beta3s=0,
-                   float chirp=0, float tMax=10, uint tPrecision=512, uint zPrecision=100);
+  _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
+                   double beta2, double beta2s, const Eigen::Ref<const Arraycf>& customPump, int pulseType=0,
+                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
+                   double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
-  void setLengths(float relativeLength, float nlLength, float dispLength, uint zPrecision=100);
-  void resetGrids(uint nFreqs=0, float tMax=0);
-  void setDispersion(float beta2, float beta2s, float beta1=0, float beta1s=0, float beta3=0, float beta3s=0);
-  void setPump(int pulseType, float chirp=0);
-  void setPump(const Eigen::Ref<const Arraycf>& customPump, float chirp=0);
+  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
+  void resetGrids(uint nFreqs=0, double tMax=0);
+  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0, double beta3=0, double beta3s=0);
+  void setPump(int pulseType, double chirp=0);
+  void setPump(const Eigen::Ref<const Arraycf>& customPump, double chirp=0);
 
   virtual void runPumpSimulation() = 0;
   virtual void runSignalSimulation(const Arraycf& inputProf, bool timeSignal=true) = 0;
@@ -47,26 +47,26 @@ public:
   const Arrayf& getFrequency() {return _omega;};
 
 protected:
-  float _z;
-  float _DS;
-  float _NL;
+  double _z;
+  double _DS;
+  double _NL;
   bool _noDispersion;
   bool _noNonlinear;
-  float _Nsquared;
-  float _dz;
+  double _Nsquared;
+  double _dz;
   uint _nZSteps;
   uint _nFreqs;
-  float _tMax;
-  float _beta2;
-  float _beta2s;
-  float _beta1;
-  float _beta1s;
-  float _beta3;
-  float _beta3s;
+  double _tMax;
+  double _beta2;
+  double _beta2s;
+  double _beta1;
+  double _beta1s;
+  double _beta3;
+  double _beta3s;
 
   Arraycf _dispStepPump;
   Arraycf _dispStepSign;
-  std::complex<float> _nlStep;
+  std::complex<double> _nlStep;
 
   Arrayf _tau;
   Arrayf _omega;
@@ -79,12 +79,12 @@ protected:
   Array2Dcf signalGridFreq;
   Array2Dcf signalGridTime;
 
-  Eigen::FFT<float> fftObj;
+  Eigen::FFT<double> fftObj;
 
-  Arraycf fft(const Eigen::VectorXcf& input);
-  Arraycf ifft(const Eigen::VectorXcf& input);
-//  void fft(const Eigen::VectorXcf& input, Eigen::VectorXcf& ouput);
-//  void ifft(const Eigen::VectorXcf& input, Eigen::VectorXcf& ouput);
+  Arraycf fft(const Eigen::VectorXcd& input);
+  Arraycf ifft(const Eigen::VectorXcd& input);
+//  void fft(const Eigen::VectorXcd& input, Eigen::VectorXcd& ouput);
+//  void ifft(const Eigen::VectorXcd& input, Eigen::VectorXcd& ouput);
   Arrayf fftshift(const Arrayf& input);
   Array2Dcf fftshift(const Array2Dcf& input);
 };
@@ -112,12 +112,12 @@ using namespace pybind11::literals;
 PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi3> Chi3(m, "Chi3");
   Chi3
-    .def(py::init<float, float, float, float, float, int, float, float, float, float, float, float, uint, uint>(),
+    .def(py::init<double, double, double, double, double, int, double, double, double, double, double, double, uint, uint>(),
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a=0,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
 
-    .def(py::init<float, float, float, float, float, Eigen::Ref<const Arraycf>&, int, float, float, float, float, float, float, uint, uint>(),
+    .def(py::init<double, double, double, double, double, Eigen::Ref<const Arraycf>&, int, double, double, double, double, double, double, uint, uint>(),
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
@@ -131,10 +131,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
     .def("setDispersion", &Chi3::setDispersion,
          "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
 
-    .def("setPump", (void (Chi3::*)(int, float)) &Chi3::setPump,
+    .def("setPump", (void (Chi3::*)(int, double)) &Chi3::setPump,
          "pulseType"_a, "chirp"_a=0)
 
-    .def("setPump", (void (Chi3::*)(const Eigen::Ref<const Arraycf>&, float)) &Chi3::setPump,
+    .def("setPump", (void (Chi3::*)(const Eigen::Ref<const Arraycf>&, double)) &Chi3::setPump,
          "customPump"_a, "chirp"_a=0)
 
     .def("runPumpSimulation", &Chi3::runPumpSimulation)
@@ -154,13 +154,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   py::class_<Chi2> Chi2(m, "Chi2");
   Chi2
-    .def(py::init<float, float, float, float, float, int, float, float, float, float, float, float, uint, uint>(),
+    .def(py::init<double, double, double, double, double, int, double, double, double, double, double, double, uint, uint>(),
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
 
-    .def(py::init<float, float, float, float, float, Eigen::Ref<const Arraycf>&,
-                  int, float, float, float, float, float, float, uint, uint>(),
+    .def(py::init<double, double, double, double, double, Eigen::Ref<const Arraycf>&,
+                  int, double, double, double, double, double, double, uint, uint>(),
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
@@ -174,10 +174,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
     .def("setDispersion", &Chi3::setDispersion,
          "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
 
-    .def("setPump", (void (Chi2::*)(int, float)) &Chi2::setPump,
+    .def("setPump", (void (Chi2::*)(int, double)) &Chi2::setPump,
          "pulseType"_a, "chirp"_a=0)
 
-    .def("setPump", (void (Chi2::*)(const Eigen::Ref<const Arraycf>&, float)) &Chi2::setPump,
+    .def("setPump", (void (Chi2::*)(const Eigen::Ref<const Arraycf>&, double)) &Chi2::setPump,
          "customPump"_a, "chirp"_a=0)
 
     .def("runPumpSimulation", &Chi2::runPumpSimulation)

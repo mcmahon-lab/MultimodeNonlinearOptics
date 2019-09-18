@@ -2,20 +2,21 @@
 #include <stdexcept>
 #include <limits>
 
-_NonlinearMedium::_NonlinearMedium(float relativeLength, float nlLength, float dispLength,
-                                   float beta2, float beta2s, int pulseType,
-                                   float beta1, float beta1s, float beta3, float beta3s,
-                                   float chirp, float tMax, uint tPrecision, uint zPrecision) {
+
+_NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
+                                   double beta2, double beta2s, int pulseType,
+                                   double beta1, double beta1s, double beta3, double beta3s,
+                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
   setPump(pulseType, chirp);
 }
 
-_NonlinearMedium::_NonlinearMedium(float relativeLength, float nlLength, float dispLength,
-                                   float beta2, float beta2s, const Eigen::Ref<const Arraycf>& customPump,
-                                   int pulseType, float beta1, float beta1s, float beta3, float beta3s,
-                                   float chirp, float tMax, uint tPrecision, uint zPrecision) {
+_NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
+                                   double beta2, double beta2s, const Eigen::Ref<const Arraycf>& customPump,
+                                   int pulseType, double beta1, double beta1s, double beta3, double beta3s,
+                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
@@ -23,7 +24,7 @@ _NonlinearMedium::_NonlinearMedium(float relativeLength, float nlLength, float d
 }
 
 
-void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float dispLength, uint zPrecision) {
+void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision) {
   // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = Lds / Lnl
   // The length z is given in units of dispersion length (of pump)
   // The time is given in units of initial width (of pump)
@@ -38,8 +39,8 @@ void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float di
   // if no dispersion keep NL fixed at 1 to not mess up z, otherwise change relative to DS
   _NL = nlLength;
 
-  _noDispersion = _DS == std::numeric_limits<float>::infinity() ? true : false;
-  _noNonlinear =  _NL == std::numeric_limits<float>::infinity() ? true : false;
+  _noDispersion = _DS == std::numeric_limits<double>::infinity() ? true : false;
+  _noNonlinear =  _NL == std::numeric_limits<double>::infinity() ? true : false;
 
   if (_noDispersion) {
     if (_NL != 1) throw std::invalid_argument("Non unit NL");
@@ -53,7 +54,7 @@ void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float di
   if (_noNonlinear)  _Nsquared = 0;
 
   // space resolution
-  _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1.f, _DS, _NL}));
+  _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., _DS, _NL}));
   _dz = _z / _nZSteps;
 
   // helper values
@@ -67,7 +68,7 @@ void _NonlinearMedium::setLengths(float relativeLength, float nlLength, float di
 }
 
 
-void _NonlinearMedium::resetGrids(uint nFreqs, float tMax) {
+void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 
   // time windowing and resolution
   if (nFreqs != 0)
@@ -79,9 +80,9 @@ void _NonlinearMedium::resetGrids(uint nFreqs, float tMax) {
     auto Nt = _nFreqs;
 
     // time and frequency axes
-    _tau = Eigen::VectorXf::LinSpaced(Nt, -tMax, tMax);
+    _tau = Eigen::VectorXd::LinSpaced(Nt, -tMax, tMax);
     _tau = fftshift(_tau);
-    _omega = Eigen::VectorXf::LinSpaced(_nFreqs, -M_PI / _tMax * _nFreqs / 2, M_PI / _tMax * _nFreqs / 2);
+    _omega = Eigen::VectorXd::LinSpaced(_nFreqs, -M_PI / _tMax * _nFreqs / 2, M_PI / _tMax * _nFreqs / 2);
     _omega = fftshift(_omega);
 
     // Reset dispersion and pulse
@@ -102,7 +103,7 @@ void _NonlinearMedium::resetGrids(uint nFreqs, float tMax) {
 }
 
 
-void _NonlinearMedium::setDispersion(float beta2, float beta2s, float beta1, float beta1s, float beta3, float beta3s) {
+void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, double beta1s, double beta3, double beta3s) {
 
   // positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
   _beta2  = beta2;
@@ -132,7 +133,7 @@ void _NonlinearMedium::setDispersion(float beta2, float beta2s, float beta1, flo
   _dispStepSign = (1i * _dispersionSign * _dz).exp();
 }
 
-void _NonlinearMedium::setPump(int pulseType, float chirp) {
+void _NonlinearMedium::setPump(int pulseType, double chirp) {
   // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
   if (pulseType)
     _env = 1 / _tau.cosh() * (-0.5i * chirp * _tau.square()).exp();
@@ -140,7 +141,7 @@ void _NonlinearMedium::setPump(int pulseType, float chirp) {
     _env = (-0.5 * _tau.square() * (1 + 1i * chirp)).exp();
 }
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycf>& customPump, float chirp) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycf>& customPump, double chirp) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
@@ -186,24 +187,24 @@ std::pair<Array2Dcf, Array2Dcf> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
-inline Arraycf _NonlinearMedium::fft(const Eigen::VectorXcf& input) {
-  Eigen::VectorXcf output(input.cols());
+inline Arraycf _NonlinearMedium::fft(const Eigen::VectorXcd& input) {
+  Eigen::VectorXcd output(input.cols());
   fftObj.fwd(output, input);
   return output;
 }
 
-inline Arraycf _NonlinearMedium::ifft(const Eigen::VectorXcf& input) {
-  Eigen::VectorXcf output(input.cols());
+inline Arraycf _NonlinearMedium::ifft(const Eigen::VectorXcd& input) {
+  Eigen::VectorXcd output(input.cols());
   fftObj.inv(output, input);
   return output;
 }
 
 /*
-inline void _NonlinearMedium::fft(const Eigen::VectorXcf& input, Eigen::VectorXcf& output) {
+inline void _NonlinearMedium::fft(const Eigen::VectorXcd& input, Eigen::VectorXcd& output) {
   fftObj.fwd(output, input);
 }
 
-inline void _NonlinearMedium::ifft(const Eigen::VectorXcf& input, Eigen::VectorXcf& output) {
+inline void _NonlinearMedium::ifft(const Eigen::VectorXcd& input, Eigen::VectorXcd& output) {
   fftObj.inv(output, input);
 }
 */
@@ -236,7 +237,7 @@ void Chi3::runPumpSimulation() {
   pumpGridFreq.row(0) = fft(_env) * (0.5i * _dispersionPump * _dz).exp();
   pumpGridTime.row(0) = ifft(pumpGridFreq.row(0));
 
-  Arraycf temp;
+  Arraycf temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     temp = pumpGridTime.row(i-1) * (_nlStep * pumpGridTime.row(i-1).abs2()).exp();
     pumpGridFreq.row(i) = fft(temp) * _dispStepPump;
@@ -255,7 +256,7 @@ void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
 
-  Arraycf interpP, k1, k2, k3, k4, temp;
+  Arraycf interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
     const auto& prev  = signalGridTime.row(i-1);
@@ -300,7 +301,7 @@ void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
 
-  Arraycf interpP, k1, k2, k3, k4, temp;
+  Arraycf interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
     const auto& prev =  signalGridTime.row(i-1);
