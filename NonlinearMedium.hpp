@@ -14,6 +14,7 @@
 typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayf;
 typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycf;
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcf;
+typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
 
 
 class _NonlinearMedium {
@@ -79,14 +80,13 @@ protected:
   Array2Dcf signalGridFreq;
   Array2Dcf signalGridTime;
 
+  RowVectorcd fftTemp;
   Eigen::FFT<double> fftObj;
 
-  Arraycf fft(const Eigen::VectorXcd& input);
-  Arraycf ifft(const Eigen::VectorXcd& input);
-//  void fft(const Eigen::VectorXcd& input, Eigen::VectorXcd& ouput);
-//  void ifft(const Eigen::VectorXcd& input, Eigen::VectorXcd& ouput);
-  Arrayf fftshift(const Arrayf& input);
-  Array2Dcf fftshift(const Array2Dcf& input);
+  inline const RowVectorcd& fft(const RowVectorcd& input);
+  inline const RowVectorcd& ifft(const RowVectorcd& input);
+  inline Arrayf fftshift(const Arrayf& input);
+  inline Array2Dcf fftshift(const Array2Dcf& input);
 };
 
 class Chi3 : public _NonlinearMedium {

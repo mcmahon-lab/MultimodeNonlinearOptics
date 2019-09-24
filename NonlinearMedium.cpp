@@ -100,6 +100,8 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   pumpGridTime.resize(_nZSteps, _nFreqs);
   signalGridFreq.resize(_nZSteps, _nFreqs);
   signalGridTime.resize(_nZSteps, _nFreqs);
+
+  fftTemp.resize(_nFreqs);
 }
 
 
@@ -187,27 +189,16 @@ std::pair<Array2Dcf, Array2Dcf> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
-inline Arraycf _NonlinearMedium::fft(const Eigen::VectorXcd& input) {
-  Eigen::VectorXcd output(input.cols());
-  fftObj.fwd(output, input);
-  return output;
+inline const RowVectorcd& _NonlinearMedium::fft(const RowVectorcd& input) {
+  fftObj.fwd(fftTemp, input);
+  return fftTemp;
 }
 
-inline Arraycf _NonlinearMedium::ifft(const Eigen::VectorXcd& input) {
-  Eigen::VectorXcd output(input.cols());
-  fftObj.inv(output, input);
-  return output;
+inline const RowVectorcd& _NonlinearMedium::ifft(const RowVectorcd& input) {
+  fftObj.inv(fftTemp, input);
+  return fftTemp;
 }
 
-/*
-inline void _NonlinearMedium::fft(const Eigen::VectorXcd& input, Eigen::VectorXcd& output) {
-  fftObj.fwd(output, input);
-}
-
-inline void _NonlinearMedium::ifft(const Eigen::VectorXcd& input, Eigen::VectorXcd& output) {
-  fftObj.inv(output, input);
-}
-*/
 
 inline Arrayf _NonlinearMedium::fftshift(const Arrayf& input) {
   Arrayf out(input.rows(), input.cols());
@@ -234,13 +225,13 @@ inline Array2Dcf _NonlinearMedium::fftshift(const Array2Dcf& input) {
 
 void Chi3::runPumpSimulation() {
 
-  pumpGridFreq.row(0) = fft(_env) * (0.5i * _dispersionPump * _dz).exp();
+  pumpGridFreq.row(0) = fft(_env).array() * (0.5i * _dispersionPump * _dz).exp();
   pumpGridTime.row(0) = ifft(pumpGridFreq.row(0));
 
   Arraycf temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     temp = pumpGridTime.row(i-1) * (_nlStep * pumpGridTime.row(i-1).abs2()).exp();
-    pumpGridFreq.row(i) = fft(temp) * _dispStepPump;
+    pumpGridFreq.row(i) = fft(temp).array() * _dispStepPump;
     pumpGridTime.row(i) = ifft(pumpGridFreq.row(i));
   }
 
@@ -251,7 +242,7 @@ void Chi3::runPumpSimulation() {
 
 void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
   if (timeSignal)
-    signalGridFreq.row(0) = fft(inputProf) * (0.5i * _dispersionSign * _dz).exp();
+    signalGridFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
@@ -273,7 +264,7 @@ void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     temp = signalGridTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalGridFreq.row(i) = fft(temp) * _dispStepSign;
+    signalGridFreq.row(i) = fft(temp).array() * _dispStepSign;
     signalGridTime.row(i) = ifft(signalGridFreq.row(i));
   }
 
@@ -296,7 +287,7 @@ void Chi2::runPumpSimulation() {
 
 void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
   if (timeSignal)
-    signalGridFreq.row(0) = fft(inputProf) * (0.5i * _dispersionSign * _dz).exp();
+    signalGridFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
   signalGridTime.row(0) = ifft(signalGridFreq.row(0));
@@ -318,7 +309,7 @@ void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     temp = signalGridTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalGridFreq.row(i) = fft(temp) * _dispStepSign;
+    signalGridFreq.row(i) = fft(temp).array() * _dispStepSign;
     signalGridTime.row(i) = ifft(signalGridFreq.row(i));
   }
 
