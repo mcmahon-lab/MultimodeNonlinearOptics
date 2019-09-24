@@ -14,7 +14,7 @@ _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, doubl
 }
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                                   double beta2, double beta2s, const Eigen::Ref<const Arraycf>& customPump,
+                                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
                                    int pulseType, double beta1, double beta1s, double beta3, double beta3s,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
@@ -96,10 +96,10 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     throw std::invalid_argument("Invalid PDE grid size");
 
   // Grids for PDE propagation
-  pumpGridFreq.resize(_nZSteps, _nFreqs);
-  pumpGridTime.resize(_nZSteps, _nFreqs);
-  signalGridFreq.resize(_nZSteps, _nFreqs);
-  signalGridTime.resize(_nZSteps, _nFreqs);
+  pumpFreq.resize(_nZSteps, _nFreqs);
+  pumpTime.resize(_nZSteps, _nFreqs);
+  signalFreq.resize(_nZSteps, _nFreqs);
+  signalTime.resize(_nZSteps, _nFreqs);
 
   fftTemp.resize(_nFreqs);
 }
@@ -143,7 +143,7 @@ void _NonlinearMedium::setPump(int pulseType, double chirp) {
     _env = (-0.5 * _tau.square() * (1 + 1i * chirp)).exp();
 }
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycf>& customPump, double chirp) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
@@ -151,16 +151,16 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycf>& customPump, doub
 }
 
 
-std::pair<Array2Dcf, Array2Dcf> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump) {
+std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump) {
   // Green function matrices
-  Array2Dcf greenC;
-  Array2Dcf greenS;
+  Array2Dcd greenC;
+  Array2Dcd greenS;
   greenC.setZero(_nFreqs, _nFreqs);
   greenS.setZero(_nFreqs, _nFreqs);
 
   if (runPump) runPumpSimulation();
 
-  auto& grid = inTimeDomain ? signalGridTime : signalGridFreq;
+  auto& grid = inTimeDomain ? signalTime : signalFreq;
 
   // Calculate Green's functions with real and imaginary impulse response
   for (uint i = 0; i < _nFreqs; i++) {
@@ -199,7 +199,6 @@ inline const RowVectorcd& _NonlinearMedium::ifft(const RowVectorcd& input) {
   return fftTemp;
 }
 
-
 inline Arrayf _NonlinearMedium::fftshift(const Arrayf& input) {
   Arrayf out(input.rows(), input.cols());
   auto half = input.cols() / 2;
@@ -209,8 +208,8 @@ inline Arrayf _NonlinearMedium::fftshift(const Arrayf& input) {
 }
 
 
-inline Array2Dcf _NonlinearMedium::fftshift(const Array2Dcf& input) {
-  Array2Dcf out(input.rows(), input.cols());
+inline Array2Dcd _NonlinearMedium::fftshift(const Array2Dcd& input) {
+  Array2Dcd out(input.rows(), input.cols());
 
   auto halfCols = input.cols() / 2;
   auto halfRows = input.rows() / 2;
@@ -225,34 +224,34 @@ inline Array2Dcf _NonlinearMedium::fftshift(const Array2Dcf& input) {
 
 void Chi3::runPumpSimulation() {
 
-  pumpGridFreq.row(0) = fft(_env).array() * (0.5i * _dispersionPump * _dz).exp();
-  pumpGridTime.row(0) = ifft(pumpGridFreq.row(0));
+  pumpFreq.row(0) = fft(_env).array() * (0.5i * _dispersionPump * _dz).exp();
+  pumpTime.row(0) = ifft(pumpFreq.row(0));
 
-  Arraycf temp(_nFreqs);
+  Arraycd temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
-    temp = pumpGridTime.row(i-1) * (_nlStep * pumpGridTime.row(i-1).abs2()).exp();
-    pumpGridFreq.row(i) = fft(temp).array() * _dispStepPump;
-    pumpGridTime.row(i) = ifft(pumpGridFreq.row(i));
+    temp = pumpTime.row(i-1) * (_nlStep * pumpTime.row(i-1).abs2()).exp();
+    pumpFreq.row(i) = fft(temp).array() * _dispStepPump;
+    pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 
-  pumpGridFreq.row(_nZSteps-1) *= (-0.5i * _dispersionPump * _dz).exp();
-  pumpGridTime.row(_nZSteps-1)  = ifft(pumpGridFreq.row(_nZSteps-1));
+  pumpFreq.row(_nZSteps-1) *= (-0.5i * _dispersionPump * _dz).exp();
+  pumpTime.row(_nZSteps-1)  = ifft(pumpFreq.row(_nZSteps-1));
 }
 
 
-void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
+void Chi3::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
   if (timeSignal)
-    signalGridFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
-    signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
-  signalGridTime.row(0) = ifft(signalGridFreq.row(0));
+    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+  signalTime.row(0) = ifft(signalFreq.row(0));
 
-  Arraycf interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
+  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prev  = signalGridTime.row(i-1);
-    const auto& prevP = pumpGridTime.row(i-1);
-    const auto& currP = pumpGridTime.row(i);
+    const auto& prev  = signalTime.row(i-1);
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
 
     interpP = 0.5 * (prevP + currP);
 
@@ -261,43 +260,43 @@ void Chi3::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     k3 = _nlStep * (2 * interpP.abs2() * (prev + 0.5 * k2) + interpP.square() * (prev + 0.5 * k2).conjugate());
     k4 = _nlStep * (2 * currP.abs2()   * (prev + k3)       + currP.square()   * (prev + k3).conjugate());
 
-    temp = signalGridTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalGridFreq.row(i) = fft(temp).array() * _dispStepSign;
-    signalGridTime.row(i) = ifft(signalGridFreq.row(i));
+    signalFreq.row(i) = fft(temp).array() * _dispStepSign;
+    signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalGridFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
-  signalGridTime.row(_nZSteps-1)  = ifft(signalGridFreq.row(_nZSteps-1));
+  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
 
 void Chi2::runPumpSimulation() {
 
-  pumpGridFreq.row(0) = fft(_env);
-  pumpGridTime.row(0) = _env;
+  pumpFreq.row(0) = fft(_env);
+  pumpTime.row(0) = _env;
 
   for (uint i = 1; i < _nZSteps; i++) {
-    pumpGridFreq.row(i) = pumpGridFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
-    pumpGridTime.row(i) = ifft(pumpGridFreq.row(i));
+    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
+    pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 }
 
 
-void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
+void Chi2::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
   if (timeSignal)
-    signalGridFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
-    signalGridFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
-  signalGridTime.row(0) = ifft(signalGridFreq.row(0));
+    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+  signalTime.row(0) = ifft(signalFreq.row(0));
 
-  Arraycf interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
+  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prev =  signalGridTime.row(i-1);
-    const auto& prevP = pumpGridTime.row(i-1);
-    const auto& currP = pumpGridTime.row(i);
+    const auto& prev =  signalTime.row(i-1);
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
 
     interpP = 0.5 * (prevP + currP);
 
@@ -306,14 +305,14 @@ void Chi2::runSignalSimulation(const Arraycf& inputProf, bool timeSignal) {
     k3 = _nlStep * interpP * (prev + 0.5 * k2).conjugate();
     k4 = _nlStep * currP   * (prev + k3).conjugate();
 
-    temp = signalGridTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalGridFreq.row(i) = fft(temp).array() * _dispStepSign;
-    signalGridTime.row(i) = ifft(signalGridFreq.row(i));
+    signalFreq.row(i) = fft(temp).array() * _dispStepSign;
+    signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalGridFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
-  signalGridTime.row(_nZSteps-1)  = ifft(signalGridFreq.row(_nZSteps-1));
+  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
