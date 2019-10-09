@@ -37,6 +37,12 @@ def calcCovarianceMtx(Z, tol=1e-4):
   return cov
 
 
+def normalizedCov(Cov):
+  diagC = np.diag(Cov)
+  normC = np.tile(diagC, (diagC.shape[0], 1))
+  return (Cov - np.eye(Cov.shape[0])) / np.sqrt(normC * normC.T)
+
+
 def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   if inTimeDomain:
     freqDomain = fftshift(fft(pumpProf))
@@ -58,6 +64,18 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
 
   variances[0], variances[1] = np.min(variances), np.max(variances)
   return variances
+
+
+def downSampledCov(Z, perBin):
+  N = Z.shape[0]
+  assert N // 2 % perBin == 0
+
+  newZ = np.zeros((N // perBin, N))
+
+  for i in range(N // perBin):
+    newZ[:, i] = np.sum(Z[:, i].flatten().reshape(-1, perBin), axis=1) / np.sqrt(perBin)
+
+  return newZ @ newZ.T
 
 
 def obtainFrequencySqueezing(C, bandSize=1):
