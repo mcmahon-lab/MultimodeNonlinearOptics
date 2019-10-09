@@ -9,7 +9,7 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
   gamma: nonlinear coefficient (W^-1 km^-1)
   peakPower: pulse peak power (W)
   beta2: group velocity dispersion (ps^2 / km)
-  fwhm:  width of pulse (ps)
+  timeScale:  width of pulse (ps)
   pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
   """
   NL = 1000 / (peakPower * gamma)
@@ -119,6 +119,16 @@ def calcChirp(z):
   Compute chirp coefficient C in exp(-0.5 C T^2). Variable z is in units of dispersion length.
   """
   return (0.5 * z) / (1 + 0.25 * z**2)
+
+
+def basisTransforms(n):
+  """
+  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the quadrature basis
+  """
+  toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]]) / np.sqrt(2)
+  frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) / np.sqrt(2)
+  return toXPTrans, frXPTrans
+
 
 if __name__ == "__main__":
   print(calculateLengthScales(2, 2000, -20, 0.125, "sech"))

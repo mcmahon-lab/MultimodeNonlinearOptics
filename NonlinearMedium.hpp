@@ -165,13 +165,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
          "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
          "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
 
-    .def("setLengths", &Chi3::setLengths,
+    .def("setLengths", &Chi2::setLengths,
          "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
 
-    .def("resetGrids", &Chi3::resetGrids,
+    .def("resetGrids", &Chi2::resetGrids,
          "nFreqs"_a=0, "tMax"_a=0)
 
-    .def("setDispersion", &Chi3::setDispersion,
+    .def("setDispersion", &Chi2::setDispersion,
          "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
 
     .def("setPump", (void (Chi2::*)(int, double)) &Chi2::setPump,

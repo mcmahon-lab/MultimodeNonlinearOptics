@@ -77,12 +77,12 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     _tMax = tMax;
 
   if (nFreqs != 0 || tMax != 0) {
-    auto Nt = _nFreqs;
+    int Nt = _nFreqs;
 
     // time and frequency axes
-    _tau = Eigen::VectorXd::LinSpaced(Nt, -tMax, tMax);
+    _tau = 2 * tMax / Nt * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _tau = fftshift(_tau);
-    _omega = Eigen::VectorXd::LinSpaced(_nFreqs, -M_PI / _tMax * _nFreqs / 2, M_PI / _tMax * _nFreqs / 2);
+    _omega = M_PI / _tMax * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _omega = fftshift(_omega);
 
     // Reset dispersion and pulse
