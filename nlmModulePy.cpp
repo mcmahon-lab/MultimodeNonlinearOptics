@@ -109,7 +109,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  * Cascade
  */
 
-  Cascade.def(py::init<bool, std::vector<std::reference_wrapper<_NonlinearMedium>>&>(),
+  Cascade.def(py::init<bool, const std::vector<std::reference_wrapper<_NonlinearMedium>>&>(),
               "sharePump"_a, "inputMedia"_a);
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);

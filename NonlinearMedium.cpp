@@ -317,13 +317,13 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 }
 
 
-Cascade::Cascade(bool sharePump, std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia) {
+Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia) {
 
-  if (media.size() == 0)
+  if (inputMedia.empty())
     throw std::invalid_argument("Cascade must contain at least one medium");
 
-  _nFreqs = media[0].get()._nFreqs;
-  _tMax = media[0].get()._tMax;
+  _nFreqs = inputMedia[0].get()._nFreqs;
+  _tMax = inputMedia[0].get()._tMax;
 
   media.reserve(inputMedia.size());
   for (auto& medium : inputMedia) {

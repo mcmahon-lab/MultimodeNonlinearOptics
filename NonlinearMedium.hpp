@@ -113,7 +113,7 @@ public:
 
 class Cascade : public _NonlinearMedium {
 public:
-  Cascade(bool sharePump, std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
+  Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
   void addMedium(_NonlinearMedium& medium);
   void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
