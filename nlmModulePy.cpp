@@ -9,6 +9,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   py::class_<Chi3> Chi3(m, "Chi3");
   py::class_<Chi2> Chi2(m, "Chi2");
+  py::class_<Cascade> Cascade(m, "Cascade");
 
 /*
  * Chi3
@@ -103,4 +104,28 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2.def_property_readonly("signalTime", &Chi2::getSignalTime, py::return_value_policy::reference);
   Chi2.def_property_readonly("omega", &Chi2::getFrequency, py::return_value_policy::reference);
   Chi2.def_property_readonly("tau", &Chi2::getTime, py::return_value_policy::reference);
+
+/*
+ * Cascade
+ */
+
+  Cascade.def(py::init<bool, std::vector<std::reference_wrapper<_NonlinearMedium>>&>(),
+              "sharePump"_a, "inputMedia"_a);
+
+  Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
+
+  Cascade.def("runSignalSimulation", &Cascade::runSignalSimulation,
+              "inputProf"_a, "timeSignal"_a = true);
+
+  Cascade.def("computeGreensFunction",
+              &Cascade::computeGreensFunction, py::return_value_policy::move,
+              "inTimeDomain"_a = false, "runPump"_a = true);
+
+  Cascade.def("addMedium", &Cascade::addMedium,
+              "medium"_a);
+
+  Cascade.def_property_readonly("omega", &Cascade::getFrequency, py::return_value_policy::reference);
+  Cascade.def_property_readonly("tau", &Cascade::getTime, py::return_value_policy::reference);
+
+  Cascade.def("get", &Cascade::get, py::return_value_policy::reference);
 }

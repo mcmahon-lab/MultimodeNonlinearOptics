@@ -121,6 +121,9 @@ public:
 
   _NonlinearMedium& get(uint i) {return media.at(i).get();}
 
+  const Arrayf& getTime()      {return media.at(0).get()._tau;};
+  const Arrayf& getFrequency() {return media.at(0).get()._omega;};
+
 private:
   // Disable functions
   using _NonlinearMedium::setLengths;
