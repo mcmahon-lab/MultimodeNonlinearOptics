@@ -37,8 +37,8 @@ public:
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
 
   virtual void runPumpSimulation() = 0;
-  virtual void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) = 0;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
+  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) = 0;
+  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
 
   const Array2Dcd& getPumpFreq()   {return pumpFreq;};
   const Array2Dcd& getPumpTime()   {return pumpTime;};
@@ -89,18 +89,20 @@ protected:
   inline Array2Dcd fftshift(const Array2Dcd& input);
 };
 
+
 class Chi3 : public _NonlinearMedium {
 public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
+
 
 class Chi2 : public _NonlinearMedium {
 public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
 
 

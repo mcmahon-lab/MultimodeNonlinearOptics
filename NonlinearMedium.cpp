@@ -168,15 +168,15 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     grid(0, i) = 1;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) += grid.row(_nZSteps - 1) * 0.5;
-    greenS.row(i) += grid.row(_nZSteps - 1) * 0.5;
+    greenC.row(i) += grid.bottomRows<1>() * 0.5;
+    greenS.row(i) += grid.bottomRows<1>() * 0.5;
 
     grid.row(0) = 0;
     grid(0, i) = 1i;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) -= grid.row(_nZSteps - 1) * 0.5i;
-    greenS.row(i) += grid.row(_nZSteps - 1) * 0.5i;
+    greenC.row(i) -= grid.bottomRows<1>() * 0.5i;
+    greenS.row(i) += grid.bottomRows<1>() * 0.5i;
   }
 
   greenC.transposeInPlace();
@@ -239,8 +239,8 @@ void Chi3::runPumpSimulation() {
 }
 
 
-void Chi3::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
-  if (timeSignal)
+void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
@@ -284,8 +284,8 @@ void Chi2::runPumpSimulation() {
 }
 
 
-void Chi2::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
-  if (timeSignal)
+void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
