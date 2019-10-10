@@ -7,9 +7,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   namespace py = pybind11;
   using namespace pybind11::literals;
 
-  py::class_<Chi3> Chi3(m, "Chi3");
-  py::class_<Chi2> Chi2(m, "Chi2");
-  py::class_<Cascade> Cascade(m, "Cascade");
+  py::class_<_NonlinearMedium> NonlinearMediumBase(m, "_NonlinearMedium");
+  py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3");
+  py::class_<Chi2, _NonlinearMedium> Chi2(m, "Chi2");
+  py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
 /*
  * Chi3
