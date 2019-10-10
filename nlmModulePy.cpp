@@ -64,7 +64,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2.def(
       py::init<double, double, double, double, double, int, double, double, double, double, double, double, uint, uint>(),
-      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a,
+      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a = 0,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
