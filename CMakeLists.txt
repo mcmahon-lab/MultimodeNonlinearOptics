@@ -11,7 +11,7 @@ include_directories(/usr/include/eigen3)
 # Generate Python module
 # Pybind11
 find_package(pybind11 REQUIRED)
-pybind11_add_module(nonlinearmedium NonlinearMedium.cpp)
+pybind11_add_module(nonlinearmedium NonlinearMedium.cpp nlmModulePy.cpp)
 
 # Compile options for optimization
 set(COMPILE_FLAGS -Wall)
