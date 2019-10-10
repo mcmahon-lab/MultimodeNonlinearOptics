@@ -316,3 +316,75 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
+
+Cascade::Cascade(bool sharePump, std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia) {
+
+  if (media.size() == 0)
+    throw std::invalid_argument("Cascade must contain at least one medium");
+
+  _nFreqs = media[0].get()._nFreqs;
+  _tMax = media[0].get()._tMax;
+
+  media.reserve(inputMedia.size());
+  for (auto& medium : inputMedia) {
+    if (medium.get()._nFreqs != _nFreqs or medium.get()._tMax != _tMax)
+      throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
+    media.emplace_back(medium);
+    _nZSteps += medium.get()._nZSteps;
+  }
+
+  sharedPump = sharePump;
+}
+
+
+void Cascade::addMedium(_NonlinearMedium& medium) {
+  if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
+    throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
+
+  media.emplace_back(medium);
+}
+
+
+void Cascade::runPumpSimulation() {
+  if (not sharedPump) {
+    for (auto& medium : media) {
+      medium.get().runPumpSimulation();
+    }
+  }
+  else {
+    media[0].get().runPumpSimulation();
+    for (uint i = 1; i < media.size(); i++) {
+      media[i].get()._env = media[i-1].get().pumpTime.bottomRows<1>();
+      media[i].get().runPumpSimulation();
+    }
+  }
+}
+
+
+void Cascade::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  media[0].get().runSignalSimulation(inputProf, inTimeDomain);
+  for (uint i = 1; i < media.size(); i++) {
+    media[i].get().runSignalSimulation(media[i-1].get().signalFreq.bottomRows<1>(), false);
+  }
+}
+
+
+std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump) {
+  // Green function matrices
+  Array2Dcd greenC;
+  Array2Dcd greenS;
+  greenC = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Identity(_nFreqs, _nFreqs);
+//  greenC.setZero(_nFreqs, _nFreqs);
+//  greenC.matrix().diagonal() = 0;
+  greenS.setZero(_nFreqs, _nFreqs);
+
+  if (runPump) runPumpSimulation();
+
+  for (auto& medium : media) {
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false);
+    greenC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
+    greenS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
+  }
+
+  return std::make_pair(std::move(greenC), std::move(greenS));
+};
