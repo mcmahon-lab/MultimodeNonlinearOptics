@@ -128,5 +128,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Cascade.def_property_readonly("omega", &Cascade::getFrequency, py::return_value_policy::reference);
   Cascade.def_property_readonly("tau", &Cascade::getTime, py::return_value_policy::reference);
 
-  Cascade.def("get", &Cascade::get, py::return_value_policy::reference);
+  Cascade.def("__getitem__", &Cascade::getMedium, py::return_value_policy::reference);
+  Cascade.def_property_readonly("media", &Cascade::getMedia, py::return_value_policy::reference);
+  Cascade.def_property_readonly("nMedia", &Cascade::getNMedia);
 }

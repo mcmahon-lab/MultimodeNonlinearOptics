@@ -330,6 +330,7 @@ class Cascade(_NonlinearMedium):
         ValueError("Medium %d does not have same time and frequency axes as the first" % i)
 
     self.media = [medium for medium in media]
+    self.nMedia = len(self.media)
     self.sharedPump = bool(sharedPump)
 
     # initialize parent class values to shared/combined values of cascaded media
@@ -353,6 +354,7 @@ class Cascade(_NonlinearMedium):
       ValueError("Medium does not have same time and frequency axes as the first")
 
     self.media.append(medium)
+    self.nMedia += 1
     self._nZSteps += medium._nZSteps
 
 

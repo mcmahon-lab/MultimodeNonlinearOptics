@@ -119,13 +119,15 @@ public:
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
   std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
 
-  _NonlinearMedium& get(uint i) {return media.at(i).get();}
+  _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
+  const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
+  uint getNMedia() {return nMedia;}
 
   const Arrayf& getTime()      {return media.at(0).get()._tau;};
   const Arrayf& getFrequency() {return media.at(0).get()._omega;};
 
 private:
-  // Disable functions
+  // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setLengths;
   using _NonlinearMedium::resetGrids;
   using _NonlinearMedium::setDispersion;
@@ -137,6 +139,7 @@ private:
   using _NonlinearMedium::getSignalTime;
 
   std::vector<std::reference_wrapper<_NonlinearMedium>> media;
+  uint nMedia;
   bool sharedPump;
 };
 

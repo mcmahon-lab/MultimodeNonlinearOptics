@@ -333,6 +333,7 @@ Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_Nonli
     _nZSteps += medium.get()._nZSteps;
   }
 
+  nMedia = inputMedia.size();
   sharedPump = sharePump;
 }
 
@@ -341,6 +342,7 @@ void Cascade::addMedium(_NonlinearMedium& medium) {
   if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
 
+  nMedia += 1;
   media.emplace_back(medium);
 }
 
@@ -374,8 +376,6 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   Array2Dcd greenC;
   Array2Dcd greenS;
   greenC = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Identity(_nFreqs, _nFreqs);
-//  greenC.setZero(_nFreqs, _nFreqs);
-//  greenC.matrix().diagonal() = 0;
   greenS.setZero(_nFreqs, _nFreqs);
 
   if (runPump) runPumpSimulation();
