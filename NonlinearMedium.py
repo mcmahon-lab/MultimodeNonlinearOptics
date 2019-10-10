@@ -24,7 +24,7 @@ class _NonlinearMedium:
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
     :param zPrecision:     Number of bins per unit length.
-    :param customPump:     Specify a pump profile in time domain..
+    :param customPump:     Specify a pump profile in time domain.
     """
 
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
@@ -305,3 +305,107 @@ class Chi2(_NonlinearMedium):
 
     s.signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
+
+
+class Cascade(_NonlinearMedium):
+  """
+  Class that cascades multiple media together
+  """
+  def __init__(self, sharedPump, media):
+
+    if not isinstance(sharedPump, (bool, int)):
+      raise TypeError("sharedPump must be boolean")
+
+    if len(media) == 0:
+      ValueError("Cascade must contain at least one medium")
+
+    for i, medium in enumerate(media):
+      if not isinstance(medium, _NonlinearMedium):
+        raise TypeError("Argument %d is not a NonlinearMedium object" % i)
+
+    self._nFreqs = media[0]._nFreqs
+    self._tMax = media[0]._tMax
+    for i, medium in enumerate(media):
+      if medium._nFreqs != self._nFreqs or medium._tMax != self._tMax:
+        ValueError("Medium %d does not have same time and frequency axes as the first" % i)
+
+    self.media = [medium for medium in media]
+    self.sharedPump = bool(sharedPump)
+
+    # initialize parent class values to shared/combined values of cascaded media
+    self.tau = self.media[0].tau
+    self.omega = self.media[0].omega
+    self._nZSteps = np.sum([medium._nZSteps for medium in self.media])
+    # initialize parent class values to null values
+    # self._z = self._DS = self._NL = 0
+    # self._noDispersion = self._noNonlinear = False
+    # self._Nsquared = self._dz = self._nlStep = 0
+    # self.pumpFreq = self.pumpTime = self.signalFreq = self.signalTime = None
+    # self._beta2 = self._beta2s = self._beta1 = self._beta1s = self._beta3 = self._beta3s = 0
+    # self._dispersionPump = self._dispersionSign = self._dispStepPump = self._dispStepSign = self._env = None
+
+
+  def addMedium(self, medium):
+    if not isinstance(medium, _NonlinearMedium):
+      raise TypeError("Argument is not a NonlinearMedium object")
+
+    if medium._nFreqs != self.media[0]._nFreqs or medium._tMax != self.media[0]._tMax:
+      ValueError("Medium does not have same time and frequency axes as the first")
+
+    self.media.append(medium)
+    self._nZSteps += medium._nZSteps
+
+
+  def runPumpSimulation(self):
+    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
+
+    if not self.sharedPump:
+      for medium in self.media:
+        medium.runPumpSimulation()
+
+    else:
+      self.media[0].runPumpSimulation()
+      for i in range(1, len(self.media)):
+        self.media[i]._env = self.media[i-1].pumpTime[-1]
+        self.media[i].runPumpSimulation()
+
+
+  def runSignalSimulation(self, inputProf, inTimeDomain=True):
+    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+
+    self.media[0].runSignalSimulation(inputProf, inTimeDomain)
+    for i in range(1, len(self.media)):
+      self.media[i].runSignalSimulation(self.media[i-1].signalFreq[-1], inTimeDomain=False)
+
+
+  def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+    """Invalid"""
+    pass
+
+  def resetGrids(self, nFreqs=None, tMax=None):
+    """Invalid"""
+    pass
+
+  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
+    """Invalid"""
+    pass
+
+  def setPump(self, pulseType=0, chirp=0, customPump=None):
+    """Invalid"""
+    pass
+
+  def computeGreensFunction(s, inTimeDomain=False, runPump=True):
+    __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
+
+    if runPump: s.runPumpSimulation()
+
+    # Green function matrices
+    greenC = np.eye(s._nFreqs, dtype=np.complex64)
+    greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
+
+    for medium in s.media:
+      C, S = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
+      greenC = C @ greenC + S @ np.conj(greenS)
+      greenS = C @ greenS + S @ np.conj(greenC)
+
+    return greenC, greenS
