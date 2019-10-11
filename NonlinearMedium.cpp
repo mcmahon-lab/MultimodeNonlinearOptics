@@ -168,15 +168,15 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     grid(0, i) = 1;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) += grid.row(_nZSteps - 1) * 0.5;
-    greenS.row(i) += grid.row(_nZSteps - 1) * 0.5;
+    greenC.row(i) += grid.bottomRows<1>() * 0.5;
+    greenS.row(i) += grid.bottomRows<1>() * 0.5;
 
     grid.row(0) = 0;
     grid(0, i) = 1i;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) -= grid.row(_nZSteps - 1) * 0.5i;
-    greenS.row(i) += grid.row(_nZSteps - 1) * 0.5i;
+    greenC.row(i) -= grid.bottomRows<1>() * 0.5i;
+    greenS.row(i) += grid.bottomRows<1>() * 0.5i;
   }
 
   greenC.transposeInPlace();
@@ -239,8 +239,8 @@ void Chi3::runPumpSimulation() {
 }
 
 
-void Chi3::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
-  if (timeSignal)
+void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
@@ -284,8 +284,8 @@ void Chi2::runPumpSimulation() {
 }
 
 
-void Chi2::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
-  if (timeSignal)
+void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
     signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
@@ -316,3 +316,75 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool timeSignal) {
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
+
+Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia) {
+
+  if (inputMedia.empty())
+    throw std::invalid_argument("Cascade must contain at least one medium");
+
+  _nFreqs = inputMedia[0].get()._nFreqs;
+  _tMax = inputMedia[0].get()._tMax;
+
+  media.reserve(inputMedia.size());
+  for (auto& medium : inputMedia) {
+    if (medium.get()._nFreqs != _nFreqs or medium.get()._tMax != _tMax)
+      throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
+    media.emplace_back(medium);
+    _nZSteps += medium.get()._nZSteps;
+  }
+
+  nMedia = inputMedia.size();
+  sharedPump = sharePump;
+}
+
+
+void Cascade::addMedium(_NonlinearMedium& medium) {
+  if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
+    throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
+
+  nMedia += 1;
+  media.emplace_back(medium);
+}
+
+
+void Cascade::runPumpSimulation() {
+  if (not sharedPump) {
+    for (auto& medium : media) {
+      medium.get().runPumpSimulation();
+    }
+  }
+  else {
+    media[0].get().runPumpSimulation();
+    for (uint i = 1; i < media.size(); i++) {
+      media[i].get()._env = media[i-1].get().pumpTime.bottomRows<1>();
+      media[i].get().runPumpSimulation();
+    }
+  }
+}
+
+
+void Cascade::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  media[0].get().runSignalSimulation(inputProf, inTimeDomain);
+  for (uint i = 1; i < media.size(); i++) {
+    media[i].get().runSignalSimulation(media[i-1].get().signalFreq.bottomRows<1>(), false);
+  }
+}
+
+
+std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump) {
+  // Green function matrices
+  Array2Dcd greenC;
+  Array2Dcd greenS;
+  greenC = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Identity(_nFreqs, _nFreqs);
+  greenS.setZero(_nFreqs, _nFreqs);
+
+  if (runPump) runPumpSimulation();
+
+  for (auto& medium : media) {
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false);
+    greenC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
+    greenS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
+  }
+
+  return std::make_pair(std::move(greenC), std::move(greenS));
+};

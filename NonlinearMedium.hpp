@@ -7,6 +7,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/eigen.h>
+#include <pybind11/stl.h>
 
 
 // Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
@@ -17,7 +18,9 @@ typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen
 typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
 // TODO consider making everything row major matrix for FFT compatibility
 
+
 class _NonlinearMedium {
+friend class Cascade;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
@@ -37,8 +40,8 @@ public:
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
 
   virtual void runPumpSimulation() = 0;
-  virtual void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) = 0;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
+  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) = 0;
+  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
 
   const Array2Dcd& getPumpFreq()   {return pumpFreq;};
   const Array2Dcd& getPumpTime()   {return pumpTime;};
@@ -87,115 +90,60 @@ protected:
   inline const RowVectorcd& ifft(const RowVectorcd& input);
   inline Arrayf fftshift(const Arrayf& input);
   inline Array2Dcd fftshift(const Array2Dcd& input);
+
+  _NonlinearMedium() = default;
 };
+
 
 class Chi3 : public _NonlinearMedium {
 public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
+
 
 class Chi2 : public _NonlinearMedium {
 public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool timeSignal=true) override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
 
 
+class Cascade : public _NonlinearMedium {
+public:
+  Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
+  void addMedium(_NonlinearMedium& medium);
+  void runPumpSimulation() override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
 
-// Pybind11 Python binding
-namespace py = pybind11;
-using namespace pybind11::literals;
+  _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
+  const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
+  uint getNMedia() {return nMedia;}
 
-PYBIND11_MODULE(nonlinearmedium, m) {
-  py::class_<Chi3> Chi3(m, "Chi3");
-  Chi3
-    .def(py::init<double, double, double, double, double, int, double, double, double, double, double, double, uint, uint>(),
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a=0,
-         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
-         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
+  const Arrayf& getTime()      {return media.at(0).get()._tau;};
+  const Arrayf& getFrequency() {return media.at(0).get()._omega;};
 
-    .def(py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double, double, double, double, uint, uint>(),
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
-         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
-         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
+private:
+  // Disable functions (note: still accessible from base class)
+  using _NonlinearMedium::setLengths;
+  using _NonlinearMedium::resetGrids;
+  using _NonlinearMedium::setDispersion;
+  using _NonlinearMedium::setPump;
+  using _NonlinearMedium::setPump;
+  using _NonlinearMedium::getPumpFreq;
+  using _NonlinearMedium::getPumpTime;
+  using _NonlinearMedium::getSignalFreq;
+  using _NonlinearMedium::getSignalTime;
 
-    .def("setLengths", &Chi3::setLengths,
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
+  std::vector<std::reference_wrapper<_NonlinearMedium>> media;
+  uint nMedia;
+  bool sharedPump;
+};
 
-    .def("resetGrids", &Chi3::resetGrids,
-         "nFreqs"_a=0, "tMax"_a=0)
 
-    .def("setDispersion", &Chi3::setDispersion,
-         "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
-
-    .def("setPump", (void (Chi3::*)(int, double)) &Chi3::setPump,
-         "pulseType"_a, "chirp"_a=0)
-
-    .def("setPump", (void (Chi3::*)(const Eigen::Ref<const Arraycd>&, double)) &Chi3::setPump,
-         "customPump"_a, "chirp"_a=0)
-
-    .def("runPumpSimulation", &Chi3::runPumpSimulation)
-
-    .def("runSignalSimulation", &Chi3::runSignalSimulation,
-         "inputProf"_a, "timeSignal"_a=true)
-
-    .def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move,
-         "inTimeDomain"_a=false, "runPump"_a=true)
-
-    .def_property_readonly("pumpFreq",   &Chi3::getPumpFreq,   py::return_value_policy::reference)
-    .def_property_readonly("pumpTime",   &Chi3::getPumpTime,   py::return_value_policy::reference)
-    .def_property_readonly("signalFreq", &Chi3::getSignalFreq, py::return_value_policy::reference)
-    .def_property_readonly("signalTime", &Chi3::getSignalTime, py::return_value_policy::reference)
-    .def_property_readonly("omega",      &Chi3::getFrequency,  py::return_value_policy::reference)
-    .def_property_readonly("tau",        &Chi3::getTime,       py::return_value_policy::reference);
-
-  py::class_<Chi2> Chi2(m, "Chi2");
-  Chi2
-    .def(py::init<double, double, double, double, double, int, double, double, double, double, double, double, uint, uint>(),
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "pulseType"_a,
-         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
-         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
-
-    .def(py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&,
-                  int, double, double, double, double, double, double, uint, uint>(),
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a=0,
-         "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0,
-         "chirp"_a=0, "tMax"_a=10, "tPrecision"_a=512, "zPrecision"_a=100)
-
-    .def("setLengths", &Chi2::setLengths,
-         "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a=100)
-
-    .def("resetGrids", &Chi2::resetGrids,
-         "nFreqs"_a=0, "tMax"_a=0)
-
-    .def("setDispersion", &Chi2::setDispersion,
-         "beta2"_a, "beta2s"_a, "beta1"_a=0, "beta1s"_a=0, "beta3"_a=0, "beta3s"_a=0)
-
-    .def("setPump", (void (Chi2::*)(int, double)) &Chi2::setPump,
-         "pulseType"_a, "chirp"_a=0)
-
-    .def("setPump", (void (Chi2::*)(const Eigen::Ref<const Arraycd>&, double)) &Chi2::setPump,
-         "customPump"_a, "chirp"_a=0)
-
-    .def("runPumpSimulation", &Chi2::runPumpSimulation)
-
-    .def("runSignalSimulation", &Chi2::runSignalSimulation,
-         "inputProf"_a, "timeSignal"_a=true)
-
-    .def("computeGreensFunction",
-         &Chi2::computeGreensFunction, py::return_value_policy::move,
-         "inTimeDomain"_a=false, "runPump"_a=true)
-
-    .def_property_readonly("pumpFreq",   &Chi2::getPumpFreq,   py::return_value_policy::reference)
-    .def_property_readonly("pumpTime",   &Chi2::getPumpTime,   py::return_value_policy::reference)
-    .def_property_readonly("signalFreq", &Chi2::getSignalFreq, py::return_value_policy::reference)
-    .def_property_readonly("signalTime", &Chi2::getSignalTime, py::return_value_policy::reference)
-    .def_property_readonly("omega",      &Chi2::getFrequency,  py::return_value_policy::reference)
-    .def_property_readonly("tau",        &Chi2::getTime,       py::return_value_policy::reference);
-}
 
 
 #endif //NONLINEARMEDIUM
