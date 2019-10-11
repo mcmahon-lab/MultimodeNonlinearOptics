@@ -27,6 +27,19 @@ class _NonlinearMedium:
     :param customPump:     Specify a pump profile in time domain.
     """
 
+    self._checkInput(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                     beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
+    self.resetGrids(tPrecision, tMax)
+    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    self.setPump(pulseType, chirp, customPump)
+
+
+  def _checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                  beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                  customPump):
+
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
     if not isinstance(nlLength,       (int, float)): raise TypeError("nlLength")
     if not isinstance(dispLength,     (int, float)): raise TypeError("dispLength")
@@ -42,13 +55,6 @@ class _NonlinearMedium:
     if not isinstance(tPrecision, int): raise TypeError("tPrecision")
     if not isinstance(zPrecision, int): raise TypeError("zPrecision")
     if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
-
-    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
-    self.setPump(pulseType, chirp, customPump)
-
-    # print("DS", self._DS, "NL", self._NL, "Nt", self._nFreqs, "Nz", self._nZSteps)
 
 
   def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
@@ -203,10 +209,10 @@ class _NonlinearMedium:
       grid[0, :] = 0
       grid[0, i] = 1
       s.runSignalSimulation(grid[0], inTimeDomain)
-  
+
       greenC[i, :] += grid[-1, :] * 0.5
       greenS[i, :] += grid[-1, :] * 0.5
-  
+
       grid[0, :] = 0
       grid[0, i] = 1j
       s.runSignalSimulation(grid[0], inTimeDomain)
