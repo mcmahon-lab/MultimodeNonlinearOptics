@@ -413,7 +413,6 @@ class Cascade(_NonlinearMedium):
 
     for medium in s.media:
       C, S = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
-      greenC = C @ greenC + S @ np.conj(greenS)
-      greenS = C @ greenS + S @ np.conj(greenC)
+      greenC, greenS = C @ greenC + S @ np.conj(greenS), C @ greenS + S @ np.conj(greenC)
 
     return greenC, greenS

@@ -380,10 +380,13 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
 
   if (runPump) runPumpSimulation();
 
+  Array2Dcd tempC, tempS;
   for (auto& medium : media) {
     auto CandS = medium.get().computeGreensFunction(inTimeDomain, false);
-    greenC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
-    greenS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
+    tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
+    tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
+    greenC.swap(tempC);
+    greenS.swap(tempS);
   }
 
   return std::make_pair(std::move(greenC), std::move(greenS));
