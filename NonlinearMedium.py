@@ -531,6 +531,8 @@ class Cascade(_NonlinearMedium):
   def computeGreensFunction(s, inTimeDomain=False, runPump=True):
     __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
 
+    # TODO for large cascades: option for directly feeding signals to avoid many matrix multiplications
+
     if runPump: s.runPumpSimulation()
 
     # Green function matrices
@@ -538,7 +540,8 @@ class Cascade(_NonlinearMedium):
     greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
 
     for medium in s.media:
-      C, S = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
-      greenC, greenS = C @ greenC + S @ np.conj(greenS), C @ greenS + S @ np.conj(greenC)
+      newC, newS = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
+      greenC, greenS = newC @ greenC + newS @ np.conj(greenS),\
+                       newC @ greenS + newS @ np.conj(greenC)
 
     return greenC, greenS
