@@ -12,6 +12,7 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
   timeScale:  width of pulse (ps)
   pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
   """
+  # TODO DEPRECATED
   NL = 1000 / (peakPower * gamma)
   DS = 1000 * timeScale**2 / abs(beta2)
   if pulseTypeFWHM == "sech":
@@ -21,6 +22,50 @@ def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None
     DS /= 4 * np.log(2)
     # DS /= 8 * np.log(2)
   return NL, DS
+
+
+def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
+  """
+  Return dispersion length (meters).
+  beta2: group velocity dispersion (ps^2 / km)
+  timeScale:  width of pulse (ps)
+  pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
+  """
+  DS = 1000 * timeScale**2 / abs(beta2)
+  if pulseTypeFWHM == "sech":
+    DS /= 4 * np.log(1 + np.sqrt(2))**2
+    # DS /= 4 * np.log(2 + np.sqrt(3))**2
+  elif pulseTypeFWHM == "gauss":
+    DS /= 4 * np.log(2)
+    # DS /= 8 * np.log(2)
+  return DS
+
+
+def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
+  """
+  Return nonlinear length (meters).
+  d: nonlinear coefficient (pm / V)
+  peakPower: pulse peak power (W)
+  beamRadius: effective radius of the beam, to calculate intensity (m)
+  indexP: refractive index at the pump frequency
+  indexS: refractive index at the signal frequency
+  freqS:  frequency of the signal (2 pi GHz)
+  """
+  c = 299792458 # m / s
+  e0 = 1 / (4e-7 * np.pi * c**2) # F / m
+  peakField = np.sqrt(2 * peakPower / (np.pi * beamRadius**2) / (indexP * e0 * c)) # V / m
+  NL = 1 / ((2 * d * 1e-12 * freqS * 1e9 * peakField) / (indexS * c))
+  return NL
+
+
+def calculateChi3NlLength(gamma, peakPower):
+  """
+  Return nonlinear length (meters).
+  gamma: nonlinear coefficient (W^-1 km^-1)
+  peakPower: pulse peak power (W)
+  """
+  NL = 1000 / (peakPower * gamma)
+  return NL
 
 
 def calcQuadratureGreens(greenC, greenS):
