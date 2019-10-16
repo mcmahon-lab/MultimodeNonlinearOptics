@@ -15,7 +15,7 @@ _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, doubl
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   int pulseType, double beta1, double beta1s, double beta3, double beta3s,
+                                   double beta1, double beta1s, double beta3, double beta3s,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
@@ -333,13 +333,11 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
 }
 
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength,
-                   beta2, beta2s, customPump, pulseType,
-                   beta1, beta1s, beta3, beta3s,
-                   chirp, tMax, tPrecision, zPrecision)
+  _NonlinearMedium(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
+                   beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);

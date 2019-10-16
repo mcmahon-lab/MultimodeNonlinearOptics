@@ -29,7 +29,7 @@ public:
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType=0,
+                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
                    double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
@@ -119,7 +119,7 @@ public:
           double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-          double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType=0,
+          double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 

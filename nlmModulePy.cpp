@@ -25,8 +25,9 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
   Chi3.def(
-      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double, double, double, double, uint, uint>(),
-      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a = 0,
+      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&,
+               double, double, double, double, double, double, uint, uint>(),
+      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
@@ -73,8 +74,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2.def(
       py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&,
-               int, double, double, double, double, double, double, uint, uint>(),
-      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a, "pulseType"_a = 0,
+               double, double, double, double, double, double, uint, uint>(),
+      "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
@@ -123,8 +124,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFG.def(
       py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&,
-               int, double, double, double, double, double, double, double, double, uint, uint>(),
-      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a, "customPump"_a, "pulseType"_a = 0,
+               double, double, double, double, double, double, double, double, uint, uint>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a, "customPump"_a,
       "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0,
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
