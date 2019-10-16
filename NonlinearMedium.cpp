@@ -122,8 +122,8 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
 
   // dispersion profile
   if (_noDispersion) {
-    _dispersionPump = 0;
-    _dispersionSign = 0;
+    _dispersionPump.setZero(_nFreqs);
+    _dispersionSign.setZero(_nFreqs);
   }
   else {
     _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * beta3  / 6));
@@ -376,7 +376,7 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
   _beta3o = beta3o;
 
   if (_noDispersion)
-    _dispersionOrig = 0;
+    _dispersionOrig.setZero(_nFreqs);
   else
     _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
 
