@@ -131,6 +131,9 @@ public:
   void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 
+  const Array2Dcd& getOriginalFreq() {return originalFreq;};
+  const Array2Dcd& getOriginalTime() {return originalTime;};
+
 private:
   using _NonlinearMedium::setLengths;
   using _NonlinearMedium::resetGrids;

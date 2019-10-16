@@ -427,8 +427,8 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     k4 = _nlStepO * currP.conjugate() * (prevS + l3);
     l4 = _nlStep  * currP             * (prevO + k3);
 
-    tempOrig = signalTime.row(i-1)   + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-    tempSign = originalTime.row(i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
+    tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
 
     // Dispersion step
     signalFreq.row(i) = fft(tempSign).array() * _dispStepSign;
