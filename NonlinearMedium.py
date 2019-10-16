@@ -344,7 +344,7 @@ class Chi2SFG(_NonlinearMedium):
 
   def setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
     _NonlinearMedium.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
-    self.nlLengthOrig = nlLengthOrig
+    self._NLo = nlLengthOrig
 
     if self._noDispersion:
       self._nlStepO = 1j * self._NL / nlLengthOrig * self._dz
