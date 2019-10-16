@@ -111,7 +111,7 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   _beta2  = beta2;
   _beta2s = beta2s;
 
-  if (std::abs(_beta2) != 1 && !_noDispersion)
+  if (std::abs(beta2) != 1 && !_noDispersion)
     throw std::invalid_argument("Non unit beta2");
 
   // group velocity difference (relative to beta2 and pulse width)
@@ -126,8 +126,8 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
     _dispersionSign = 0;
   }
   else {
-    _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * _beta3  / 6));
-    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * _beta3s / 6));
+    _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * beta3  / 6));
+    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * beta3s / 6));
   }
 
   // helper values
@@ -314,6 +314,137 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 
   signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
+}
+
+
+Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
+                 double beta2, double beta2s, double beta2o, int pulseType,
+                 double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
+                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
+  _NonlinearMedium(relativeLength, nlLength, dispLength,
+                   beta2, beta2s, pulseType,
+                   beta1, beta1s, beta3, beta3s,
+                   chirp, tMax, tPrecision, zPrecision)
+{
+  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
+  resetGrids(tPrecision, tMax);
+  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
+  setPump(pulseType, chirp);
+}
+
+Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
+                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                 double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
+                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
+  _NonlinearMedium(relativeLength, nlLength, dispLength,
+                   beta2, beta2s, customPump, pulseType,
+                   beta1, beta1s, beta3, beta3s,
+                   chirp, tMax, tPrecision, zPrecision)
+{
+  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
+  resetGrids(tPrecision, tMax);
+  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
+  setPump(customPump, chirp);
+}
+
+
+void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLengthOrig,
+                         double dispLength, uint zPrecision) {
+  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision);
+
+  _NLo = nlLengthOrig;
+
+  if (_noDispersion)
+    _nlStepO = 1i * _NL / nlLengthOrig * _dz;
+  else if (_noNonlinear)
+    _nlStepO = 0;
+  else
+    _nlStepO = 1i * _DS / nlLengthOrig * _dz;
+}
+
+
+void Chi2SFG::resetGrids(uint nFreqs, double tMax) {
+  _NonlinearMedium::resetGrids(nFreqs, tMax);
+  originalFreq.resize(_nZSteps, _nFreqs);
+  originalTime.resize(_nZSteps, _nFreqs);
+}
+
+
+void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double beta1, double beta1s, double beta1o,
+                   double beta3, double beta3s, double beta3o) {
+  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+  _beta2o = beta2o;
+  _beta1o = beta1o;
+  _beta3o = beta3o;
+
+  if (_noDispersion)
+    _dispersionOrig = 0;
+  else
+    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
+
+  _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
+}
+
+void Chi2SFG::runPumpSimulation() { // TODO make base function
+
+  pumpFreq.row(0) = fft(_env);
+  pumpTime.row(0) = _env;
+
+  for (uint i = 1; i < _nZSteps; i++) {
+    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
+    pumpTime.row(i) = ifft(pumpFreq.row(i));
+  }
+}
+
+
+void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inTimeDomain)
+    originalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionOrig * _dz).exp();
+  else
+    originalFreq.row(0) = inputProf * (0.5i * _dispersionOrig * _dz).exp();
+  originalTime.row(0) = ifft(originalFreq.row(0));
+
+  signalFreq.row(0) = 0;
+  signalTime.row(0) = 0;
+
+  Arraycd interpP(_nFreqs), conjInterpP(_nFreqs);
+  Arraycd k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), tempOrig(_nFreqs);
+  Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempSign(_nFreqs);
+  for (uint i = 1; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the non-linear propagation
+    const auto& prevS = signalTime.row(i-1);
+    const auto& prevO = originalTime.row(i-1);
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
+
+    interpP = 0.5 * (prevP + currP);
+    conjInterpP = interpP.conjugate();
+
+    k1 = _nlStepO * prevP.conjugate() *  prevS;
+    l1 = _nlStep  * prevP             *  prevO;
+    k2 = _nlStepO * conjInterpP       * (prevS + 0.5 * l1);
+    l2 = _nlStep  * interpP           * (prevO + 0.5 * k1);
+    k3 = _nlStepO * conjInterpP       * (prevS + 0.5 * l2);
+    l3 = _nlStep  * interpP           * (prevO + 0.5 * k2);
+    k4 = _nlStepO * currP.conjugate() * (prevS + l3);
+    l4 = _nlStep  * currP             * (prevO + k3);
+
+    tempOrig = signalTime.row(i-1)   + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    tempSign = originalTime.row(i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
+
+    // Dispersion step
+    signalFreq.row(i) = fft(tempSign).array() * _dispStepSign;
+    signalTime.row(i) = ifft(signalFreq.row(i));
+
+    originalFreq.row(i) = fft(tempOrig).array() * _dispStepOrig;
+    originalTime.row(i) = ifft(originalFreq.row(i));
+  }
+
+  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
+
+  originalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionOrig * _dz).exp();
+  originalTime.row(_nZSteps-1)  = ifft(originalFreq.row(_nZSteps-1));
 }
 
 
