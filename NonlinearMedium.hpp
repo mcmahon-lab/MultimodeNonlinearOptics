@@ -29,12 +29,12 @@ public:
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType=0,
+                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
                    double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
-  void resetGrids(uint nFreqs=0, double tMax=0);
+  virtual void resetGrids(uint nFreqs=0, double tMax=0);
   void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0, double beta3=0, double beta3s=0);
   void setPump(int pulseType, double chirp=0);
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
@@ -108,6 +108,48 @@ public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+};
+
+
+class Chi2SFG : public _NonlinearMedium {
+public:
+  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
+          double beta2, double beta2s, double beta2o, int pulseType=0,
+          double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+          double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+
+  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
+          double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
+          double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+          double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+
+  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
+  void resetGrids(uint nFreqs=0, double tMax=0) override;
+  void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
+                     double beta3=0, double beta3s=0, double beta3o=0);
+
+  void runPumpSimulation() override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+
+  const Array2Dcd& getOriginalFreq() {return originalFreq;};
+  const Array2Dcd& getOriginalTime() {return originalTime;};
+
+private:
+  using _NonlinearMedium::setLengths;
+  using _NonlinearMedium::resetGrids;
+  using _NonlinearMedium::setDispersion;
+
+  double _beta2o;
+  double _beta1o;
+  double _beta3o;
+  double _NLo;
+  std::complex<double> _nlStepO;
+
+  Arrayf _dispersionOrig;
+  Arraycd _dispStepOrig;
+
+  Array2Dcd originalFreq;
+  Array2Dcd originalTime;
 };
 
 

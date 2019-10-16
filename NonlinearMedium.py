@@ -27,6 +27,19 @@ class _NonlinearMedium:
     :param customPump:     Specify a pump profile in time domain.
     """
 
+    self._checkInput(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                     beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
+    self.resetGrids(tPrecision, tMax)
+    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    self.setPump(pulseType, chirp, customPump)
+
+
+  def _checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                  beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                  customPump):
+
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
     if not isinstance(nlLength,       (int, float)): raise TypeError("nlLength")
     if not isinstance(dispLength,     (int, float)): raise TypeError("dispLength")
@@ -42,13 +55,6 @@ class _NonlinearMedium:
     if not isinstance(tPrecision, int): raise TypeError("tPrecision")
     if not isinstance(zPrecision, int): raise TypeError("zPrecision")
     if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
-
-    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
-    self.setPump(pulseType, chirp, customPump)
-
-    # print("DS", self._DS, "NL", self._NL, "Nt", self._nFreqs, "Nz", self._nZSteps)
 
 
   def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
@@ -203,10 +209,10 @@ class _NonlinearMedium:
       grid[0, :] = 0
       grid[0, i] = 1
       s.runSignalSimulation(grid[0], inTimeDomain)
-  
+
       greenC[i, :] += grid[-1, :] * 0.5
       greenS[i, :] += grid[-1, :] * 0.5
-  
+
       grid[0, :] = 0
       grid[0, i] = 1j
       s.runSignalSimulation(grid[0], inTimeDomain)
@@ -307,6 +313,132 @@ class Chi2(_NonlinearMedium):
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
+class Chi2SFG(_NonlinearMedium):
+
+  def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
+               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               customPump=None):
+
+    self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
+                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+
+    self.setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
+    self.resetGrids(tPrecision, tMax)
+    self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o)
+    self.setPump(pulseType, chirp, customPump)
+
+
+  def _checkInput(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
+                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
+                  customPump):
+
+    _NonlinearMedium._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                                 beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                                 customPump)
+    if not isinstance(beta2o, (int, float)): raise TypeError("beta2g")
+    if not isinstance(beta1o, (int, float)): raise TypeError("beta1g")
+    if not isinstance(beta3o, (int, float)): raise TypeError("beta3g")
+    if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
+
+
+  def setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
+    _NonlinearMedium.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
+    self._NLo = nlLengthOrig
+
+    if self._noDispersion:
+      self._nlStepO = 1j * self._NL / nlLengthOrig * self._dz
+    elif self._noNonlinear:
+      self._nlStepO = 0
+    else:
+      self._nlStepO = 1j * self._DS / nlLengthOrig * self._dz
+
+
+  def resetGrids(self, nFreqs=None, tMax=None):
+    _NonlinearMedium.resetGrids(self, nFreqs, tMax)
+    self.originalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+    self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
+
+
+  def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0):
+    _NonlinearMedium.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    self._beta2o = beta2o
+    self._beta1o = beta1o
+    self._beta3o = beta3o
+
+    if self._noDispersion:
+      self._dispersionOrig = 0
+    else:
+      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3
+
+    self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
+
+
+  def runPumpSimulation(s): # TODO make this base class method?
+    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
+
+    s.pumpFreq[0, :] = fft(s._env)
+    s.pumpTime[0, :] = s._env
+
+    for i in range(1, s._nZSteps):
+      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
+      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
+
+
+  def runSignalSimulation(s, inputProf, inTimeDomain=True):
+    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    ## NOTE: Takes as input the signal in the first frequency and outputs in the second frequency
+
+    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+
+    s.originalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionOrig * s._dz)
+    s.originalTime[0, :] = ifft(s.originalFreq[0, :])
+
+    s.signalFreq[0, :] = 0
+    s.signalTime[0, :] = 0
+
+    for i in range(1, s._nZSteps):
+      # Do a Runge-Kutta step for the non-linear propagation
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
+
+      conjPumpInterpTime = np.conj(pumpTimeInterp)
+      # prevConjSign = np.conj(s.signalTime[i-1])
+
+      k1 = s._nlStepO * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
+      l1 = s._nlStep  * s.pumpTime[i-1]          *  s.originalTime[i-1]
+      k2 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
+      l2 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
+      k3 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
+      l3 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
+      k4 = s._nlStepO * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
+      l4 = s._nlStep  * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
+
+      # k1 = s._nlStepO * (np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + s.pumpTime[i-1] * s.originalTime[i-1])
+      # l1 = s._nlStep  * s.pumpTime[i-1]           *  s.originalTime[i-1]
+      # k2 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k1))
+      # l2 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k1)
+      # k3 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k2))
+      # l3 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k2)
+      # k4 = s._nlStepO * (np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)       + s.pumpTime[i]   * (s.originalTime[i-1] + k3))
+      # l4 = s._nlStep  * s.pumpTime[i]             * (s.originalTime[i-1] + k3)
+
+      tempOrig = s.originalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+      tempSign = s.signalTime[i-1]   + (l1 + 2 * l2 + 2 * l3 + l4) / 6
+
+      # Dispersion step
+      s.signalFreq[i, :] = fft(tempSign) * s._dispStepSign
+      s.signalTime[i, :] = ifft(s.signalFreq[i, :])
+
+      s.originalFreq[i, :] = fft(tempOrig) * s._dispStepOrig
+      s.originalTime[i, :] = ifft(s.originalFreq[i, :])
+
+    s.signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
+
+    s.originalFreq[-1, :] *= np.exp(-0.5j * s._dispersionOrig * s._dz)
+    s.originalTime[-1, :] = ifft(s.originalFreq[-1, :])
+
+
 class Cascade(_NonlinearMedium):
   """
   Class that cascades multiple media together
@@ -399,6 +531,8 @@ class Cascade(_NonlinearMedium):
   def computeGreensFunction(s, inTimeDomain=False, runPump=True):
     __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
 
+    # TODO for large cascades: option for directly feeding signals to avoid many matrix multiplications
+
     if runPump: s.runPumpSimulation()
 
     # Green function matrices
@@ -406,8 +540,8 @@ class Cascade(_NonlinearMedium):
     greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
 
     for medium in s.media:
-      C, S = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
-      greenC = C @ greenC + S @ np.conj(greenS)
-      greenS = C @ greenS + S @ np.conj(greenC)
+      newC, newS = medium.computeGreensFunction(inTimeDomain=inTimeDomain, runPump=False)
+      greenC, greenS = newC @ greenC + newS @ np.conj(greenS),\
+                       newC @ greenS + newS @ np.conj(greenC)
 
     return greenC, greenS
