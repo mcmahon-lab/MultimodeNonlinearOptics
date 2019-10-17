@@ -103,15 +103,21 @@ public:
 };
 
 
-class Chi2 : public _NonlinearMedium {
+class _Chi2 : public _NonlinearMedium {
 public:
   using _NonlinearMedium::_NonlinearMedium;
   void runPumpSimulation() override;
+};
+
+
+class Chi2PDC : public _Chi2 {
+public:
+  using _Chi2::_Chi2;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
 
 
-class Chi2SFG : public _NonlinearMedium {
+class Chi2SFG : public _Chi2 {
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o, int pulseType=0,
@@ -128,7 +134,6 @@ public:
   void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
                      double beta3=0, double beta3s=0, double beta3o=0);
 
-  void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
@@ -184,8 +189,6 @@ private:
   uint nMedia;
   bool sharedPump;
 };
-
-
 
 
 #endif //NONLINEARMEDIUM

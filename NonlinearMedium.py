@@ -273,9 +273,9 @@ class Chi3(_NonlinearMedium):
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
-class Chi2(_NonlinearMedium):
+class _Chi2(_NonlinearMedium):
   def runPumpSimulation(s):
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
+    __doc__ = _Chi2.runPumpSimulation.__doc__
 
     s.pumpFreq[0, :] = fft(s._env)
     s.pumpTime[0, :] = s._env
@@ -285,8 +285,9 @@ class Chi2(_NonlinearMedium):
       s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
 
 
+class Chi2PDC(_Chi2):
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
-    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    __doc__ = _Chi2.runSignalSimulation.__doc__
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -313,7 +314,7 @@ class Chi2(_NonlinearMedium):
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
-class Chi2SFG(_NonlinearMedium):
+class Chi2SFG(_Chi2):
 
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
@@ -333,9 +334,9 @@ class Chi2SFG(_NonlinearMedium):
                   beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
                   customPump):
 
-    _NonlinearMedium._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                                 beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
-                                 customPump)
+    _Chi2._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                      beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                      customPump)
     if not isinstance(beta2o, (int, float)): raise TypeError("beta2g")
     if not isinstance(beta1o, (int, float)): raise TypeError("beta1g")
     if not isinstance(beta3o, (int, float)): raise TypeError("beta3g")
@@ -343,7 +344,7 @@ class Chi2SFG(_NonlinearMedium):
 
 
   def setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
-    _NonlinearMedium.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
+    _Chi2.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
     self._NLo = nlLengthOrig
 
     if self._noDispersion:
@@ -355,13 +356,13 @@ class Chi2SFG(_NonlinearMedium):
 
 
   def resetGrids(self, nFreqs=None, tMax=None):
-    _NonlinearMedium.resetGrids(self, nFreqs, tMax)
+    _Chi2.resetGrids(self, nFreqs, tMax)
     self.originalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
     self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
   def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0):
-    _NonlinearMedium.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    _Chi2.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s)
     self._beta2o = beta2o
     self._beta1o = beta1o
     self._beta3o = beta3o
@@ -374,19 +375,8 @@ class Chi2SFG(_NonlinearMedium):
     self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
 
 
-  def runPumpSimulation(s): # TODO make this base class method?
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
-
-    s.pumpFreq[0, :] = fft(s._env)
-    s.pumpTime[0, :] = s._env
-
-    for i in range(1, s._nZSteps):
-      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
-      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
-
-
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
-    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    __doc__ = _Chi2.runSignalSimulation.__doc__
     ## NOTE: Takes as input the signal in the first frequency and outputs in the second frequency
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)

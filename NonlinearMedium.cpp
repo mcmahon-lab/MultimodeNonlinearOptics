@@ -272,7 +272,7 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 }
 
 
-void Chi2::runPumpSimulation() {
+void _Chi2::runPumpSimulation() {
 
   pumpFreq.row(0) = fft(_env);
   pumpTime.row(0) = _env;
@@ -284,7 +284,7 @@ void Chi2::runPumpSimulation() {
 }
 
 
-void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
   else
@@ -321,10 +321,8 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta2, double beta2s, double beta2o, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength,
-                   beta2, beta2s, pulseType,
-                   beta1, beta1s, beta3, beta3s,
-                   chirp, tMax, tPrecision, zPrecision)
+  _Chi2(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+        beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
@@ -336,8 +334,8 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
-                   beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
+    _Chi2(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
+          beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
@@ -381,17 +379,6 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
     _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
 
   _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
-}
-
-void Chi2SFG::runPumpSimulation() { // TODO make base function
-
-  pumpFreq.row(0) = fft(_env);
-  pumpTime.row(0) = _env;
-
-  for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
-    pumpTime.row(i) = ifft(pumpFreq.row(i));
-  }
 }
 
 
