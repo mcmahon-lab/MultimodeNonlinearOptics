@@ -6,7 +6,7 @@ class _NonlinearMedium:
   Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
-               beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None):
     """
     :param relativeLength: Length of fiber in dispersion lengths, or nonlinear lengths if no dispersion.
@@ -20,6 +20,7 @@ class _NonlinearMedium:
     :param beta1s:         Group velocity difference for signal relative to simulation window.
     :param beta3:          Pump third order dispersion.
     :param beta3s:         Signal third order dispersion.
+    :param diffBeta0:      Phase mismatch of the signal wrt to pump.
     :param chirp:          Initial chirp for pump pulse.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
@@ -28,16 +29,16 @@ class _NonlinearMedium:
     """
 
     self._checkInput(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                     beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
                      customPump)
     self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
     self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self.setPump(pulseType, chirp, customPump)
 
 
   def _checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                  beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                  beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
                   customPump):
 
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
@@ -49,6 +50,7 @@ class _NonlinearMedium:
     if not isinstance(beta1s, (int, float)): raise TypeError("beta1s")
     if not isinstance(beta3,  (int, float)): raise TypeError("beta3")
     if not isinstance(beta3s, (int, float)): raise TypeError("beta3s")
+    if not isinstance(diffBeta0, (int, float)): raise TypeError("diffBeta0")
     if not isinstance(chirp,  (int, float)): raise TypeError("chirp")
     if not isinstance(pulseType, (bool, int)): raise TypeError("pulseType")
     if not isinstance(tMax, int):       raise TypeError("tMax")
@@ -117,7 +119,7 @@ class _NonlinearMedium:
 
       # Reset dispersion and pulse
       try:
-        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1)
+        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self.diffBeta0)
       except AttributeError:
         pass
 
@@ -128,7 +130,7 @@ class _NonlinearMedium:
     self.signalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
+  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
 
     # positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
     self._beta2  = beta2
@@ -142,6 +144,9 @@ class _NonlinearMedium:
     self._beta3  = beta3
     self._beta3s = beta3s
 
+    # signal phase mis-match
+    self.diffBeta0 = diffBeta0
+
     if abs(self._beta2) != 1 and not self._noDispersion:
       if self._beta2 != 0 or abs(self._beta3) != 1:
         raise ValueError("Non unit beta2")
@@ -151,7 +156,7 @@ class _NonlinearMedium:
       self._dispersionPump = self._dispersionSign = 0
     else:
       self._dispersionPump = 0.5 * beta2  * self.omega**2 + beta1  * self.omega + 1/6 * beta3  * self.omega**3
-      self._dispersionSign = 0.5 * beta2s * self.omega**2 + beta1s * self.omega + 1/6 * beta3s * self.omega**3
+      self._dispersionSign = 0.5 * beta2s * self.omega**2 + beta1s * self.omega + 1/6 * beta3s * self.omega**3 + diffBeta0
 
     # helper values
     self._dispStepPump = np.exp(1j * self._dispersionPump * self._dz)
@@ -230,6 +235,14 @@ class Chi3(_NonlinearMedium):
   """
   Class for numerically simulating the evolution of a classical field in a chi(3) medium with a signal or quantum field.
   """
+  def __init__(self, relativeLength, nlLength, dispLength, beta2, pulseType=0,
+               beta3=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100, customPump=None):
+    # same as base class except pump and signal dispersion must be identical, and no zero or first order dispersion
+    super().__init__(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
+                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+
+
   def runPumpSimulation(s):
     __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
@@ -317,29 +330,30 @@ class Chi2PDC(_Chi2):
 class Chi2SFG(_Chi2):
 
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
-               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
-               customPump=None):
+               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
+               tMax=10, tPrecision=512, zPrecision=100, customPump=None):
 
     self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
-                     customPump)
+                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
+                     tPrecision, zPrecision, customPump)
 
     self.setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
     self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o)
+    self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
     self.setPump(pulseType, chirp, customPump)
 
 
   def _checkInput(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
-                  customPump):
+                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
+                  tPrecision, zPrecision, customPump):
 
     _Chi2._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                      beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                      beta1, beta1s, beta3, beta3s, diffBeta0o, chirp, tMax, tPrecision, zPrecision,
                       customPump)
-    if not isinstance(beta2o, (int, float)): raise TypeError("beta2g")
-    if not isinstance(beta1o, (int, float)): raise TypeError("beta1g")
-    if not isinstance(beta3o, (int, float)): raise TypeError("beta3g")
+    if not isinstance(beta2o, (int, float)): raise TypeError("beta2o")
+    if not isinstance(beta1o, (int, float)): raise TypeError("beta1o")
+    if not isinstance(beta3o, (int, float)): raise TypeError("beta3o")
+    if not isinstance(diffBeta0o, (int, float)): raise TypeError("diffBeta0o")
     if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
 
 
@@ -361,16 +375,18 @@ class Chi2SFG(_Chi2):
     self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0):
-    _Chi2.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s)
+  def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0,
+                    beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0):
+    _Chi2.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self._beta2o = beta2o
     self._beta1o = beta1o
     self._beta3o = beta3o
+    self.diffBeta0o = diffBeta0o
 
     if self._noDispersion:
       self._dispersionOrig = 0
     else:
-      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3
+      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3 + diffBeta0o
 
     self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
 
@@ -510,7 +526,7 @@ class Cascade(_NonlinearMedium):
     """Invalid"""
     pass
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
+  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
     """Invalid"""
     pass
 

@@ -25,17 +25,18 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                    double beta2, double beta2s, int pulseType=0,
-                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
+                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0,
+                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
   virtual void resetGrids(uint nFreqs=0, double tMax=0);
-  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0, double beta3=0, double beta3s=0);
+  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
+                     double beta3=0, double beta3s=0, double diffBeta0=0);
   void setPump(int pulseType, double chirp=0);
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
 
@@ -67,6 +68,7 @@ protected:
   double _beta1s;
   double _beta3;
   double _beta3s;
+  double _diffBeta0;
 
   Arraycd _dispStepPump;
   Arraycd _dispStepSign;
@@ -97,7 +99,14 @@ protected:
 
 class Chi3 : public _NonlinearMedium {
 public:
-  using _NonlinearMedium::_NonlinearMedium;
+  Chi3(double relativeLength, double nlLength, double dispLength,
+       double beta2, int pulseType=0, double beta3=0,
+       double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+
+  Chi3(double relativeLength, double nlLength, double dispLength,
+       double beta2, const Eigen::Ref<const Arraycd>& customPump, double beta3=0,
+       double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+
   void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 };
@@ -122,17 +131,19 @@ public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o, int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+          double diffBeta0=0, double diffBeta0o=0,
           double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+          double diffBeta0=0, double diffBeta0o=0,
           double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
   void resetGrids(uint nFreqs=0, double tMax=0) override;
   void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
-                     double beta3=0, double beta3s=0, double beta3o=0);
+                     double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
 
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 
@@ -147,6 +158,7 @@ private:
   double _beta2o;
   double _beta1o;
   double _beta3o;
+  double _diffBeta0o;
   double _NLo;
   std::complex<double> _nlStepO;
 

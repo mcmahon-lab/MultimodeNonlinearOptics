@@ -5,21 +5,21 @@
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, int pulseType,
-                                   double beta1, double beta1s, double beta3, double beta3s,
+                                   double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   setPump(pulseType, chirp);
 }
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   double beta1, double beta1s, double beta3, double beta3s,
+                                   double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   setPump(customPump, chirp);
 }
 
@@ -105,7 +105,8 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 }
 
 
-void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, double beta1s, double beta3, double beta3s) {
+void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, double beta1s,
+                                     double beta3, double beta3s, double diffBeta0) {
 
   // positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
   _beta2  = beta2;
@@ -120,6 +121,9 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   _beta3  = beta3;
   _beta3s = beta3s;
 
+  // signal's phase mis-match
+  _diffBeta0 = diffBeta0;
+
   // dispersion profile
   if (_noDispersion) {
     _dispersionPump.setZero(_nFreqs);
@@ -127,13 +131,14 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   }
   else {
     _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * beta3  / 6));
-    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * beta3s / 6));
+    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * beta3s / 6)) + diffBeta0;
   }
 
   // helper values
   _dispStepPump = (1i * _dispersionPump * _dz).exp();
   _dispStepSign = (1i * _dispersionSign * _dz).exp();
 }
+
 
 void _NonlinearMedium::setPump(int pulseType, double chirp) {
   // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
@@ -220,6 +225,21 @@ inline Array2Dcd _NonlinearMedium::fftshift(const Array2Dcd& input) {
   out.bottomRightCorner(halfRows, halfCols) = input.topLeftCorner(halfRows, halfCols);
   return out;
 }
+
+
+Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
+           double beta2, int pulseType, double beta3,
+           double chirp, double tMax, uint tPrecision, uint zPrecision) :
+  _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
+                   0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
+{}
+
+Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
+           double beta2, const Eigen::Ref<const Arraycd>& customPump, double beta3,
+           double chirp, double tMax, uint tPrecision, uint zPrecision) :
+    _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump,
+                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
+{}
 
 
 void Chi3::runPumpSimulation() {
@@ -320,26 +340,28 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
+                 double diffBeta0, double diffBeta0o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
   _Chi2(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
         beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
+  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
   setPump(pulseType, chirp);
 }
 
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
+                 double diffBeta0, double diffBeta0o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
     _Chi2(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
           beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
+  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
   setPump(customPump, chirp);
 }
 
@@ -367,16 +389,17 @@ void Chi2SFG::resetGrids(uint nFreqs, double tMax) {
 
 
 void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double beta1, double beta1s, double beta1o,
-                   double beta3, double beta3s, double beta3o) {
+                            double beta3, double beta3s, double beta3o, double diffBeta0, double diffBeta0o) {
   _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
   _beta2o = beta2o;
   _beta1o = beta1o;
   _beta3o = beta3o;
+  _diffBeta0o = diffBeta0o;
 
   if (_noDispersion)
     _dispersionOrig.setZero(_nFreqs);
   else
-    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
+    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6)) + diffBeta0o;
 
   _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
 }
@@ -506,4 +529,4 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   }
 
   return std::make_pair(std::move(greenC), std::move(greenS));
-};
+}
