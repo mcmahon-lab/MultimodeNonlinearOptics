@@ -105,8 +105,20 @@ public:
 
 class _Chi2 : public _NonlinearMedium {
 public:
-  using _NonlinearMedium::_NonlinearMedium;
+  _Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+        double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
+        double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
+        const Eigen::Ref<const Arrayf>& poling=Eigen::Ref<const Arrayf>(Arrayf{}));
+
   void runPumpSimulation() override;
+  const Arrayf& getPoling() {return _poling;};
+
+protected:
+  void setPoling(const Eigen::Ref<const Arrayf>& poling);
+  _Chi2() = default;
+
+  Arrayf _poling;
 };
 
 
@@ -123,8 +135,8 @@ public:
           double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double diffBeta0o=0,
-          double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+          double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          const Eigen::Ref<const Arrayf>& poling=Eigen::Ref<const Arrayf>(Arrayf{}));
 
   void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
   void resetGrids(uint nFreqs=0, double tMax=0) override;

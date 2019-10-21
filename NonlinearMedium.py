@@ -287,6 +287,40 @@ class Chi3(_NonlinearMedium):
 
 
 class _Chi2(_NonlinearMedium):
+  def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
+               beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               customPump=None, poling=None):
+
+    super().__init__(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+
+    self._setPoling(poling)
+
+
+  def _setPoling(self, poling):
+    if not isinstance(poling, (type(None), np.ndarray)): raise TypeError("poling")
+
+    if poling is None:
+      self.poling = np.ones(self._nZSteps)
+    else:
+      poleDomains = np.cumsum(poling, dtype=np.float64)
+      poleDomains *= self._nZSteps / poleDomains[-1]
+
+      self.poling = np.empty(self._nZSteps)
+      prevInd = 0
+      direction = 1
+      for currInd in poleDomains:
+        if currInd < prevInd: raise ValueError("Poling period too small for simulation resolution")
+        self.poling[prevInd:int(currInd)] = direction
+
+        if int(currInd) < self._nZSteps: # interpolate indices on the boundary
+          self.poling[int(currInd)] = direction * (2 * abs(currInd % 1) - 1)
+
+        direction *= -1
+        prevInd = int(currInd) + 1
+
+
   def runPumpSimulation(s):
     __doc__ = _Chi2.runPumpSimulation.__doc__
 
@@ -311,11 +345,15 @@ class Chi2PDC(_Chi2):
       # Do a Runge-Kutta step for the non-linear propagation
       pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
+
       prevConj = np.conj(s.signalTime[i-1, :])
-      k1 = s._nlStep * s.pumpTime[i-1, :] *  prevConj
-      k2 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k1))
-      k3 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k2))
-      k4 = s._nlStep * s.pumpTime[i,   :] * (prevConj + np.conj(k3))
+      k1 = prevPolDir * s._nlStep * s.pumpTime[i-1] *  prevConj
+      k2 = intmPolDir * s._nlStep * pumpTimeInterp  * (prevConj + np.conj(0.5 * k1))
+      k3 = intmPolDir * s._nlStep * pumpTimeInterp  * (prevConj + np.conj(0.5 * k2))
+      k4 = currPolDir * s._nlStep * s.pumpTime[i]   * (prevConj + np.conj(k3))
 
       temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
@@ -331,7 +369,7 @@ class Chi2SFG(_Chi2):
 
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
-               tMax=10, tPrecision=512, zPrecision=100, customPump=None):
+               tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
 
     self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
                      beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
@@ -341,6 +379,7 @@ class Chi2SFG(_Chi2):
     self.resetGrids(tPrecision, tMax)
     self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
     self.setPump(pulseType, chirp, customPump)
+    self._setPoling(poling)
 
 
   def _checkInput(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
@@ -410,23 +449,27 @@ class Chi2SFG(_Chi2):
       conjPumpInterpTime = np.conj(pumpTimeInterp)
       # prevConjSign = np.conj(s.signalTime[i-1])
 
-      k1 = s._nlStepO * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
-      l1 = s._nlStep  * s.pumpTime[i-1]          *  s.originalTime[i-1]
-      k2 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
-      l2 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
-      k3 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
-      l3 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
-      k4 = s._nlStepO * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
-      l4 = s._nlStep  * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
-      # k1 = s._nlStepO * (np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + s.pumpTime[i-1] * s.originalTime[i-1])
-      # l1 = s._nlStep  * s.pumpTime[i-1]           *  s.originalTime[i-1]
-      # k2 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k1))
-      # l2 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k1)
-      # k3 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k2))
-      # l3 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k2)
-      # k4 = s._nlStepO * (np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)       + s.pumpTime[i]   * (s.originalTime[i-1] + k3))
-      # l4 = s._nlStep  * s.pumpTime[i]             * (s.originalTime[i-1] + k3)
+      k1 = prevPolDir * s._nlStepO * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
+      l1 = prevPolDir * s._nlStep  * s.pumpTime[i-1]          *  s.originalTime[i-1]
+      k2 = intmPolDir * s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
+      l2 = intmPolDir * s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
+      k3 = intmPolDir * s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
+      l3 = intmPolDir * s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
+      k4 = currPolDir * s._nlStepO * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
+      l4 = currPolDir * s._nlStep  * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
+
+      # k1 = prevPolDir * s._nlStepO * (np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + s.pumpTime[i-1] * s.originalTime[i-1])
+      # l1 = prevPolDir * s._nlStep  * s.pumpTime[i-1]           *  s.originalTime[i-1]
+      # k2 = intmPolDir * s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k1))
+      # l2 = intmPolDir * s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k1)
+      # k3 = intmPolDir * s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k2))
+      # l3 = intmPolDir * s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k2)
+      # k4 = currPolDir * s._nlStepO * (np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)       + s.pumpTime[i]   * (s.originalTime[i-1] + k3))
+      # l4 = currPolDir * s._nlStep  * s.pumpTime[i]             * (s.originalTime[i-1] + k3)
 
       tempOrig = s.originalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
       tempSign = s.signalTime[i-1]   + (l1 + 2 * l2 + 2 * l3 + l4) / 6

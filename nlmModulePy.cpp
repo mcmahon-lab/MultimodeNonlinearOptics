@@ -15,7 +15,9 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
 
-  Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{}); // default argument for Python initialization
+  // default arguments for Python initialization of empty arrays
+  Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
+  Eigen::Ref<const Arrayf>  defArrayf  = Eigen::Ref<const Arrayf>(Arrayf{});
 
 /*
  * Chi3
@@ -63,10 +65,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2PDC.def(
       py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, uint, uint>(),
+               double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayf>&>(),
       "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
-      "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+      "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
   Chi2PDC.def("setLengths", &Chi2PDC::setLengths,
              "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a = 100);
@@ -98,6 +100,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2PDC.def_property_readonly("signalTime", &Chi2PDC::getSignalTime, py::return_value_policy::reference);
   Chi2PDC.def_property_readonly("omega", &Chi2PDC::getFrequency, py::return_value_policy::reference);
   Chi2PDC.def_property_readonly("tau", &Chi2PDC::getTime, py::return_value_policy::reference);
+  Chi2PDC.def_property_readonly("poling", &Chi2PDC::getPoling, py::return_value_policy::reference);
 
 
 /*
@@ -106,10 +109,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFG.def(
       py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, double, double, double, uint, uint>(),
+               double, double, double, double, double, double, double, double, double, double, uint, uint,
+               Eigen::Ref<const Arrayf>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
-      "diffBeta0o"_a = 0, "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+      "diffBeta0o"_a = 0, "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
   Chi2SFG.def("setLengths", (void (Chi2SFG::*)(double, double, double, double, uint))&Chi2SFG::setLengths,
               "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "zPrecision"_a = 100);
@@ -145,6 +149,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2SFG.def_property_readonly("originalTime", &Chi2SFG::getOriginalTime, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("omega", &Chi2SFG::getFrequency, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("tau", &Chi2SFG::getTime, py::return_value_policy::reference);
+  Chi2SFG.def_property_readonly("poling", &Chi2SFG::getPoling, py::return_value_policy::reference);
 
 
 /*

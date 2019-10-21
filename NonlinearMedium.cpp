@@ -278,6 +278,18 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 }
 
 
+_Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+             const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+             double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
+             double chirp, double tMax, uint tPrecision, uint zPrecision,
+             const Eigen::Ref<const Arrayf>& poling) :
+  _NonlinearMedium::_NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
+                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision)
+{
+  setPoling(poling);
+}
+
+
 void _Chi2::runPumpSimulation() {
 
   pumpFreq.row(0) = fft(_env);
@@ -286,6 +298,39 @@ void _Chi2::runPumpSimulation() {
   for (uint i = 1; i < _nZSteps; i++) {
     pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
     pumpTime.row(i) = ifft(pumpFreq.row(i));
+  }
+}
+
+
+void _Chi2::setPoling(const Eigen::Ref<const Arrayf>& poling) {
+  if (poling.cols() <= 1)
+    _poling.setOnes(_nZSteps);
+  else {
+    Arrayf poleDomains(poling.cols());
+    // cumulative sum
+    poleDomains(0) = poling(0);
+    for (int i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
+
+    poleDomains *= _nZSteps / poleDomains(poleDomains.cols()-1);
+
+    _poling.resize(_nZSteps);
+    uint prevInd = 0;
+    int direction = 1;
+    for (int i = 0; i < poleDomains.cols(); i++) {
+      const double currInd = poleDomains(i);
+      const uint currIndRound = static_cast<uint>(currInd);
+
+      if (currInd < prevInd)
+        throw std::invalid_argument("Poling period too small for simulation resolution");
+
+      _poling.segment(prevInd, currIndRound - prevInd) = direction;
+
+      if (currIndRound < _nZSteps) // interpolate indices corresponding to steps on the boundary of two domains
+        _poling(currIndRound) = direction * (2 * std::abs(std::fmod(currInd, 1)) - 1);
+
+      direction *= - 1;
+      prevInd = currIndRound + 1;
+    }
   }
 }
 
@@ -303,13 +348,16 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     const auto& prev =  signalTime.row(i-1);
     const auto& prevP = pumpTime.row(i-1);
     const auto& currP = pumpTime.row(i);
-
     interpP = 0.5 * (prevP + currP);
 
-    k1 = _nlStep * prevP   *  prev.conjugate();
-    k2 = _nlStep * interpP * (prev + 0.5 * k1).conjugate();
-    k3 = _nlStep * interpP * (prev + 0.5 * k2).conjugate();
-    k4 = _nlStep * currP   * (prev + k3).conjugate();
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    k1 = prevPolDir * _nlStep * prevP   *  prev.conjugate();
+    k2 = intmPolDir * _nlStep * interpP * (prev + 0.5 * k1).conjugate();
+    k3 = intmPolDir * _nlStep * interpP * (prev + 0.5 * k2).conjugate();
+    k4 = currPolDir * _nlStep * currP   * (prev + k3).conjugate();
 
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
@@ -326,10 +374,8 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double diffBeta0, double diffBeta0o,
-                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
-    _Chi2(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
-          beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
+                 double diffBeta0, double diffBeta0o, double chirp, double tMax, uint tPrecision, uint zPrecision,
+                 const Eigen::Ref<const Arrayf>& poling)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
@@ -404,14 +450,18 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     interpP = 0.5 * (prevP + currP);
     conjInterpP = interpP.conjugate();
 
-    k1 = _nlStepO * prevP.conjugate() *  prevS;
-    l1 = _nlStep  * prevP             *  prevO;
-    k2 = _nlStepO * conjInterpP       * (prevS + 0.5 * l1);
-    l2 = _nlStep  * interpP           * (prevO + 0.5 * k1);
-    k3 = _nlStepO * conjInterpP       * (prevS + 0.5 * l2);
-    l3 = _nlStep  * interpP           * (prevO + 0.5 * k2);
-    k4 = _nlStepO * currP.conjugate() * (prevS + l3);
-    l4 = _nlStep  * currP             * (prevO + k3);
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    k1 = prevPolDir * _nlStepO * prevP.conjugate() *  prevS;
+    l1 = prevPolDir * _nlStep  * prevP             *  prevO;
+    k2 = intmPolDir * _nlStepO * conjInterpP       * (prevS + 0.5 * l1);
+    l2 = intmPolDir * _nlStep  * interpP           * (prevO + 0.5 * k1);
+    k3 = intmPolDir * _nlStepO * conjInterpP       * (prevS + 0.5 * l2);
+    l3 = intmPolDir * _nlStep  * interpP           * (prevO + 0.5 * k2);
+    k4 = currPolDir * _nlStepO * currP.conjugate() * (prevS + l3);
+    l4 = currPolDir * _nlStep  * currP             * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
