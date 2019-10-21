@@ -23,13 +23,8 @@ class _NonlinearMedium {
 friend class Cascade;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                   double beta2, double beta2s, int pulseType=0,
-                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-                   double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
-
-  _NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
+  _NonlinearMedium(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+                   const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
                    double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
@@ -99,13 +94,9 @@ protected:
 
 class Chi3 : public _NonlinearMedium {
 public:
-  Chi3(double relativeLength, double nlLength, double dispLength,
-       double beta2, int pulseType=0, double beta3=0,
-       double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
-
-  Chi3(double relativeLength, double nlLength, double dispLength,
-       double beta2, const Eigen::Ref<const Arraycd>& customPump, double beta3=0,
-       double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+  Chi3(double relativeLength, double nlLength, double dispLength, double beta2,
+       const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+       double beta3=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void runPumpSimulation() override;
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
@@ -129,13 +120,8 @@ public:
 class Chi2SFG : public _Chi2 {
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-          double beta2, double beta2s, double beta2o, int pulseType=0,
-          double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double diffBeta0o=0,
-          double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
-
-  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-          double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
+          double beta2, double beta2s, double beta2o,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double diffBeta0=0, double diffBeta0o=0,
           double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
@@ -155,6 +141,7 @@ private:
   using _NonlinearMedium::resetGrids;
   using _NonlinearMedium::setDispersion;
 
+protected:
   double _beta2o;
   double _beta1o;
   double _beta3o;
@@ -197,6 +184,7 @@ private:
   using _NonlinearMedium::getSignalFreq;
   using _NonlinearMedium::getSignalTime;
 
+protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media;
   uint nMedia;
   bool sharedPump;

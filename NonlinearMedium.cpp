@@ -4,23 +4,16 @@
 
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                                   double beta2, double beta2s, int pulseType,
+                                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                                    double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
-  setPump(pulseType, chirp);
-}
-
-_NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
-  setLengths(relativeLength, nlLength, dispLength, zPrecision);
-  resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
-  setPump(customPump, chirp);
+  if (customPump.size() != 0)
+    setPump(customPump, chirp);
+  else
+    setPump(pulseType, chirp);
 }
 
 
@@ -228,16 +221,9 @@ inline Array2Dcd _NonlinearMedium::fftshift(const Array2Dcd& input) {
 
 
 Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
-           double beta2, int pulseType, double beta3,
-           double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
-                   0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
-{}
-
-Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
-           double beta2, const Eigen::Ref<const Arraycd>& customPump, double beta3,
-           double chirp, double tMax, uint tPrecision, uint zPrecision) :
-    _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump,
+           double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+           double beta3, double chirp, double tMax, uint tPrecision, uint zPrecision) :
+    _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump, pulseType,
                      0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
 {}
 
@@ -338,21 +324,7 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 
 
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-                 double beta2, double beta2s, double beta2o, int pulseType,
-                 double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double diffBeta0, double diffBeta0o,
-                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _Chi2(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-        beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision)
-{
-  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
-  resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
-  setPump(pulseType, chirp);
-}
-
-Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
+                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double diffBeta0, double diffBeta0o,
                  double chirp, double tMax, uint tPrecision, uint zPrecision) :
@@ -362,7 +334,11 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
-  setPump(customPump, chirp);
+  if (customPump.size() != 0)
+    setPump(customPump, chirp);
+  else
+    setPump(pulseType, chirp);
+  setPoling(poling);
 }
 
 
