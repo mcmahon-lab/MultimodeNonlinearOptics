@@ -12,7 +12,7 @@
 
 // Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
 // Also must specify row-major order for 2D
-typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayf;
+typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayd;
 typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycd;
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcd;
 typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
@@ -43,8 +43,8 @@ public:
   const Array2Dcd& getPumpTime()   {return pumpTime;};
   const Array2Dcd& getSignalFreq() {return signalFreq;};
   const Array2Dcd& getSignalTime() {return signalTime;};
-  const Arrayf& getTime()      {return _tau;};
-  const Arrayf& getFrequency() {return _omega;};
+  const Arrayd& getTime()      {return _tau;};
+  const Arrayd& getFrequency() {return _omega;};
 
 protected:
   double _z;
@@ -69,10 +69,10 @@ protected:
   Arraycd _dispStepSign;
   std::complex<double> _nlStep;
 
-  Arrayf _tau;
-  Arrayf _omega;
-  Arrayf _dispersionPump;
-  Arrayf _dispersionSign;
+  Arrayd _tau;
+  Arrayd _omega;
+  Arrayd _dispersionPump;
+  Arrayd _dispersionSign;
   Arraycd _env;
 
   Array2Dcd pumpFreq;
@@ -85,7 +85,7 @@ protected:
 
   inline const RowVectorcd& fft(const RowVectorcd& input);
   inline const RowVectorcd& ifft(const RowVectorcd& input);
-  inline Arrayf fftshift(const Arrayf& input);
+  inline Arrayd fftshift(const Arrayd& input);
   inline Array2Dcd fftshift(const Array2Dcd& input);
 
   _NonlinearMedium() = default;
@@ -109,16 +109,16 @@ public:
         const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
         double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
         double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
-        const Eigen::Ref<const Arrayf>& poling=Eigen::Ref<const Arrayf>(Arrayf{}));
+        const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void runPumpSimulation() override;
-  const Arrayf& getPoling() {return _poling;};
+  const Arrayd& getPoling() {return _poling;};
 
 protected:
-  void setPoling(const Eigen::Ref<const Arrayf>& poling);
+  void setPoling(const Eigen::Ref<const Arrayd>& poling);
   _Chi2() = default;
 
-  Arrayf _poling;
+  Arrayd _poling;
 };
 
 
@@ -136,7 +136,7 @@ public:
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
-          const Eigen::Ref<const Arrayf>& poling=Eigen::Ref<const Arrayf>(Arrayf{}));
+          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
   void resetGrids(uint nFreqs=0, double tMax=0) override;
@@ -161,7 +161,7 @@ protected:
   double _NLo;
   std::complex<double> _nlStepO;
 
-  Arrayf _dispersionOrig;
+  Arrayd _dispersionOrig;
   Arraycd _dispStepOrig;
 
   Array2Dcd originalFreq;

@@ -73,9 +73,9 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     int Nt = _nFreqs;
 
     // time and frequency axes
-    _tau = 2 * tMax / Nt * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _tau = fftshift(_tau);
-    _omega = M_PI / _tMax * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _omega = M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _omega = fftshift(_omega);
 
     // Reset dispersion and pulse
@@ -197,8 +197,8 @@ inline const RowVectorcd& _NonlinearMedium::ifft(const RowVectorcd& input) {
   return fftTemp;
 }
 
-inline Arrayf _NonlinearMedium::fftshift(const Arrayf& input) {
-  Arrayf out(input.rows(), input.cols());
+inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
+  Arrayd out(input.rows(), input.cols());
   auto half = input.cols() / 2;
   out.head(half) = input.tail(half);
   out.tail(half) = input.head(half);
@@ -282,7 +282,7 @@ _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double b
              const Eigen::Ref<const Arraycd>& customPump, int pulseType,
              double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
              double chirp, double tMax, uint tPrecision, uint zPrecision,
-             const Eigen::Ref<const Arrayf>& poling) :
+             const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium::_NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
                                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision)
 {
@@ -302,11 +302,11 @@ void _Chi2::runPumpSimulation() {
 }
 
 
-void _Chi2::setPoling(const Eigen::Ref<const Arrayf>& poling) {
+void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
   if (poling.cols() <= 1)
     _poling.setOnes(_nZSteps);
   else {
-    Arrayf poleDomains(poling.cols());
+    Arrayd poleDomains(poling.cols());
     // cumulative sum
     poleDomains(0) = poling(0);
     for (int i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
@@ -375,7 +375,7 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double diffBeta0, double diffBeta0o, double chirp, double tMax, uint tPrecision, uint zPrecision,
-                 const Eigen::Ref<const Arrayf>& poling)
+                 const Eigen::Ref<const Arrayd>& poling)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
