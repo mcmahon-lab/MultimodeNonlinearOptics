@@ -181,8 +181,8 @@ public:
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
   uint getNMedia() {return nMedia;}
 
-  const Arrayf& getTime()      {return media.at(0).get()._tau;};
-  const Arrayf& getFrequency() {return media.at(0).get()._omega;};
+  const Arrayd& getTime()      {return media.at(0).get().getTime();};
+  const Arrayd& getFrequency() {return media.at(0).get().getFrequency();};
 
 private:
   // Disable functions (note: still accessible from base class)
