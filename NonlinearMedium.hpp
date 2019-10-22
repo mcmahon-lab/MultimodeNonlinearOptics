@@ -148,7 +148,7 @@ public:
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
   const Array2Dcd& getOriginalTime() {return originalTime;};
 
-private:
+private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setLengths;
   using _NonlinearMedium::resetGrids;
   using _NonlinearMedium::setDispersion;
@@ -184,8 +184,7 @@ public:
   const Arrayd& getTime()      {return media.at(0).get().getTime();};
   const Arrayd& getFrequency() {return media.at(0).get().getFrequency();};
 
-private:
-  // Disable functions (note: still accessible from base class)
+private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setLengths;
   using _NonlinearMedium::resetGrids;
   using _NonlinearMedium::setDispersion;

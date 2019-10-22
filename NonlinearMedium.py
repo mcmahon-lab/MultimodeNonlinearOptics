@@ -119,7 +119,7 @@ class _NonlinearMedium:
 
       # Reset dispersion and pulse
       try:
-        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self.diffBeta0)
+        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
       except AttributeError:
         pass
 
@@ -145,7 +145,7 @@ class _NonlinearMedium:
     self._beta3s = beta3s
 
     # signal phase mis-match
-    self.diffBeta0 = diffBeta0
+    self._diffBeta0 = diffBeta0
 
     if abs(self._beta2) != 1 and not self._noDispersion:
       if self._beta2 != 0 or abs(self._beta3) != 1:
@@ -156,7 +156,7 @@ class _NonlinearMedium:
       self._dispersionPump = self._dispersionSign = 0
     else:
       self._dispersionPump = 0.5 * beta2  * self.omega**2 + beta1  * self.omega + 1/6 * beta3  * self.omega**3
-      self._dispersionSign = 0.5 * beta2s * self.omega**2 + beta1s * self.omega + 1/6 * beta3s * self.omega**3 + diffBeta0
+      self._dispersionSign = 0.5 * beta2s * self.omega**2 + beta1s * self.omega + 1/6 * beta3s * self.omega**3
 
     # helper values
     self._dispStepPump = np.exp(1j * self._dispersionPump * self._dz)
@@ -349,11 +349,13 @@ class Chi2PDC(_Chi2):
       currPolDir = s.poling[i]
       intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
+      mismatch = np.exp(1j * s._diffBeta0 * i * s._dz)
+
       prevConj = np.conj(s.signalTime[i-1, :])
-      k1 = prevPolDir * s._nlStep * s.pumpTime[i-1] *  prevConj
-      k2 = intmPolDir * s._nlStep * pumpTimeInterp  * (prevConj + np.conj(0.5 * k1))
-      k3 = intmPolDir * s._nlStep * pumpTimeInterp  * (prevConj + np.conj(0.5 * k2))
-      k4 = currPolDir * s._nlStep * s.pumpTime[i]   * (prevConj + np.conj(k3))
+      k1 = (prevPolDir * s._nlStep * mismatch) * s.pumpTime[i-1] *  prevConj
+      k2 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * (prevConj + np.conj(0.5 * k1))
+      k3 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * (prevConj + np.conj(0.5 * k2))
+      k4 = (currPolDir * s._nlStep * mismatch) * s.pumpTime[i]   * (prevConj + np.conj(k3))
 
       temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
@@ -425,7 +427,7 @@ class Chi2SFG(_Chi2):
     if self._noDispersion:
       self._dispersionOrig = 0
     else:
-      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3 + diffBeta0o
+      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3
 
     self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
 
@@ -453,14 +455,16 @@ class Chi2SFG(_Chi2):
       currPolDir = s.poling[i]
       intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
-      k1 = prevPolDir * s._nlStepO * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
-      l1 = prevPolDir * s._nlStep  * s.pumpTime[i-1]          *  s.originalTime[i-1]
-      k2 = intmPolDir * s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
-      l2 = intmPolDir * s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
-      k3 = intmPolDir * s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
-      l3 = intmPolDir * s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
-      k4 = currPolDir * s._nlStepO * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
-      l4 = currPolDir * s._nlStep  * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
+      mismatch = np.exp(1j * s._diffBeta0 * i * s._dz)
+
+      k1 = (prevPolDir * s._nlStepO / mismatch) * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
+      l1 = (prevPolDir * s._nlStep  * mismatch) * s.pumpTime[i-1]          *  s.originalTime[i-1]
+      k2 = (intmPolDir * s._nlStepO / mismatch) * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
+      l2 = (intmPolDir * s._nlStep  * mismatch) * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
+      k3 = (intmPolDir * s._nlStepO / mismatch) * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
+      l3 = (intmPolDir * s._nlStep  * mismatch) * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
+      k4 = (currPolDir * s._nlStepO / mismatch) * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
+      l4 = (currPolDir * s._nlStep  * mismatch) * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
 
       # k1 = prevPolDir * s._nlStepO * (np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + s.pumpTime[i-1] * s.originalTime[i-1])
       # l1 = prevPolDir * s._nlStep  * s.pumpTime[i-1]           *  s.originalTime[i-1]

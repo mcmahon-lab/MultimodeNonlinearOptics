@@ -124,7 +124,7 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   }
   else {
     _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * beta3  / 6));
-    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * beta3s / 6)) + diffBeta0;
+    _dispersionSign = _omega * (beta1s + _omega * (0.5 * beta2s + _omega * beta3s / 6));
   }
 
   // helper values
@@ -354,10 +354,12 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     const double currPolDir = _poling(i);
     const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-    k1 = prevPolDir * _nlStep * prevP   *  prev.conjugate();
-    k2 = intmPolDir * _nlStep * interpP * (prev + 0.5 * k1).conjugate();
-    k3 = intmPolDir * _nlStep * interpP * (prev + 0.5 * k2).conjugate();
-    k4 = currPolDir * _nlStep * currP   * (prev + k3).conjugate();
+    const std::complex<double> mismatch = std::exp(std::complex<double>{0, _diffBeta0 * i * _dz});
+
+    k1 = (prevPolDir * _nlStep * mismatch) * prevP   *  prev.conjugate();
+    k2 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k1).conjugate();
+    k3 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k2).conjugate();
+    k4 = (currPolDir * _nlStep * mismatch) * currP   * (prev + k3).conjugate();
 
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
@@ -421,7 +423,7 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
   if (_noDispersion)
     _dispersionOrig.setZero(_nFreqs);
   else
-    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6)) + diffBeta0o;
+    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
 
   _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
 }
@@ -454,14 +456,16 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     const double currPolDir = _poling(i);
     const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-    k1 = prevPolDir * _nlStepO * prevP.conjugate() *  prevS;
-    l1 = prevPolDir * _nlStep  * prevP             *  prevO;
-    k2 = intmPolDir * _nlStepO * conjInterpP       * (prevS + 0.5 * l1);
-    l2 = intmPolDir * _nlStep  * interpP           * (prevO + 0.5 * k1);
-    k3 = intmPolDir * _nlStepO * conjInterpP       * (prevS + 0.5 * l2);
-    l3 = intmPolDir * _nlStep  * interpP           * (prevO + 0.5 * k2);
-    k4 = currPolDir * _nlStepO * currP.conjugate() * (prevS + l3);
-    l4 = currPolDir * _nlStep  * currP             * (prevO + k3);
+    const std::complex<double> mismatch = std::exp(std::complex<double>{0, _diffBeta0 * i * _dz});
+
+    k1 = (prevPolDir * _nlStepO / mismatch) * prevP.conjugate() *  prevS;
+    l1 = (prevPolDir * _nlStep  * mismatch) * prevP             *  prevO;
+    k2 = (intmPolDir * _nlStepO / mismatch) * conjInterpP       * (prevS + 0.5 * l1);
+    l2 = (intmPolDir * _nlStep  * mismatch) * interpP           * (prevO + 0.5 * k1);
+    k3 = (intmPolDir * _nlStepO / mismatch) * conjInterpP       * (prevS + 0.5 * l2);
+    l3 = (intmPolDir * _nlStep  * mismatch) * interpP           * (prevO + 0.5 * k2);
+    k4 = (currPolDir * _nlStepO / mismatch) * currP.conjugate() * (prevS + l3);
+    l4 = (currPolDir * _nlStep  * mismatch) * currP             * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
