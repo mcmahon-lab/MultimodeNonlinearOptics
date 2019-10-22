@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <limits>
 
+static constexpr std::complex<double> I{0, 1};
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
@@ -51,7 +52,7 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
   _dz = _z / _nZSteps;
 
   // helper values
-  _nlStep = 1i * _Nsquared * _dz;
+  _nlStep = {0, _Nsquared * _dz};
 
   // Reset grids -- skip during construction
 //  try:
@@ -128,24 +129,24 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   }
 
   // helper values
-  _dispStepPump = (1i * _dispersionPump * _dz).exp();
-  _dispStepSign = (1i * _dispersionSign * _dz).exp();
+  _dispStepPump = (I * _dispersionPump * _dz).exp();
+  _dispStepSign = (I * _dispersionSign * _dz).exp();
 }
 
 
 void _NonlinearMedium::setPump(int pulseType, double chirp) {
   // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
   if (pulseType)
-    _env = 1 / _tau.cosh() * (-0.5i * chirp * _tau.square()).exp();
+    _env = 1 / _tau.cosh() * (-0.5 * I * chirp * _tau.square()).exp();
   else
-    _env = (-0.5 * _tau.square() * (1 + 1i * chirp)).exp();
+    _env = (-0.5 * _tau.square() * (1. + I * chirp)).exp();
 }
 
 void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
-  _env = customPump * (-0.5i * chirp * _tau.square()).exp();
+  _env = customPump * (-0.5 * I * chirp * _tau.square()).exp();
 }
 
 
@@ -166,15 +167,15 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     grid(0, i) = 1;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) += grid.bottomRows<1>() * 0.5;
-    greenS.row(i) += grid.bottomRows<1>() * 0.5;
+    greenC.row(i) += 0.5 * grid.bottomRows<1>();
+    greenS.row(i) += 0.5 * grid.bottomRows<1>();
 
     grid.row(0) = 0;
-    grid(0, i) = 1i;
+    grid(0, i) = I;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) -= grid.bottomRows<1>() * 0.5i;
-    greenS.row(i) += grid.bottomRows<1>() * 0.5i;
+    greenC.row(i) -= (0.5 * I) * grid.bottomRows<1>();
+    greenS.row(i) += (0.5 * I) * grid.bottomRows<1>();
   }
 
   greenC.transposeInPlace();
@@ -230,7 +231,7 @@ Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
 
 void Chi3::runPumpSimulation() {
 
-  pumpFreq.row(0) = fft(_env).array() * (0.5i * _dispersionPump * _dz).exp();
+  pumpFreq.row(0) = fft(_env).array() * ((0.5 * I * _dz) * _dispersionPump).exp();
   pumpTime.row(0) = ifft(pumpFreq.row(0));
 
   Arraycd temp(_nFreqs);
@@ -240,16 +241,16 @@ void Chi3::runPumpSimulation() {
     pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 
-  pumpFreq.row(_nZSteps-1) *= (-0.5i * _dispersionPump * _dz).exp();
+  pumpFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionPump).exp();
   pumpTime.row(_nZSteps-1)  = ifft(pumpFreq.row(_nZSteps-1));
 }
 
 
 void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
-    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(0) = ifft(signalFreq.row(0));
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
@@ -273,7 +274,7 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
@@ -296,7 +297,7 @@ void _Chi2::runPumpSimulation() {
   pumpTime.row(0) = _env;
 
   for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
+    pumpFreq.row(i) = pumpFreq.row(0) * (I * (i * _dz) * _dispersionPump).exp();
     pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 }
@@ -337,9 +338,9 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 
 void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
-    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(0) = ifft(signalFreq.row(0));
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
@@ -368,7 +369,7 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
@@ -397,11 +398,11 @@ void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLength
   _NLo = nlLengthOrig;
 
   if (_noDispersion)
-    _nlStepO = 1i * _NL / nlLengthOrig * _dz;
+    _nlStepO = {0, _NL / nlLengthOrig * _dz};
   else if (_noNonlinear)
     _nlStepO = 0;
   else
-    _nlStepO = 1i * _DS / nlLengthOrig * _dz;
+    _nlStepO = {0, _DS / nlLengthOrig * _dz};
 }
 
 
@@ -425,15 +426,15 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
   else
     _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
 
-  _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
+  _dispStepOrig = (I * _dispersionOrig * _dz).exp();
 }
 
 
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    originalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionOrig * _dz).exp();
+    originalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionOrig).exp();
   else
-    originalFreq.row(0) = inputProf * (0.5i * _dispersionOrig * _dz).exp();
+    originalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionOrig).exp();
   originalTime.row(0) = ifft(originalFreq.row(0));
 
   signalFreq.row(0) = 0;
@@ -478,10 +479,10 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     originalTime.row(i) = ifft(originalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 
-  originalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionOrig * _dz).exp();
+  originalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionOrig).exp();
   originalTime.row(_nZSteps-1)  = ifft(originalFreq.row(_nZSteps-1));
 }
 
