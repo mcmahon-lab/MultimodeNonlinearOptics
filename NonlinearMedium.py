@@ -299,9 +299,9 @@ class _Chi2(_NonlinearMedium):
 
 
   def _setPoling(self, poling):
-    if not isinstance(poling, (type(None), np.ndarray)): raise TypeError("poling")
+    if not isinstance(poling, (type(None), np.ndarray, list)): raise TypeError("poling")
 
-    if poling is None:
+    if poling is None or len(poling) <= 1:
       self.poling = np.ones(self._nZSteps)
     else:
       poleDomains = np.cumsum(poling, dtype=np.float64)
@@ -351,11 +351,10 @@ class Chi2PDC(_Chi2):
 
       mismatch = np.exp(1j * s._diffBeta0 * i * s._dz)
 
-      prevConj = np.conj(s.signalTime[i-1, :])
-      k1 = (prevPolDir * s._nlStep * mismatch) * s.pumpTime[i-1] *  prevConj
-      k2 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * (prevConj + np.conj(0.5 * k1))
-      k3 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * (prevConj + np.conj(0.5 * k2))
-      k4 = (currPolDir * s._nlStep * mismatch) * s.pumpTime[i]   * (prevConj + np.conj(k3))
+      k1 = (prevPolDir * s._nlStep * mismatch) * s.pumpTime[i-1] * np.conj(s.signalTime[i-1])
+      k2 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(s.signalTime[i-1] + 0.5 * k1)
+      k3 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(s.signalTime[i-1] + 0.5 * k2)
+      k4 = (currPolDir * s._nlStep * mismatch) * s.pumpTime[i]   * np.conj(s.signalTime[i-1] + k3)
 
       temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
@@ -422,7 +421,7 @@ class Chi2SFG(_Chi2):
     self._beta2o = beta2o
     self._beta1o = beta1o
     self._beta3o = beta3o
-    self.diffBeta0o = diffBeta0o
+    self._diffBeta0o = diffBeta0o
 
     if self._noDispersion:
       self._dispersionOrig = 0
@@ -449,7 +448,6 @@ class Chi2SFG(_Chi2):
       pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
       conjPumpInterpTime = np.conj(pumpTimeInterp)
-      # prevConjSign = np.conj(s.signalTime[i-1])
 
       prevPolDir = s.poling[i-1]
       currPolDir = s.poling[i]

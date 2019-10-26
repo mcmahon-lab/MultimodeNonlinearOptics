@@ -52,7 +52,7 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
   _dz = _z / _nZSteps;
 
   // helper values
-  _nlStep = {0, _Nsquared * _dz};
+  _nlStep = I * _Nsquared * _dz;
 
   // Reset grids -- skip during construction
 //  try:
@@ -398,11 +398,11 @@ void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLength
   _NLo = nlLengthOrig;
 
   if (_noDispersion)
-    _nlStepO = {0, _NL / nlLengthOrig * _dz};
+    _nlStepO = I * _NL / nlLengthOrig * _dz;
   else if (_noNonlinear)
     _nlStepO = 0;
   else
-    _nlStepO = {0, _DS / nlLengthOrig * _dz};
+    _nlStepO = I * _DS / nlLengthOrig * _dz;
 }
 
 
@@ -415,7 +415,7 @@ void Chi2SFG::resetGrids(uint nFreqs, double tMax) {
 
 void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double beta1, double beta1s, double beta1o,
                             double beta3, double beta3s, double beta3o, double diffBeta0, double diffBeta0o) {
-  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   _beta2o = beta2o;
   _beta1o = beta1o;
   _beta3o = beta3o;

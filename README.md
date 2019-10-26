@@ -3,7 +3,7 @@
 Split step method library for simulation of nonlinear optical processes in Python.
 Some analysis routines are also provided, which are useful for gaussian quantum optics.
 
-Currently the code supports chi(2) and chi(3), 1 dimensional propagation (in the no pump depletion approximation).
+Currently the code supports a few chi(2) and chi(3) processes, 1 dimensional propagation, in the no pump depletion approximation.
 This includes dispersion and nonlinear effects for arbitrary pump/signal shapes.
 Higher dimensions and decoherence processes may be added as needed.
 
