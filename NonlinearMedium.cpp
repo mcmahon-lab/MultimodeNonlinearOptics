@@ -457,16 +457,24 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     const double currPolDir = _poling(i);
     const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-    const std::complex<double> mismatch = std::exp(std::complex<double>{0, _diffBeta0 * i * _dz});
+    const std::complex<double> prevMismatch = std::exp(I * _diffBeta0 * ((i- 1) * _dz));
+    const std::complex<double> intmMismatch = std::exp(I * _diffBeta0 * ((i-.5) * _dz));
+    const std::complex<double> currMismatch = std::exp(I * _diffBeta0 * ( i     * _dz));
+    const std::complex<double> prevInvMsmch = 1. / prevMismatch;
+    const std::complex<double> intmInvMsmch = 1. / intmMismatch;
+    const std::complex<double> currInvMsmch = 1. / currMismatch;
+    const std::complex<double> prevMismatcho = std::exp(I * _diffBeta0o * ((i- 1) * _dz));
+    const std::complex<double> intmMismatcho = std::exp(I * _diffBeta0o * ((i-.5) * _dz));
+    const std::complex<double> currMismatcho = std::exp(I * _diffBeta0o * ( i     * _dz));
 
-    k1 = (prevPolDir * _nlStepO / mismatch) * prevP.conjugate() *  prevS;
-    l1 = (prevPolDir * _nlStep  * mismatch) * prevP             *  prevO;
-    k2 = (intmPolDir * _nlStepO / mismatch) * conjInterpP       * (prevS + 0.5 * l1);
-    l2 = (intmPolDir * _nlStep  * mismatch) * interpP           * (prevO + 0.5 * k1);
-    k3 = (intmPolDir * _nlStepO / mismatch) * conjInterpP       * (prevS + 0.5 * l2);
-    l3 = (intmPolDir * _nlStep  * mismatch) * interpP           * (prevO + 0.5 * k2);
-    k4 = (currPolDir * _nlStepO / mismatch) * currP.conjugate() * (prevS + l3);
-    l4 = (currPolDir * _nlStep  * mismatch) * currP             * (prevO + k3);
+    k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate() *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
+    l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP             *  prevO;
+    k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
+    l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k1);
+    k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
+    l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k2);
+    k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate() * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
+    l4 = (currPolDir * _nlStep   *  currMismatch) * currP             * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
