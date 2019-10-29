@@ -46,7 +46,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation);
 
   Chi3.def("runSignalSimulation", &Chi3::runSignalSimulation,
-           "inputProf"_a, "timeSignal"_a = true);
+           "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi3.def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move,
            "inTimeDomain"_a = false, "runPump"_a = true);
@@ -88,7 +88,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2PDC.def("runPumpSimulation", &Chi2PDC::runPumpSimulation);
 
   Chi2PDC.def("runSignalSimulation", &Chi2PDC::runSignalSimulation,
-              "inputProf"_a, "timeSignal"_a = true);
+              "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2PDC.def("computeGreensFunction",
               &Chi2PDC::computeGreensFunction, py::return_value_policy::move,
@@ -135,7 +135,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2SFG.def("runPumpSimulation", &Chi2SFG::runPumpSimulation);
 
   Chi2SFG.def("runSignalSimulation", &Chi2SFG::runSignalSimulation,
-              "inputProf"_a, "timeSignal"_a = true);
+              "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2SFG.def("computeGreensFunction",
               &Chi2SFG::computeGreensFunction, py::return_value_policy::move,
@@ -162,7 +162,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
 
   Cascade.def("runSignalSimulation", &Cascade::runSignalSimulation,
-              "inputProf"_a, "timeSignal"_a = true);
+              "inputProf"_a, "inTimeDomain"_a = true);
 
   Cascade.def("computeGreensFunction",
               &Cascade::computeGreensFunction, py::return_value_policy::move,
