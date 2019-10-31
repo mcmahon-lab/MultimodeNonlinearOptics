@@ -43,7 +43,7 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
     if (_DS != 1) throw std::invalid_argument("Non unit DS");
 
   // Soliton order
-  _Nsquared = _DS / _NL;
+  double _Nsquared = _DS / _NL;
   if (_noDispersion) _Nsquared = 1;
   if (_noNonlinear)  _Nsquared = 0;
 
@@ -511,7 +511,6 @@ Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_Nonli
     _nZSteps += medium.get()._nZSteps;
   }
 
-  nMedia = inputMedia.size();
   sharedPump = sharePump;
 }
 
@@ -520,7 +519,6 @@ void Cascade::addMedium(_NonlinearMedium& medium) {
   if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
 
-  nMedia += 1;
   media.emplace_back(medium);
 }
 

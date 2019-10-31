@@ -47,41 +47,40 @@ public:
   const Arrayd& getFrequency() {return _omega;};
 
 protected:
-  double _z;
-  double _DS;
-  double _NL;
-  bool _noDispersion;
-  bool _noNonlinear;
-  double _Nsquared;
-  double _dz;
-  uint _nZSteps;
-  uint _nFreqs;
-  double _tMax;
-  double _beta2;
-  double _beta2s;
-  double _beta1;
-  double _beta1s;
-  double _beta3;
-  double _beta3s;
-  double _diffBeta0;
+  double _z;  /// length of medium
+  double _DS; /// dispersion length
+  double _NL; /// nonlinear length
+  bool _noDispersion; /// indicate system is dispersionless
+  bool _noNonlinear;  /// indicate system is linear
+  double _dz;    /// length increment
+  uint _nZSteps; /// number of length steps in simulation ODE
+  uint _nFreqs;  /// number of frequency/time bins in the simulation ODE
+  double _tMax;  /// positive and negative extent of the simulation window
+  double _beta2;  /// second order dispersion of the pump's frequency
+  double _beta2s; /// second order dispersion of the signal's frequency
+  double _beta1;  /// group velocity difference for pump relative to simulation window
+  double _beta1s; /// group velocity difference for signal relative to simulation window
+  double _beta3;  /// third order dispersion of the pump's frequency
+  double _beta3s; /// third order dispersion of the signal's frequency
+  double _diffBeta0; /// wave-vector mismatch of the simulated process
 
-  Arraycd _dispStepPump;
-  Arraycd _dispStepSign;
-  std::complex<double> _nlStep;
+  Arraycd _dispStepPump; /// incremental phase for dispersion over length dz for the pump
+  Arraycd _dispStepSign; /// incremental phase for dispersion over length dz for the signal
+  std::complex<double> _nlStep; /// strength of nonlinear process over length dz
 
-  Arrayd _tau;
-  Arrayd _omega;
-  Arrayd _dispersionPump;
-  Arrayd _dispersionSign;
-  Arraycd _env;
+  Arrayd _tau;   /// array representing the time axis
+  Arrayd _omega; /// array representing the frequency axis
+  Arrayd _dispersionPump; /// dispersion profile of pump
+  Arrayd _dispersionSign; /// dispersion profile of signal
+  Arraycd _env; /// initial envelope of the pump
 
-  Array2Dcd pumpFreq;
-  Array2Dcd pumpTime;
-  Array2Dcd signalFreq;
-  Array2Dcd signalTime;
+  Array2Dcd pumpFreq;   /// grid for numerically solving ODE representing pump propagation in frequency domain
+  Array2Dcd pumpTime;   /// grid for numerically solving ODE representing pump propagation in time domain
+  Array2Dcd signalFreq; /// grid for numerically solving ODE representing signal propagation in frequency domain
+  Array2Dcd signalTime; /// grid for numerically solving ODE representing signal propagation in time domain
 
-  RowVectorcd fftTemp;
-  Eigen::FFT<double> fftObj;
+  RowVectorcd fftTemp; /// vector for temporarily storing fft calculations
+  Eigen::FFT<double> fftObj; /// fft class object for performing dft
 
   inline const RowVectorcd& fft(const RowVectorcd& input);
   inline const RowVectorcd& ifft(const RowVectorcd& input);
@@ -154,18 +153,18 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setDispersion;
 
 protected:
-  double _beta2o;
-  double _beta1o;
-  double _beta3o;
-  double _diffBeta0o;
-  double _NLo;
-  std::complex<double> _nlStepO;
+  double _beta2o; /// second order dispersion of the original signal's frequency
+  double _beta1o; /// group velocity difference for original signal relative to simulation window
+  double _beta3o; /// third order dispersion of the original signal's frequency
+  double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
+  double _NLo; /// like nlLength but with respect to the original signal
+  std::complex<double> _nlStepO; /// strength of nonlinear process over length dz; DOPA process of original signal
 
-  Arrayd _dispersionOrig;
-  Arraycd _dispStepOrig;
+  Arrayd _dispersionOrig; /// dispersion profile of signal
+  Arraycd _dispStepOrig;  /// incremental phase for dispersion over length dz for the signal
 
-  Array2Dcd originalFreq;
-  Array2Dcd originalTime;
+  Array2Dcd originalFreq; /// grid for numerically solving ODE representing original signal propagation in frequency domain
+  Array2Dcd originalTime; /// grid for numerically solving ODE representing original signal propagation in time domain
 };
 
 
@@ -179,7 +178,7 @@ public:
 
   _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
-  uint getNMedia() {return nMedia;}
+  uint getNMedia() {return media.size();}
 
   const Arrayd& getTime()      {return media.at(0).get().getTime();};
   const Arrayd& getFrequency() {return media.at(0).get().getFrequency();};
@@ -196,9 +195,8 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::getSignalTime;
 
 protected:
-  std::vector<std::reference_wrapper<_NonlinearMedium>> media;
-  uint nMedia;
-  bool sharedPump;
+  std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects
+  bool sharedPump; /// is the pump shared across media or are they independently pumped
 };
 
 

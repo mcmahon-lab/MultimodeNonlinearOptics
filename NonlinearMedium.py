@@ -20,7 +20,7 @@ class _NonlinearMedium:
     :param beta1s:         Group velocity difference for signal relative to simulation window.
     :param beta3:          Pump third order dispersion.
     :param beta3s:         Signal third order dispersion.
-    :param diffBeta0:      Phase mismatch of the signal wrt to pump.
+    :param diffBeta0:      Wave-vector mismatch of the simulated process.
     :param chirp:          Initial chirp for pump pulse.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
@@ -83,16 +83,16 @@ class _NonlinearMedium:
       if self._DS != 1: raise ValueError("Non unit DS")
 
     # Soliton order
-    self._Nsquared = self._DS / self._NL
-    if self._noDispersion: self._Nsquared = 1
-    if self._noNonlinear:  self._Nsquared = 0
+    _Nsquared = self._DS / self._NL
+    if self._noDispersion: _Nsquared = 1
+    if self._noNonlinear:  _Nsquared = 0
 
     # space resolution
     self._nZSteps = int(zPrecision * self._z / np.min([1, self._DS, self._NL]))
     self._dz = self._z / self._nZSteps
 
     # helper values
-    self._nlStep = 1j * self._Nsquared * self._dz
+    self._nlStep = 1j * _Nsquared * self._dz
 
     # Reset grids -- skip during construction
     try:
@@ -187,8 +187,8 @@ class _NonlinearMedium:
     """
     Simulate propagation of signal field
     :param inputProf: Profile of input pulse. Can be time or frequency domain.
-    Note: Frequency domain input is assumed to be "true" frequency with omega as its axis (since there are phase issues
-    associated with FFT on a non-centered array, since FFT considers the center the first and last elements).
+    Note: Frequency domain input is assumed to be "true" frequency with self.omega as its axis
+    (since FFT considers the center frequency as the first and last elements).
     :param inTimeDomain: Specify if input is in frequency or frequency domain. True for time, false for frequency.
     """
     pass
@@ -233,10 +233,13 @@ class _NonlinearMedium:
 
 class Chi3(_NonlinearMedium):
   """
-  Class for numerically simulating the evolution of a classical field in a chi(3) medium with a signal or quantum field.
+  Class for numerically simulating the evolution of a pump and quantum field undergoing self
+  phase modulation in a chi(3) medium.
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, pulseType=0,
                beta3=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100, customPump=None):
+    __doc__ = _NonlinearMedium.__init__.__doc__
+
     # same as base class except pump and signal dispersion must be identical, and no zero or first order dispersion
     super().__init__(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
                      0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision,
@@ -287,9 +290,17 @@ class Chi3(_NonlinearMedium):
 
 
 class _Chi2(_NonlinearMedium):
+  """
+  Base class for numerically simulating the evolution of a classical field in a chi(2) medium with a signal or quantum field.
+  """
+
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
                beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None, poling=None):
+    __doc__ = _NonlinearMedium.__init__.__doc__ + \
+    """
+    :param poling:         Poling profile to simulate, specifying relative domain lengths.
+    """
 
     super().__init__(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
@@ -322,7 +333,7 @@ class _Chi2(_NonlinearMedium):
 
 
   def runPumpSimulation(s):
-    __doc__ = _Chi2.runPumpSimulation.__doc__
+    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
     s.pumpFreq[0, :] = fft(s._env)
     s.pumpTime[0, :] = s._env
@@ -333,6 +344,10 @@ class _Chi2(_NonlinearMedium):
 
 
 class Chi2PDC(_Chi2):
+  """
+  Class for numerically simulating the evolution of a parametric down-conversion or DOPA process of a pump and signal
+  or quantum field in a chi(2) medium.
+  """
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _Chi2.runSignalSimulation.__doc__
 
@@ -367,11 +382,20 @@ class Chi2PDC(_Chi2):
 
 
 class Chi2SFG(_Chi2):
-
+  """
+  Class for numerically simulating the evolution of a sum frequency generation process of a pump and two signals
+  or quantum fields in a chi(2) medium.
+  """
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
                tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
-
+    __doc__ = _Chi2.__init__.__doc__ + \
+    """
+    :param nlLengthOrig:   Like nlLength but with respect to the original signal.
+    :param beta1o:         Group velocity difference for original signal relative to simulation window.
+    :param beta3o:         Original signal third order dispersion.
+    :param diffBeta0o:     Wave-vector mismatch of PDC process with the original signal and pump.
+    """
     self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
                      beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
                      tPrecision, zPrecision, customPump)
@@ -491,9 +515,13 @@ class Chi2SFG(_Chi2):
 
 class Cascade(_NonlinearMedium):
   """
-  Class that cascades multiple media together
+  Class that cascades multiple media together.
   """
   def __init__(self, sharedPump, media):
+    """
+    :param sharedPump: Is the pump shared across media or are they independently pumped.
+    :param media:      Collection of nonlinear media objects.
+    """
 
     if not isinstance(sharedPump, (bool, int)):
       raise TypeError("sharedPump must be boolean")
@@ -522,13 +550,17 @@ class Cascade(_NonlinearMedium):
     # initialize parent class values to null values
     # self._z = self._DS = self._NL = 0
     # self._noDispersion = self._noNonlinear = False
-    # self._Nsquared = self._dz = self._nlStep = 0
+    # self._dz = self._nlStep = 0
     # self.pumpFreq = self.pumpTime = self.signalFreq = self.signalTime = None
     # self._beta2 = self._beta2s = self._beta1 = self._beta1s = self._beta3 = self._beta3s = 0
     # self._dispersionPump = self._dispersionSign = self._dispStepPump = self._dispStepSign = self._env = None
 
 
   def addMedium(self, medium):
+    """
+    Append medium
+    :param medium: Additional medium to append to cascaded process.
+    """
     if not isinstance(medium, _NonlinearMedium):
       raise TypeError("Argument is not a NonlinearMedium object")
 
@@ -581,7 +613,7 @@ class Cascade(_NonlinearMedium):
   def computeGreensFunction(s, inTimeDomain=False, runPump=True):
     __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
 
-    # TODO for large cascades: option for directly feeding signals to avoid many matrix multiplications
+    # TODO for large cascades or short media: option for directly feeding signals to avoid many matrix multiplications
 
     if runPump: s.runPumpSimulation()
 

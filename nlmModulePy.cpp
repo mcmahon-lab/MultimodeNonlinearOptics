@@ -60,7 +60,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
 
 /*
- * Chi2
+ * Chi2PDC
  */
 
   Chi2PDC.def(
