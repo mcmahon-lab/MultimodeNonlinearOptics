@@ -135,9 +135,13 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
 
 
 void _NonlinearMedium::setPump(int pulseType, double chirp) {
-  // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
-  if (pulseType)
+  // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
+  if (pulseType == 1)
     _env = 1 / _tau.cosh() * (-0.5 * I * chirp * _tau.square()).exp();
+  else if (pulseType == 2) {
+    _env = _tau.sin() / _tau * (-0.5 * I * chirp * _tau.square()).exp();
+    _env(0) = 1;
+  }
   else
     _env = (-0.5 * _tau.square() * (1. + I * chirp)).exp();
 }

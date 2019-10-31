@@ -15,7 +15,7 @@ class _NonlinearMedium:
     :param dispLength:     Dispersion length. Must be kept at one or set to np.inf to remove dispersion.
     :param beta2:          Group velocity dispersion of the pump. Must be +/- 1.
     :param beta2s:         Group velocity dispersion of the signal, relative to the pump.
-    :param pulseType:      Pump profile, 0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
+    :param pulseType:      Pump profile, 0/False for Gaussian, 1/True for Hyperbolic Secant or 3 for Sinc.
     :param beta1:          Group velocity difference for pump relative to simulation window.
     :param beta1s:         Group velocity difference for signal relative to simulation window.
     :param beta3:          Pump third order dispersion.
@@ -164,14 +164,17 @@ class _NonlinearMedium:
 
 
   def setPump(self, pulseType=0, chirp=0, customPump=None):
-    # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant or custom)
+    # initial time domain envelopes (pick Gaussian, Hyperbolic Secant or custom, Sinc)
     if customPump is not None:
       if customPump.size != self._nFreqs:
         raise ValueError("Custom pump array length does not match number of frequency/time bins")
       self._env = customPump * np.exp(-0.5j * chirp * self.tau**2)
     else:
-      if pulseType:
+      if pulseType == 1:
         self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
+      if pulseType == 2:
+        self._env = np.sin(self.tau) / self.tau * np.exp(-0.5j * chirp * self.tau**2)
+        self._env[np.isnan(self._env)] = 1
       else:
         self._env = np.exp(-0.5 * self.tau**2 * (1 + 1j * chirp))
 
