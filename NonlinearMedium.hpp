@@ -28,10 +28,6 @@ public:
                    double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
                    double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
-  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
-  virtual void resetGrids(uint nFreqs=0, double tMax=0);
-  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
-                     double beta3=0, double beta3s=0, double diffBeta0=0);
   void setPump(int pulseType, double chirp=0);
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
 
@@ -47,6 +43,18 @@ public:
   const Arrayd& getFrequency() {return _omega;};
 
 protected:
+  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
+  virtual void resetGrids(uint nFreqs=0, double tMax=0);
+  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
+                     double beta3=0, double beta3s=0, double diffBeta0=0);
+  _NonlinearMedium() = default;
+
+
+  inline const RowVectorcd& fft(const RowVectorcd& input);
+  inline const RowVectorcd& ifft(const RowVectorcd& input);
+  inline Arrayd fftshift(const Arrayd& input);
+  inline Array2Dcd fftshift(const Array2Dcd& input);
+
   double _z;  /// length of medium
   double _DS; /// dispersion length
   double _NL; /// nonlinear length
@@ -81,13 +89,6 @@ protected:
 
   RowVectorcd fftTemp; /// vector for temporarily storing fft calculations
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
-
-  inline const RowVectorcd& fft(const RowVectorcd& input);
-  inline const RowVectorcd& ifft(const RowVectorcd& input);
-  inline Arrayd fftshift(const Arrayd& input);
-  inline Array2Dcd fftshift(const Array2Dcd& input);
-
-  _NonlinearMedium() = default;
 };
 
 
@@ -137,11 +138,6 @@ public:
           double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
-  void resetGrids(uint nFreqs=0, double tMax=0) override;
-  void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
-                     double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
-
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
@@ -153,6 +149,11 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setDispersion;
 
 protected:
+  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
+  void resetGrids(uint nFreqs=0, double tMax=0) override;
+  void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
+                     double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
+
   double _beta2o; /// second order dispersion of the original signal's frequency
   double _beta1o; /// group velocity difference for original signal relative to simulation window
   double _beta3o; /// third order dispersion of the original signal's frequency

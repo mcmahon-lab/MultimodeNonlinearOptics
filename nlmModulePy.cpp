@@ -28,15 +28,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
       "beta3"_a = 0, "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
-  Chi3.def("setLengths", &Chi3::setLengths,
-           "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a = 100);
-
-  Chi3.def("resetGrids", &Chi3::resetGrids,
-           "nFreqs"_a = 0, "tMax"_a = 0);
-
-  Chi3.def("setDispersion", &Chi3::setDispersion,
-           "beta2"_a, "beta2s"_a, "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0);
-
   Chi3.def("setPump", (void (Chi3::*)(int, double))&Chi3::setPump,
            "pulseType"_a, "chirp"_a = 0);
 
@@ -69,15 +60,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
       "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
-
-  Chi2PDC.def("setLengths", &Chi2PDC::setLengths,
-             "relativeLength"_a, "nlLength"_a, "dispLength"_a, "zPrecision"_a = 100);
-
-  Chi2PDC.def("resetGrids", &Chi2PDC::resetGrids,
-              "nFreqs"_a = 0, "tMax"_a = 0);
-
-  Chi2PDC.def("setDispersion", &Chi2PDC::setDispersion,
-              "beta2"_a, "beta2s"_a, "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0);
 
   Chi2PDC.def("setPump", (void (Chi2PDC::*)(int, double))&Chi2PDC::setPump,
               "pulseType"_a, "chirp"_a = 0);
@@ -114,17 +96,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
       "diffBeta0o"_a = 0, "chirp"_a = 0, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
-
-  Chi2SFG.def("setLengths", (void (Chi2SFG::*)(double, double, double, double, uint))&Chi2SFG::setLengths,
-              "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "zPrecision"_a = 100);
-
-  Chi2SFG.def("resetGrids", &Chi2SFG::resetGrids,
-              "nFreqs"_a = 0, "tMax"_a = 0);
-
-  Chi2SFG.def("setDispersion", (void (Chi2SFG::*)(double, double, double, double, double, double,
-                                                  double, double, double, double, double))&Chi2SFG::setDispersion,
-              "beta2"_a, "beta2s"_a, "beta2o"_a, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
-              "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "diffBeta0o"_a = 0);
 
   Chi2SFG.def("setPump", (void (Chi2SFG::*)(int, double))&Chi2SFG::setPump,
               "pulseType"_a, "chirp"_a = 0);

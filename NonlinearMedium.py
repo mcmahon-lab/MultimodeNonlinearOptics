@@ -31,9 +31,9 @@ class _NonlinearMedium:
     self._checkInput(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
                      customPump)
-    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
+    self._setLengths(relativeLength, nlLength, dispLength, zPrecision)
+    self._resetGrids(tPrecision, tMax)
+    self._setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self.setPump(pulseType, chirp, customPump)
 
 
@@ -59,7 +59,7 @@ class _NonlinearMedium:
     if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
 
 
-  def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
     # Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = Lds / Lnl
     # The length z is given in units of dispersion length (of pump)
     # The time is given in units of initial width (of pump)
@@ -95,13 +95,13 @@ class _NonlinearMedium:
     self._nlStep = 1j * _Nsquared * self._dz
 
     # Reset grids -- skip during construction
-    try:
-      self.resetGrids()
-    except AttributeError:
-      pass
+    # try:
+    #   self._resetGrids()
+    # except AttributeError:
+    #   pass
 
 
-  def resetGrids(self, nFreqs=None, tMax=None):
+  def _resetGrids(self, nFreqs=None, tMax=None):
 
     # time windowing and resolution
     if nFreqs is not None:
@@ -118,10 +118,10 @@ class _NonlinearMedium:
       self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
 
       # Reset dispersion and pulse
-      try:
-        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
-      except AttributeError:
-        pass
+      # try:
+      #   self._setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
+      # except AttributeError:
+      #   pass
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
@@ -130,7 +130,7 @@ class _NonlinearMedium:
     self.signalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
+  def _setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
 
     # positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
     self._beta2  = beta2
@@ -403,9 +403,9 @@ class Chi2SFG(_Chi2):
                      beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
                      tPrecision, zPrecision, customPump)
 
-    self.setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
+    self._setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
+    self._resetGrids(tPrecision, tMax)
+    self._setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
     self.setPump(pulseType, chirp, customPump)
     self._setPoling(poling)
 
@@ -424,8 +424,8 @@ class Chi2SFG(_Chi2):
     if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
 
 
-  def setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
-    _Chi2.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
+  def _setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
+    _Chi2._setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
     self._NLo = nlLengthOrig
 
     if self._noDispersion:
@@ -436,15 +436,15 @@ class Chi2SFG(_Chi2):
       self._nlStepO = 1j * self._DS / nlLengthOrig * self._dz
 
 
-  def resetGrids(self, nFreqs=None, tMax=None):
-    _Chi2.resetGrids(self, nFreqs, tMax)
+  def _resetGrids(self, nFreqs=None, tMax=None):
+    _Chi2._resetGrids(self, nFreqs, tMax)
     self.originalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
     self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0,
+  def _setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0,
                     beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0):
-    _Chi2.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
+    _Chi2._setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self._beta2o = beta2o
     self._beta1o = beta1o
     self._beta3o = beta3o
@@ -597,15 +597,15 @@ class Cascade(_NonlinearMedium):
       self.media[i].runSignalSimulation(self.media[i-1].signalFreq[-1], inTimeDomain=False)
 
 
-  def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
     """Invalid"""
     pass
 
-  def resetGrids(self, nFreqs=None, tMax=None):
+  def _resetGrids(self, nFreqs=None, tMax=None):
     """Invalid"""
     pass
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
+  def _setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
     """Invalid"""
     pass
 

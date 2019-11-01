@@ -53,12 +53,6 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
 
   // helper values
   _nlStep = I * _Nsquared * _dz;
-
-  // Reset grids -- skip during construction
-//  try:
-//    resetGrids();
-//  except AttributeError:
-//    pass;
 }
 
 
@@ -78,12 +72,6 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     _tau = fftshift(_tau);
     _omega = M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _omega = fftshift(_omega);
-
-    // Reset dispersion and pulse
-    //  try:
-    //    setDispersion(_beta2, _beta2s, _beta1, _beta1, _beta3, _beta3s);
-    //  except AttributeError:
-    //    pass;
   }
 
   if (_nFreqs % 2 != 0 || _nFreqs == 0 || _nZSteps == 0)
