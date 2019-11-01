@@ -184,6 +184,13 @@ def calcChirp(z):
   return (0.5 * z) / (1 + 0.25 * z**2)
 
 
+def calcRayleighWidth(length, wavelength, index):
+  """
+  Calculate the Rayleigh width (ie radius, for a Gaussian beam) for a given length and wavelength in the medium.
+  """
+  return np.sqrt(length * wavelength / (np.pi * index))
+
+
 def basisTransforms(n):
   """
   Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the quadrature basis
