@@ -2,25 +2,19 @@
 #include <stdexcept>
 #include <limits>
 
+static constexpr std::complex<double> I{0, 1};
 
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                                   double beta2, double beta2s, int pulseType,
-                                   double beta1, double beta1s, double beta3, double beta3s,
+                                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                                   double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                                    double chirp, double tMax, uint tPrecision, uint zPrecision) {
   setLengths(relativeLength, nlLength, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
-  setPump(pulseType, chirp);
-}
-
-_NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
-                                   double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   double beta1, double beta1s, double beta3, double beta3s,
-                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
-  setLengths(relativeLength, nlLength, dispLength, zPrecision);
-  resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
-  setPump(customPump, chirp);
+  setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
+  if (customPump.size() != 0)
+    setPump(customPump, chirp);
+  else
+    setPump(pulseType, chirp);
 }
 
 
@@ -49,7 +43,7 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
     if (_DS != 1) throw std::invalid_argument("Non unit DS");
 
   // Soliton order
-  _Nsquared = _DS / _NL;
+  double _Nsquared = _DS / _NL;
   if (_noDispersion) _Nsquared = 1;
   if (_noNonlinear)  _Nsquared = 0;
 
@@ -58,13 +52,7 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
   _dz = _z / _nZSteps;
 
   // helper values
-  _nlStep = 1i * _Nsquared * _dz;
-
-  // Reset grids -- skip during construction
-//  try:
-//    resetGrids();
-//  except AttributeError:
-//    pass;
+  _nlStep = I * _Nsquared * _dz;
 }
 
 
@@ -80,16 +68,10 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     int Nt = _nFreqs;
 
     // time and frequency axes
-    _tau = 2 * tMax / Nt * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _tau = fftshift(_tau);
-    _omega = M_PI / _tMax * Arrayf::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _omega = M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _omega = fftshift(_omega);
-
-    // Reset dispersion and pulse
-    //  try:
-    //    setDispersion(_beta2, _beta2s, _beta1, _beta1, _beta3, _beta3s);
-    //  except AttributeError:
-    //    pass;
   }
 
   if (_nFreqs % 2 != 0 || _nFreqs == 0 || _nZSteps == 0)
@@ -105,7 +87,8 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 }
 
 
-void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, double beta1s, double beta3, double beta3s) {
+void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, double beta1s,
+                                     double beta3, double beta3s, double diffBeta0) {
 
   // positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
   _beta2  = beta2;
@@ -120,6 +103,9 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   _beta3  = beta3;
   _beta3s = beta3s;
 
+  // signal's phase mis-match
+  _diffBeta0 = diffBeta0;
+
   // dispersion profile
   if (_noDispersion) {
     _dispersionPump.setZero(_nFreqs);
@@ -131,23 +117,28 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
   }
 
   // helper values
-  _dispStepPump = (1i * _dispersionPump * _dz).exp();
-  _dispStepSign = (1i * _dispersionSign * _dz).exp();
+  _dispStepPump = (I * _dispersionPump * _dz).exp();
+  _dispStepSign = (I * _dispersionSign * _dz).exp();
 }
 
+
 void _NonlinearMedium::setPump(int pulseType, double chirp) {
-  // initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant)
-  if (pulseType)
-    _env = 1 / _tau.cosh() * (-0.5i * chirp * _tau.square()).exp();
+  // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
+  if (pulseType == 1)
+    _env = 1 / _tau.cosh() * (-0.5 * I * chirp * _tau.square()).exp();
+  else if (pulseType == 2) {
+    _env = _tau.sin() / _tau * (-0.5 * I * chirp * _tau.square()).exp();
+    _env(0) = 1;
+  }
   else
-    _env = (-0.5 * _tau.square() * (1 + 1i * chirp)).exp();
+    _env = (-0.5 * _tau.square() * (1. + I * chirp)).exp();
 }
 
 void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
-  _env = customPump * (-0.5i * chirp * _tau.square()).exp();
+  _env = customPump * (-0.5 * I * chirp * _tau.square()).exp();
 }
 
 
@@ -168,15 +159,15 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     grid(0, i) = 1;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) += grid.bottomRows<1>() * 0.5;
-    greenS.row(i) += grid.bottomRows<1>() * 0.5;
+    greenC.row(i) += 0.5 * grid.bottomRows<1>();
+    greenS.row(i) += 0.5 * grid.bottomRows<1>();
 
     grid.row(0) = 0;
-    grid(0, i) = 1i;
+    grid(0, i) = I;
     runSignalSimulation(grid.row(0), inTimeDomain);
 
-    greenC.row(i) -= grid.bottomRows<1>() * 0.5i;
-    greenS.row(i) += grid.bottomRows<1>() * 0.5i;
+    greenC.row(i) -= (0.5 * I) * grid.bottomRows<1>();
+    greenS.row(i) += (0.5 * I) * grid.bottomRows<1>();
   }
 
   greenC.transposeInPlace();
@@ -199,8 +190,8 @@ inline const RowVectorcd& _NonlinearMedium::ifft(const RowVectorcd& input) {
   return fftTemp;
 }
 
-inline Arrayf _NonlinearMedium::fftshift(const Arrayf& input) {
-  Arrayf out(input.rows(), input.cols());
+inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
+  Arrayd out(input.rows(), input.cols());
   auto half = input.cols() / 2;
   out.head(half) = input.tail(half);
   out.tail(half) = input.head(half);
@@ -222,9 +213,17 @@ inline Array2Dcd _NonlinearMedium::fftshift(const Array2Dcd& input) {
 }
 
 
+Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
+           double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+           double beta3, double chirp, double tMax, uint tPrecision, uint zPrecision) :
+    _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump, pulseType,
+                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
+{}
+
+
 void Chi3::runPumpSimulation() {
 
-  pumpFreq.row(0) = fft(_env).array() * (0.5i * _dispersionPump * _dz).exp();
+  pumpFreq.row(0) = fft(_env).array() * ((0.5 * I * _dz) * _dispersionPump).exp();
   pumpTime.row(0) = ifft(pumpFreq.row(0));
 
   Arraycd temp(_nFreqs);
@@ -234,16 +233,16 @@ void Chi3::runPumpSimulation() {
     pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 
-  pumpFreq.row(_nZSteps-1) *= (-0.5i * _dispersionPump * _dz).exp();
+  pumpFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionPump).exp();
   pumpTime.row(_nZSteps-1)  = ifft(pumpFreq.row(_nZSteps-1));
 }
 
 
 void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
-    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(0) = ifft(signalFreq.row(0));
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
@@ -267,28 +266,73 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
 
-void Chi2::runPumpSimulation() {
+_Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+             const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+             double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
+             double chirp, double tMax, uint tPrecision, uint zPrecision,
+             const Eigen::Ref<const Arrayd>& poling) :
+  _NonlinearMedium::_NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
+                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision)
+{
+  setPoling(poling);
+}
+
+
+void _Chi2::runPumpSimulation() {
 
   pumpFreq.row(0) = fft(_env);
   pumpTime.row(0) = _env;
 
   for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
+    pumpFreq.row(i) = pumpFreq.row(0) * (I * (i * _dz) * _dispersionPump).exp();
     pumpTime.row(i) = ifft(pumpFreq.row(i));
   }
 }
 
 
-void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
+  if (poling.cols() <= 1)
+    _poling.setOnes(_nZSteps);
+  else {
+    Arrayd poleDomains(poling.cols());
+    // cumulative sum
+    poleDomains(0) = poling(0);
+    for (int i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
+
+    poleDomains *= _nZSteps / poleDomains(poleDomains.cols()-1);
+
+    _poling.resize(_nZSteps);
+    uint prevInd = 0;
+    int direction = 1;
+    for (int i = 0; i < poleDomains.cols(); i++) {
+      const double currInd = poleDomains(i);
+      const uint currIndRound = static_cast<uint>(currInd);
+
+      if (currInd < prevInd)
+        throw std::invalid_argument("Poling period too small for simulation resolution");
+
+      _poling.segment(prevInd, currIndRound - prevInd) = direction;
+
+      if (currIndRound < _nZSteps) // interpolate indices corresponding to steps on the boundary of two domains
+        _poling(currIndRound) = direction * (2 * std::abs(std::fmod(currInd, 1)) - 1);
+
+      direction *= - 1;
+      prevInd = currIndRound + 1;
+    }
+  }
+}
+
+
+void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
-    signalFreq.row(0) = inputProf * (0.5i * _dispersionSign * _dz).exp();
+    signalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(0) = ifft(signalFreq.row(0));
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
@@ -297,13 +341,18 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     const auto& prev =  signalTime.row(i-1);
     const auto& prevP = pumpTime.row(i-1);
     const auto& currP = pumpTime.row(i);
-
     interpP = 0.5 * (prevP + currP);
 
-    k1 = _nlStep * prevP   *  prev.conjugate();
-    k2 = _nlStep * interpP * (prev + 0.5 * k1).conjugate();
-    k3 = _nlStep * interpP * (prev + 0.5 * k2).conjugate();
-    k4 = _nlStep * currP   * (prev + k3).conjugate();
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    const std::complex<double> mismatch = std::exp(std::complex<double>{0, _diffBeta0 * i * _dz});
+
+    k1 = (prevPolDir * _nlStep * mismatch) * prevP   *  prev.conjugate();
+    k2 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k1).conjugate();
+    k3 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k2).conjugate();
+    k4 = (currPolDir * _nlStep * mismatch) * currP   * (prev + k3).conjugate();
 
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
@@ -312,37 +361,25 @@ void Chi2::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     signalTime.row(i) = ifft(signalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 }
 
 
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-                 double beta2, double beta2s, double beta2o, int pulseType,
+                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength,
-                   beta2, beta2s, pulseType,
-                   beta1, beta1s, beta3, beta3s,
-                   chirp, tMax, tPrecision, zPrecision)
+                 double diffBeta0, double diffBeta0o, double chirp, double tMax, uint tPrecision, uint zPrecision,
+                 const Eigen::Ref<const Arrayd>& poling)
 {
   setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
   resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
-  setPump(pulseType, chirp);
-}
-
-Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump,
-                 double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double chirp, double tMax, uint tPrecision, uint zPrecision) :
-  _NonlinearMedium(relativeLength, nlLength, dispLength,beta2, beta2s, customPump,
-                   beta1, beta1s, beta3, beta3s,chirp, tMax, tPrecision, zPrecision)
-{
-  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
-  resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o);
-  setPump(customPump, chirp);
+  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
+  if (customPump.size() != 0)
+    setPump(customPump, chirp);
+  else
+    setPump(pulseType, chirp);
+  setPoling(poling);
 }
 
 
@@ -353,11 +390,11 @@ void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLength
   _NLo = nlLengthOrig;
 
   if (_noDispersion)
-    _nlStepO = 1i * _NL / nlLengthOrig * _dz;
+    _nlStepO = I * _NL / nlLengthOrig * _dz;
   else if (_noNonlinear)
     _nlStepO = 0;
   else
-    _nlStepO = 1i * _DS / nlLengthOrig * _dz;
+    _nlStepO = I * _DS / nlLengthOrig * _dz;
 }
 
 
@@ -369,37 +406,27 @@ void Chi2SFG::resetGrids(uint nFreqs, double tMax) {
 
 
 void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double beta1, double beta1s, double beta1o,
-                   double beta3, double beta3s, double beta3o) {
-  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s);
+                            double beta3, double beta3s, double beta3o, double diffBeta0, double diffBeta0o) {
+  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   _beta2o = beta2o;
   _beta1o = beta1o;
   _beta3o = beta3o;
+  _diffBeta0o = diffBeta0o;
 
   if (_noDispersion)
     _dispersionOrig.setZero(_nFreqs);
   else
     _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
 
-  _dispStepOrig = (1i * _dispersionOrig * _dz).exp();
-}
-
-void Chi2SFG::runPumpSimulation() { // TODO make base function
-
-  pumpFreq.row(0) = fft(_env);
-  pumpTime.row(0) = _env;
-
-  for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1i * i * _dispersionPump * _dz).exp();
-    pumpTime.row(i) = ifft(pumpFreq.row(i));
-  }
+  _dispStepOrig = (I * _dispersionOrig * _dz).exp();
 }
 
 
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   if (inTimeDomain)
-    originalFreq.row(0) = fft(inputProf).array() * (0.5i * _dispersionOrig * _dz).exp();
+    originalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionOrig).exp();
   else
-    originalFreq.row(0) = inputProf * (0.5i * _dispersionOrig * _dz).exp();
+    originalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionOrig).exp();
   originalTime.row(0) = ifft(originalFreq.row(0));
 
   signalFreq.row(0) = 0;
@@ -418,14 +445,28 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     interpP = 0.5 * (prevP + currP);
     conjInterpP = interpP.conjugate();
 
-    k1 = _nlStepO * prevP.conjugate() *  prevS;
-    l1 = _nlStep  * prevP             *  prevO;
-    k2 = _nlStepO * conjInterpP       * (prevS + 0.5 * l1);
-    l2 = _nlStep  * interpP           * (prevO + 0.5 * k1);
-    k3 = _nlStepO * conjInterpP       * (prevS + 0.5 * l2);
-    l3 = _nlStep  * interpP           * (prevO + 0.5 * k2);
-    k4 = _nlStepO * currP.conjugate() * (prevS + l3);
-    l4 = _nlStep  * currP             * (prevO + k3);
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    const std::complex<double> prevMismatch = std::exp(I * _diffBeta0 * ((i- 1) * _dz));
+    const std::complex<double> intmMismatch = std::exp(I * _diffBeta0 * ((i-.5) * _dz));
+    const std::complex<double> currMismatch = std::exp(I * _diffBeta0 * ( i     * _dz));
+    const std::complex<double> prevInvMsmch = 1. / prevMismatch;
+    const std::complex<double> intmInvMsmch = 1. / intmMismatch;
+    const std::complex<double> currInvMsmch = 1. / currMismatch;
+    const std::complex<double> prevMismatcho = std::exp(I * _diffBeta0o * ((i- 1) * _dz));
+    const std::complex<double> intmMismatcho = std::exp(I * _diffBeta0o * ((i-.5) * _dz));
+    const std::complex<double> currMismatcho = std::exp(I * _diffBeta0o * ( i     * _dz));
+
+    k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate() *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
+    l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP             *  prevO;
+    k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
+    l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k1);
+    k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
+    l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k2);
+    k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate() * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
+    l4 = (currPolDir * _nlStep   *  currMismatch) * currP             * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
@@ -438,10 +479,10 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     originalTime.row(i) = ifft(originalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionSign * _dz).exp();
+  signalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionSign).exp();
   signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
 
-  originalFreq.row(_nZSteps-1) *= (-0.5i * _dispersionOrig * _dz).exp();
+  originalFreq.row(_nZSteps-1) *= ((-0.5 * I * _dz) * _dispersionOrig).exp();
   originalTime.row(_nZSteps-1)  = ifft(originalFreq.row(_nZSteps-1));
 }
 
@@ -462,7 +503,6 @@ Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_Nonli
     _nZSteps += medium.get()._nZSteps;
   }
 
-  nMedia = inputMedia.size();
   sharedPump = sharePump;
 }
 
@@ -471,7 +511,6 @@ void Cascade::addMedium(_NonlinearMedium& medium) {
   if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
 
-  nMedia += 1;
   media.emplace_back(medium);
 }
 
@@ -519,4 +558,4 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   }
 
   return std::make_pair(std::move(greenC), std::move(greenS));
-};
+}

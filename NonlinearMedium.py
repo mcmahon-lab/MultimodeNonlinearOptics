@@ -6,7 +6,7 @@ class _NonlinearMedium:
   Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
-               beta1=0, beta1s=0, beta3=0, beta3s=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None):
     """
     :param relativeLength: Length of fiber in dispersion lengths, or nonlinear lengths if no dispersion.
@@ -15,11 +15,12 @@ class _NonlinearMedium:
     :param dispLength:     Dispersion length. Must be kept at one or set to np.inf to remove dispersion.
     :param beta2:          Group velocity dispersion of the pump. Must be +/- 1.
     :param beta2s:         Group velocity dispersion of the signal, relative to the pump.
-    :param pulseType:      Pump profile, 0/False for Gaussian or 1/True for Hyperbolic Secant (soliton).
+    :param pulseType:      Pump profile, 0/False for Gaussian, 1/True for Hyperbolic Secant or 3 for Sinc.
     :param beta1:          Group velocity difference for pump relative to simulation window.
     :param beta1s:         Group velocity difference for signal relative to simulation window.
     :param beta3:          Pump third order dispersion.
     :param beta3s:         Signal third order dispersion.
+    :param diffBeta0:      Wave-vector mismatch of the simulated process.
     :param chirp:          Initial chirp for pump pulse.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
@@ -28,16 +29,16 @@ class _NonlinearMedium:
     """
 
     self._checkInput(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                     beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
                      customPump)
-    self.setLengths(relativeLength, nlLength, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s)
+    self._setLengths(relativeLength, nlLength, dispLength, zPrecision)
+    self._resetGrids(tPrecision, tMax)
+    self._setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self.setPump(pulseType, chirp, customPump)
 
 
   def _checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                  beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
+                  beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
                   customPump):
 
     if not isinstance(relativeLength, (int, float)): raise TypeError("relativeLength")
@@ -49,6 +50,7 @@ class _NonlinearMedium:
     if not isinstance(beta1s, (int, float)): raise TypeError("beta1s")
     if not isinstance(beta3,  (int, float)): raise TypeError("beta3")
     if not isinstance(beta3s, (int, float)): raise TypeError("beta3s")
+    if not isinstance(diffBeta0, (int, float)): raise TypeError("diffBeta0")
     if not isinstance(chirp,  (int, float)): raise TypeError("chirp")
     if not isinstance(pulseType, (bool, int)): raise TypeError("pulseType")
     if not isinstance(tMax, int):       raise TypeError("tMax")
@@ -57,7 +59,7 @@ class _NonlinearMedium:
     if not isinstance(customPump, (type(None), np.ndarray)): raise TypeError("customPump")
 
 
-  def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
     # Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = Lds / Lnl
     # The length z is given in units of dispersion length (of pump)
     # The time is given in units of initial width (of pump)
@@ -81,25 +83,25 @@ class _NonlinearMedium:
       if self._DS != 1: raise ValueError("Non unit DS")
 
     # Soliton order
-    self._Nsquared = self._DS / self._NL
-    if self._noDispersion: self._Nsquared = 1
-    if self._noNonlinear:  self._Nsquared = 0
+    _Nsquared = self._DS / self._NL
+    if self._noDispersion: _Nsquared = 1
+    if self._noNonlinear:  _Nsquared = 0
 
     # space resolution
     self._nZSteps = int(zPrecision * self._z / np.min([1, self._DS, self._NL]))
     self._dz = self._z / self._nZSteps
 
     # helper values
-    self._nlStep = 1j * self._Nsquared * self._dz
+    self._nlStep = 1j * _Nsquared * self._dz
 
     # Reset grids -- skip during construction
-    try:
-      self.resetGrids()
-    except AttributeError:
-      pass
+    # try:
+    #   self._resetGrids()
+    # except AttributeError:
+    #   pass
 
 
-  def resetGrids(self, nFreqs=None, tMax=None):
+  def _resetGrids(self, nFreqs=None, tMax=None):
 
     # time windowing and resolution
     if nFreqs is not None:
@@ -116,10 +118,10 @@ class _NonlinearMedium:
       self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
 
       # Reset dispersion and pulse
-      try:
-        self.setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1)
-      except AttributeError:
-        pass
+      # try:
+      #   self._setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
+      # except AttributeError:
+      #   pass
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
@@ -128,7 +130,7 @@ class _NonlinearMedium:
     self.signalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
+  def _setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
 
     # positive or negative dispersion for pump (ie should be +/- 1), relative dispersion for signal
     self._beta2  = beta2
@@ -141,6 +143,9 @@ class _NonlinearMedium:
     # third order dispersion (relative to beta2 and pulse width, unless beta2 is zero, then should be +/- 1)
     self._beta3  = beta3
     self._beta3s = beta3s
+
+    # signal phase mis-match
+    self._diffBeta0 = diffBeta0
 
     if abs(self._beta2) != 1 and not self._noDispersion:
       if self._beta2 != 0 or abs(self._beta3) != 1:
@@ -159,14 +164,17 @@ class _NonlinearMedium:
 
 
   def setPump(self, pulseType=0, chirp=0, customPump=None):
-    # initial time domain envelopes (pick Gaussian or Soliton Hyperbolic Secant or custom)
+    # initial time domain envelopes (pick Gaussian, Hyperbolic Secant or custom, Sinc)
     if customPump is not None:
       if customPump.size != self._nFreqs:
         raise ValueError("Custom pump array length does not match number of frequency/time bins")
       self._env = customPump * np.exp(-0.5j * chirp * self.tau**2)
     else:
-      if pulseType:
+      if pulseType == 1:
         self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
+      if pulseType == 2:
+        self._env = np.sin(self.tau) / self.tau * np.exp(-0.5j * chirp * self.tau**2)
+        self._env[np.isnan(self._env)] = 1
       else:
         self._env = np.exp(-0.5 * self.tau**2 * (1 + 1j * chirp))
 
@@ -182,8 +190,8 @@ class _NonlinearMedium:
     """
     Simulate propagation of signal field
     :param inputProf: Profile of input pulse. Can be time or frequency domain.
-    Note: Frequency domain input is assumed to be "true" frequency with omega as its axis (since there are phase issues
-    associated with FFT on a non-centered array, since FFT considers the center the first and last elements).
+    Note: Frequency domain input is assumed to be "true" frequency with self.omega as its axis
+    (since FFT considers the center frequency as the first and last elements).
     :param inTimeDomain: Specify if input is in frequency or frequency domain. True for time, false for frequency.
     """
     pass
@@ -228,8 +236,19 @@ class _NonlinearMedium:
 
 class Chi3(_NonlinearMedium):
   """
-  Class for numerically simulating the evolution of a classical field in a chi(3) medium with a signal or quantum field.
+  Class for numerically simulating the evolution of a pump and quantum field undergoing self
+  phase modulation in a chi(3) medium.
   """
+  def __init__(self, relativeLength, nlLength, dispLength, beta2, pulseType=0,
+               beta3=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100, customPump=None):
+    __doc__ = _NonlinearMedium.__init__.__doc__
+
+    # same as base class except pump and signal dispersion must be identical, and no zero or first order dispersion
+    super().__init__(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
+                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+
+
   def runPumpSimulation(s):
     __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
@@ -273,7 +292,49 @@ class Chi3(_NonlinearMedium):
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
-class Chi2(_NonlinearMedium):
+class _Chi2(_NonlinearMedium):
+  """
+  Base class for numerically simulating the evolution of a classical field in a chi(2) medium with a signal or quantum field.
+  """
+
+  def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
+               beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
+               customPump=None, poling=None):
+    __doc__ = _NonlinearMedium.__init__.__doc__ + \
+    """
+    :param poling:         Poling profile to simulate, specifying relative domain lengths.
+    """
+
+    super().__init__(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision,
+                     customPump)
+
+    self._setPoling(poling)
+
+
+  def _setPoling(self, poling):
+    if not isinstance(poling, (type(None), np.ndarray, list)): raise TypeError("poling")
+
+    if poling is None or len(poling) <= 1:
+      self.poling = np.ones(self._nZSteps)
+    else:
+      poleDomains = np.cumsum(poling, dtype=np.float64)
+      poleDomains *= self._nZSteps / poleDomains[-1]
+
+      self.poling = np.empty(self._nZSteps)
+      prevInd = 0
+      direction = 1
+      for currInd in poleDomains:
+        if currInd < prevInd: raise ValueError("Poling period too small for simulation resolution")
+        self.poling[prevInd:int(currInd)] = direction
+
+        if int(currInd) < self._nZSteps: # interpolate indices on the boundary
+          self.poling[int(currInd)] = direction * (2 * abs(currInd % 1) - 1)
+
+        direction *= -1
+        prevInd = int(currInd) + 1
+
+
   def runPumpSimulation(s):
     __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
@@ -285,8 +346,13 @@ class Chi2(_NonlinearMedium):
       s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
 
 
+class Chi2PDC(_Chi2):
+  """
+  Class for numerically simulating the evolution of a parametric down-conversion or DOPA process of a pump and signal
+  or quantum field in a chi(2) medium.
+  """
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
-    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    __doc__ = _Chi2.runSignalSimulation.__doc__
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -297,11 +363,16 @@ class Chi2(_NonlinearMedium):
       # Do a Runge-Kutta step for the non-linear propagation
       pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
-      prevConj = np.conj(s.signalTime[i-1, :])
-      k1 = s._nlStep * s.pumpTime[i-1, :] *  prevConj
-      k2 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k1))
-      k3 = s._nlStep * pumpTimeInterp     * (prevConj + np.conj(0.5 * k2))
-      k4 = s._nlStep * s.pumpTime[i,   :] * (prevConj + np.conj(k3))
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
+
+      mismatch = np.exp(1j * s._diffBeta0 * i * s._dz)
+
+      k1 = (prevPolDir * s._nlStep * mismatch) * s.pumpTime[i-1] * np.conj(s.signalTime[i-1])
+      k2 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(s.signalTime[i-1] + 0.5 * k1)
+      k3 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(s.signalTime[i-1] + 0.5 * k2)
+      k4 = (currPolDir * s._nlStep * mismatch) * s.pumpTime[i]   * np.conj(s.signalTime[i-1] + k3)
 
       temp = s.signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
@@ -313,37 +384,48 @@ class Chi2(_NonlinearMedium):
     s.signalTime[-1, :] = ifft(s.signalFreq[-1, :])
 
 
-class Chi2SFG(_NonlinearMedium):
-
+class Chi2SFG(_Chi2):
+  """
+  Class for numerically simulating the evolution of a sum frequency generation process of a pump and two signals
+  or quantum fields in a chi(2) medium.
+  """
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
-               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
-               customPump=None):
-
+               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
+               tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
+    __doc__ = _Chi2.__init__.__doc__ + \
+    """
+    :param nlLengthOrig:   Like nlLength but with respect to the original signal.
+    :param beta1o:         Group velocity difference for original signal relative to simulation window.
+    :param beta3o:         Original signal third order dispersion.
+    :param diffBeta0o:     Wave-vector mismatch of PDC process with the original signal and pump.
+    """
     self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
-                     customPump)
+                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
+                     tPrecision, zPrecision, customPump)
 
-    self.setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
-    self.resetGrids(tPrecision, tMax)
-    self.setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o)
+    self._setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision)
+    self._resetGrids(tPrecision, tMax)
+    self._setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
     self.setPump(pulseType, chirp, customPump)
+    self._setPoling(poling)
 
 
   def _checkInput(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, chirp, tMax, tPrecision, zPrecision,
-                  customPump):
+                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, tMax,
+                  tPrecision, zPrecision, customPump):
 
-    _NonlinearMedium._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                                 beta1, beta1s, beta3, beta3s, chirp, tMax, tPrecision, zPrecision,
-                                 customPump)
-    if not isinstance(beta2o, (int, float)): raise TypeError("beta2g")
-    if not isinstance(beta1o, (int, float)): raise TypeError("beta1g")
-    if not isinstance(beta3o, (int, float)): raise TypeError("beta3g")
+    _Chi2._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                      beta1, beta1s, beta3, beta3s, diffBeta0o, chirp, tMax, tPrecision, zPrecision,
+                      customPump)
+    if not isinstance(beta2o, (int, float)): raise TypeError("beta2o")
+    if not isinstance(beta1o, (int, float)): raise TypeError("beta1o")
+    if not isinstance(beta3o, (int, float)): raise TypeError("beta3o")
+    if not isinstance(diffBeta0o, (int, float)): raise TypeError("diffBeta0o")
     if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
 
 
-  def setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
-    _NonlinearMedium.setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
+  def _setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision=100):
+    _Chi2._setLengths(self, relativeLength, nlLength, dispLength, zPrecision)
     self._NLo = nlLengthOrig
 
     if self._noDispersion:
@@ -354,17 +436,19 @@ class Chi2SFG(_NonlinearMedium):
       self._nlStepO = 1j * self._DS / nlLengthOrig * self._dz
 
 
-  def resetGrids(self, nFreqs=None, tMax=None):
-    _NonlinearMedium.resetGrids(self, nFreqs, tMax)
+  def _resetGrids(self, nFreqs=None, tMax=None):
+    _Chi2._resetGrids(self, nFreqs, tMax)
     self.originalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
     self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
 
 
-  def setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0):
-    _NonlinearMedium.setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s)
+  def _setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0,
+                    beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0):
+    _Chi2._setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
     self._beta2o = beta2o
     self._beta1o = beta1o
     self._beta3o = beta3o
+    self._diffBeta0o = diffBeta0o
 
     if self._noDispersion:
       self._dispersionOrig = 0
@@ -374,19 +458,8 @@ class Chi2SFG(_NonlinearMedium):
     self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
 
 
-  def runPumpSimulation(s): # TODO make this base class method?
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
-
-    s.pumpFreq[0, :] = fft(s._env)
-    s.pumpTime[0, :] = s._env
-
-    for i in range(1, s._nZSteps):
-      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
-      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
-
-
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
-    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    __doc__ = _Chi2.runSignalSimulation.__doc__
     ## NOTE: Takes as input the signal in the first frequency and outputs in the second frequency
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
@@ -402,25 +475,29 @@ class Chi2SFG(_NonlinearMedium):
       pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
       conjPumpInterpTime = np.conj(pumpTimeInterp)
-      # prevConjSign = np.conj(s.signalTime[i-1])
 
-      k1 = s._nlStepO * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]
-      l1 = s._nlStep  * s.pumpTime[i-1]          *  s.originalTime[i-1]
-      k2 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1)
-      l2 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
-      k3 = s._nlStepO * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2)
-      l3 = s._nlStep  * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
-      k4 = s._nlStepO * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)
-      l4 = s._nlStep  * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
-      # k1 = s._nlStepO * (np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + s.pumpTime[i-1] * s.originalTime[i-1])
-      # l1 = s._nlStep  * s.pumpTime[i-1]           *  s.originalTime[i-1]
-      # k2 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k1))
-      # l2 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k1)
-      # k3 = s._nlStepO * (conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2) + pumpTimeInterp  * (s.originalTime[i-1] + 0.5 * k2))
-      # l3 = s._nlStep  * pumpTimeInterp            * (s.originalTime[i-1] + 0.5 * k2)
-      # k4 = s._nlStepO * (np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)       + s.pumpTime[i]   * (s.originalTime[i-1] + k3))
-      # l4 = s._nlStep  * s.pumpTime[i]             * (s.originalTime[i-1] + k3)
+      prevMismatch = np.exp(1j * s._diffBeta0 * (i- 1) * s._dz)
+      intmMismatch = np.exp(1j * s._diffBeta0 * (i-.5) * s._dz)
+      currMismatch = np.exp(1j * s._diffBeta0 *  i     * s._dz)
+      prevInvMsmch = 1 / prevMismatch
+      intmInvMsmch = 1 / intmMismatch
+      currInvMsmch = 1 / currMismatch
+      prevMismatcho = np.exp(1j * s._diffBeta0o * (i- 1) * s._dz)
+      intmMismatcho = np.exp(1j * s._diffBeta0o * (i-.5) * s._dz)
+      currMismatcho = np.exp(1j * s._diffBeta0o *  i     * s._dz)
+
+      k1 = (prevPolDir * s._nlStepO) * (prevInvMsmch  * np.conj(s.pumpTime[i-1]) *  s.signalTime[i-1]               + prevMismatcho * s.pumpTime[i-1] * np.conj(s.originalTime[i-1]))
+      l1 = (prevPolDir * s._nlStep   *  prevMismatch) * s.pumpTime[i-1]          *  s.originalTime[i-1]
+      k2 = (intmPolDir * s._nlStepO) * (intmInvMsmch  * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l1) + intmMismatcho * pumpTimeInterp  * np.conj(s.originalTime[i-1] + 0.5 * k1))
+      l2 = (intmPolDir * s._nlStep   *  intmMismatch) * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k1)
+      k3 = (intmPolDir * s._nlStepO) * (intmInvMsmch  * conjPumpInterpTime       * (s.signalTime[i-1]   + 0.5 * l2) + intmMismatcho * pumpTimeInterp  * np.conj(s.originalTime[i-1] + 0.5 * k2))
+      l3 = (intmPolDir * s._nlStep   *  intmMismatch) * pumpTimeInterp           * (s.originalTime[i-1] + 0.5 * k2)
+      k4 = (currPolDir * s._nlStepO) * (currInvMsmch  * np.conj(s.pumpTime[i])   * (s.signalTime[i-1]   + l3)       + currMismatcho * s.pumpTime[i]   * np.conj(s.originalTime[i-1] + k3))
+      l4 = (currPolDir * s._nlStep   *  currMismatch) * s.pumpTime[i]            * (s.originalTime[i-1] + k3)
 
       tempOrig = s.originalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
       tempSign = s.signalTime[i-1]   + (l1 + 2 * l2 + 2 * l3 + l4) / 6
@@ -441,9 +518,13 @@ class Chi2SFG(_NonlinearMedium):
 
 class Cascade(_NonlinearMedium):
   """
-  Class that cascades multiple media together
+  Class that cascades multiple media together.
   """
   def __init__(self, sharedPump, media):
+    """
+    :param sharedPump: Is the pump shared across media or are they independently pumped.
+    :param media:      Collection of nonlinear media objects.
+    """
 
     if not isinstance(sharedPump, (bool, int)):
       raise TypeError("sharedPump must be boolean")
@@ -472,13 +553,17 @@ class Cascade(_NonlinearMedium):
     # initialize parent class values to null values
     # self._z = self._DS = self._NL = 0
     # self._noDispersion = self._noNonlinear = False
-    # self._Nsquared = self._dz = self._nlStep = 0
+    # self._dz = self._nlStep = 0
     # self.pumpFreq = self.pumpTime = self.signalFreq = self.signalTime = None
     # self._beta2 = self._beta2s = self._beta1 = self._beta1s = self._beta3 = self._beta3s = 0
     # self._dispersionPump = self._dispersionSign = self._dispStepPump = self._dispStepSign = self._env = None
 
 
   def addMedium(self, medium):
+    """
+    Append medium
+    :param medium: Additional medium to append to cascaded process.
+    """
     if not isinstance(medium, _NonlinearMedium):
       raise TypeError("Argument is not a NonlinearMedium object")
 
@@ -512,15 +597,15 @@ class Cascade(_NonlinearMedium):
       self.media[i].runSignalSimulation(self.media[i-1].signalFreq[-1], inTimeDomain=False)
 
 
-  def setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
     """Invalid"""
     pass
 
-  def resetGrids(self, nFreqs=None, tMax=None):
+  def _resetGrids(self, nFreqs=None, tMax=None):
     """Invalid"""
     pass
 
-  def setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0):
+  def _setDispersion(self, beta2, beta2s, beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0):
     """Invalid"""
     pass
 
@@ -531,7 +616,7 @@ class Cascade(_NonlinearMedium):
   def computeGreensFunction(s, inTimeDomain=False, runPump=True):
     __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
 
-    # TODO for large cascades: option for directly feeding signals to avoid many matrix multiplications
+    # TODO for large cascades or short media: option for directly feeding signals to avoid many matrix multiplications
 
     if runPump: s.runPumpSimulation()
 
