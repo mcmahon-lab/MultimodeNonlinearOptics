@@ -5,10 +5,6 @@
 #include <eigen3/unsupported/Eigen/FFT>
 #include <utility>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
-#include <pybind11/stl.h>
-
 
 // Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
 // Also must specify row-major order for 2D
