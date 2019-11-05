@@ -143,13 +143,13 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 
 
 std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump) {
+  if (runPump) runPumpSimulation();
+
   // Green function matrices
   Array2Dcd greenC;
   Array2Dcd greenS;
   greenC.setZero(_nFreqs, _nFreqs);
   greenS.setZero(_nFreqs, _nFreqs);
-
-  if (runPump) runPumpSimulation();
 
   auto& grid = inTimeDomain ? signalTime : signalFreq;
 

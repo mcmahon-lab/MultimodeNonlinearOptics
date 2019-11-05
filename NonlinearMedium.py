@@ -204,11 +204,11 @@ class _NonlinearMedium:
     :param runPump      Whether to run pump simulation beforehand.
     :return: Green's functions C, S
     """
+    if runPump: s.runPumpSimulation()
+
     # Green function matrices
     greenC = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
     greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
-
-    if runPump: s.runPumpSimulation()
 
     grid = (s.signalTime if inTimeDomain else s.signalFreq)
 
@@ -567,7 +567,7 @@ class Cascade(_NonlinearMedium):
     if not isinstance(medium, _NonlinearMedium):
       raise TypeError("Argument is not a NonlinearMedium object")
 
-    if medium._nFreqs != self.media[0]._nFreqs or medium._tMax != self.media[0]._tMax:
+    if medium._nFreqs != self._nFreqs or medium._tMax != self._tMax:
       ValueError("Medium does not have same time and frequency axes as the first")
 
     self.media.append(medium)
