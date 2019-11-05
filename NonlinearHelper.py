@@ -200,5 +200,10 @@ def basisTransforms(n):
   return toXPTrans, frXPTrans
 
 
-if __name__ == "__main__":
-  print(calculateLengthScales(2, 2000, -20, 0.125, "sech"))
+def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
+  """
+  Combine sucessive a basis C and S Green's kernels.
+  """
+  Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
+  Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
+  return Ctotal, Stotal
