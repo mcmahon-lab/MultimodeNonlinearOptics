@@ -239,6 +239,9 @@ void Chi3::runPumpSimulation() {
 
 
 void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+
   if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
@@ -329,6 +332,9 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 
 
 void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+
   if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
   else
@@ -423,14 +429,31 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
 
 
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
-  if (inTimeDomain)
-    originalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionOrig).exp();
-  else
-    originalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionOrig).exp();
-  originalTime.row(0) = ifft(originalFreq.row(0));
+  if (inputProf.size() == _nFreqs) { // Takes as input the signal in the first frequency and outputs in the second frequency
+    if (inTimeDomain)
+      originalFreq.row(0) = fft(inputProf).array() * ((0.5 * I * _dz) * _dispersionOrig).exp();
+    else
+      originalFreq.row(0) = inputProf * ((0.5 * I * _dz) * _dispersionOrig).exp();
+    originalTime.row(0) = ifft(originalFreq.row(0));
 
-  signalFreq.row(0) = 0;
-  signalTime.row(0) = 0;
+    signalFreq.row(0) = 0;
+    signalTime.row(0) = 0;
+  }
+  else if (inputProf.size() == 2 * _nFreqs) { // input array spanning both frequencies, ordered as signal then original
+    if (inTimeDomain) {
+      signalFreq.row(0)   = fft(inputProf.head(_nFreqs)).array() * ((0.5 * I * _dz) * _dispersionSign).exp();
+      originalFreq.row(0) = fft(inputProf.tail(_nFreqs)).array() * ((0.5 * I * _dz) * _dispersionOrig).exp();
+    }
+    else {
+      signalFreq.row(0)   = inputProf.head(_nFreqs) * ((0.5 * I * _dz) * _dispersionSign).exp();
+      originalFreq.row(0) = inputProf.tail(_nFreqs) * ((0.5 * I * _dz) * _dispersionOrig).exp();
+    }
+    signalTime.row(0)   = ifft(signalFreq.row(0));
+    originalTime.row(0) = ifft(originalFreq.row(0));
+  }
+  else {
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  }
 
   Arraycd interpP(_nFreqs), conjInterpP(_nFreqs);
   Arraycd k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), tempOrig(_nFreqs);
@@ -487,6 +510,54 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 }
 
 
+std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bool runPump) {
+
+  if (runPump) runPumpSimulation();
+
+  // Green function matrices
+  Array2Dcd greenC;
+  Array2Dcd greenS;
+  greenC.setZero(2 * _nFreqs, 2 * _nFreqs);
+  greenS.setZero(2 * _nFreqs, 2 * _nFreqs);
+
+  Arraycd impulse;
+  impulse.setZero(2 * _nFreqs);
+
+  auto& gridSignal   = inTimeDomain ? signalTime : signalFreq;
+  auto& gridOriginal = inTimeDomain ? originalTime : originalFreq;
+
+  // Calculate Green's functions with real and imaginary impulse response
+  // Signal frequency comes first in the kernel, original frequency second
+  for (uint i = 0; i < 2 * _nFreqs; i++) {
+    impulse(i) = 1;
+    runSignalSimulation(impulse, inTimeDomain);
+
+    greenC.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
+    greenC.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
+    greenS.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
+    greenS.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
+
+    impulse(i) = I;
+    runSignalSimulation(impulse, inTimeDomain);
+
+    greenC.row(i).head(_nFreqs) -= (0.5 * I) * gridSignal.bottomRows<1>();
+    greenC.row(i).tail(_nFreqs) -= (0.5 * I) * gridOriginal.bottomRows<1>();
+    greenS.row(i).head(_nFreqs) += (0.5 * I) * gridSignal.bottomRows<1>();
+    greenS.row(i).tail(_nFreqs) += (0.5 * I) * gridOriginal.bottomRows<1>();
+
+    impulse(i) = 0;
+  }
+
+  greenC.transposeInPlace();
+  greenS.transposeInPlace();
+
+  greenC = fftshift(greenC);
+  greenS = fftshift(greenS);
+
+  return std::make_pair(std::move(greenC), std::move(greenS));
+}
+
+
 Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia) {
 
   if (inputMedia.empty())
@@ -532,6 +603,9 @@ void Cascade::runPumpSimulation() {
 
 
 void Cascade::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+
   media[0].get().runSignalSimulation(inputProf, inTimeDomain);
   for (uint i = 1; i < media.size(); i++) {
     media[i].get().runSignalSimulation(media[i-1].get().signalFreq.bottomRows<1>(), false);

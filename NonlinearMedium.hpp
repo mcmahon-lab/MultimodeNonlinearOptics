@@ -135,6 +135,8 @@ public:
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true);
+
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
   const Array2Dcd& getOriginalTime() {return originalTime;};
