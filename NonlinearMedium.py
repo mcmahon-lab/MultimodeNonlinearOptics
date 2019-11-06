@@ -302,8 +302,7 @@ class _Chi2(_NonlinearMedium):
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
                beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None, poling=None):
-    __doc__ = _NonlinearMedium.__init__.__doc__ + \
-    """
+    __doc__ = str(_NonlinearMedium.__init__.__doc__) + """
     :param poling:         Poling profile to simulate, specifying relative domain lengths.
     """
 
@@ -396,7 +395,7 @@ class Chi2SFG(_Chi2):
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
                tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
-    __doc__ = _Chi2.__init__.__doc__ + \
+    __doc__ = str(_Chi2.__init__.__doc__) + \
     """
     :param nlLengthOrig:   Like nlLength but with respect to the original signal.
     :param beta1o:         Group velocity difference for original signal relative to simulation window.
