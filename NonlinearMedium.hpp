@@ -49,7 +49,7 @@ protected:
   inline const RowVectorcd& fft(const RowVectorcd& input);
   inline const RowVectorcd& ifft(const RowVectorcd& input);
   inline Arrayd fftshift(const Arrayd& input);
-  inline Array2Dcd fftshift(const Array2Dcd& input);
+  inline Array2Dcd fftshift2(const Array2Dcd& input);
 
   double _z;  /// length of medium
   double _DS; /// dispersion length

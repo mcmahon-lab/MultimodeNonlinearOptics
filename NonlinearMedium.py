@@ -578,7 +578,20 @@ class Chi2SFG(_Chi2):
     greenC = greenC.T
     greenS = greenS.T
 
-    return fftshift(greenC), fftshift(greenS)
+    # Need to fftshift each frequency block
+    greenC[s._nFreqs:, s._nFreqs:] = fftshift(greenC[s._nFreqs:, s._nFreqs:])
+    greenS[s._nFreqs:, s._nFreqs:] = fftshift(greenS[s._nFreqs:, s._nFreqs:])
+
+    greenC[s._nFreqs:, :s._nFreqs] = fftshift(greenC[s._nFreqs:, :s._nFreqs])
+    greenS[s._nFreqs:, :s._nFreqs] = fftshift(greenS[s._nFreqs:, :s._nFreqs])
+
+    greenC[:s._nFreqs, s._nFreqs:] = fftshift(greenC[:s._nFreqs, s._nFreqs:])
+    greenS[:s._nFreqs, s._nFreqs:] = fftshift(greenS[:s._nFreqs, s._nFreqs:])
+
+    greenC[:s._nFreqs, :s._nFreqs] = fftshift(greenC[:s._nFreqs, :s._nFreqs])
+    greenS[:s._nFreqs, :s._nFreqs] = fftshift(greenS[:s._nFreqs, :s._nFreqs])
+
+    return greenC, greenS
 
 
 class Cascade(_NonlinearMedium):

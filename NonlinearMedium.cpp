@@ -173,8 +173,8 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   greenC.transposeInPlace();
   greenS.transposeInPlace();
 
-  greenC = fftshift(greenC);
-  greenS = fftshift(greenS);
+  greenC = fftshift2(greenC);
+  greenS = fftshift2(greenS);
 
   return std::make_pair(std::move(greenC), std::move(greenS));
 }
@@ -199,7 +199,7 @@ inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
 }
 
 
-inline Array2Dcd _NonlinearMedium::fftshift(const Array2Dcd& input) {
+inline Array2Dcd _NonlinearMedium::fftshift2(const Array2Dcd& input) {
   Array2Dcd out(input.rows(), input.cols());
 
   auto halfCols = input.cols() / 2;
@@ -551,8 +551,18 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
   greenC.transposeInPlace();
   greenS.transposeInPlace();
 
-  greenC = fftshift(greenC);
-  greenS = fftshift(greenS);
+  // Need to fftshift each frequency block
+  greenC.topLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenC.topLeftCorner(_nFreqs, _nFreqs));
+  greenS.topLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenS.topLeftCorner(_nFreqs, _nFreqs));
+
+  greenC.topRightCorner(_nFreqs, _nFreqs) = fftshift2(greenC.topRightCorner(_nFreqs, _nFreqs));
+  greenS.topRightCorner(_nFreqs, _nFreqs) = fftshift2(greenS.topRightCorner(_nFreqs, _nFreqs));
+
+  greenC.bottomLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenC.bottomLeftCorner(_nFreqs, _nFreqs));
+  greenS.bottomLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenS.bottomLeftCorner(_nFreqs, _nFreqs));
+
+  greenC.bottomRightCorner(_nFreqs, _nFreqs) = fftshift2(greenC.bottomRightCorner(_nFreqs, _nFreqs));
+  greenS.bottomRightCorner(_nFreqs, _nFreqs) = fftshift2(greenS.bottomRightCorner(_nFreqs, _nFreqs));
 
   return std::make_pair(std::move(greenC), std::move(greenS));
 }
