@@ -82,43 +82,44 @@ def takagi(N, tol=1e-13, rounding=13):
     (n, m) = N.shape
     if n != m:
         raise ValueError("The input matrix must be square")
+
     error = np.linalg.norm(N - np.transpose(N)) / n
     if error >= tol:
         raise ValueError("The input matrix is not symmetric (error = %f)" % error)
 
     v, l, ws = np.linalg.svd(N)
-    w = np.transpose(np.conjugate(ws))
-    rl = np.round(l, rounding)
+    roundedl = np.round(l, rounding)
 
-    # Generate list with degeneracies
-    result = []
-    for k, g in groupby(rl):
-        result.append(list(g))
+    # Check for degeneracies (sorted in decreasing order)
+    subspace = np.round(roundedl, rounding)
+    degeneracies = np.unique(subspace, return_counts=True)[1][::-1]
+    uniques = degeneracies.size
 
-    # Generate lists containing the columns that correspond to degeneracies
-    kk = 0
-    for k in result:
-        for ind, j in enumerate(k):  # pylint: disable=unused-variable
-            k[ind] = kk
-            kk = kk+1
+    if uniques < n:
+        w = np.transpose(np.conjugate(ws))
 
-    # Generate the lists with the degenerate column subspaces
-    vas = []
-    was = []
-    for i in result:
-        vas.append(v[:, i])
-        was.append(w[:, i])
+        # Generate lists with the degenerate column subspaces
+        vas, was = [None] * uniques, [None] * uniques
+        first = last = 0
+        for i, degen in enumerate(degeneracies):
+            last += degen
+            vas[i] = v[:, first:last]
+            was[i] = w[:, first:last]
+            first = last
 
-    # Generate the matrices qs of the degenerate subspaces
-    qs = []
-    for i in range(len(result)):
-        qs.append(sqrtm(np.transpose(vas[i]) @ was[i]))
+        # Generate the matrices qs of the degenerate subspaces
+        qs = [None] * uniques
+        for i in range(uniques):
+            qs[i] = sqrtm(vas[i].T @ was[i])
 
-    # Construct the Takagi unitary
-    qb = block_diag(*qs)
+        # Construct the Takagi unitary
+        qb = block_diag(*qs)
 
-    U = v @ np.conj(qb)
-    return rl, U
+        U = v @ np.conj(qb)
+        return roundedl, U
+
+    else:
+        return roundedl, v
 
 
 def graph_embed(A, max_mean_photon=1.0, make_traceless=True, tol=1e-6):
@@ -539,8 +540,7 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
     if n != m:
         raise ValueError("The input matrix is not square")
     if n % 2 != 0:
-        raise ValueError(
-            "The input matrix must have an even number of rows/columns")
+        raise ValueError("The input matrix must have an even number of rows/columns")
 
     n = n // 2
     omega = sympmat(n)
@@ -555,44 +555,52 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
 
         # Apply a permutation matrix so that the squeezers appear in the order
         # s_1,...,s_n, 1/s_1,...1/s_n
-        perm = np.array(list(range(0, n)) + list(reversed(range(n, 2*n))))
-
-        pmat = np.identity(2*n)[perm, :]
+        pmat = np.block([[np.identity(n), np.zeros((n, n))],
+                         [np.zeros((n, n)), np.identity(n)[::-1]]])
         ut = uss @ pmat
 
         # Apply a second permutation matrix to permute s
         # (and their corresponding inverses) to get the canonical symplectic form
-        qomega = np.transpose(ut) @ (omega) @ ut
-        st = pmat @ np.diag(ss) @ pmat
+        qomega = np.transpose(ut) @ omega @ ut
 
-        # Identifying degenerate subspaces
-        result = []
-        for _k, g in groupby(np.round(np.diag(st), rounding)[:n]):
-            result.append(list(g))
-
-        stop_is = list(np.cumsum([len(res) for res in result]))
-        start_is = [0] + stop_is[:-1]
+        # Identify degenerate subspaces (values sorted in decreasing order)
+        subspace = np.round(ss[:n], rounding)
+        degeneracies = np.unique(subspace, return_counts=True)[1][::-1]
+        uniques = degeneracies.size
 
         # Rotation matrices (not permutations) based on svd.
         # See Appendix B2 of Serafini's book for more details.
-        u_list, v_list = [], []
+        u_list, v_list = [None] * uniques, [None] * uniques
 
-        for start_i, stop_i in zip(start_is, stop_is):
-            x = qomega[start_i: stop_i, n + start_i: n + stop_i].real
-            u_svd, _s_svd, v_svd = np.linalg.svd(x)
-            u_list = u_list + [u_svd]
-            v_list = v_list + [v_svd.T]
+        if uniques < n:
+            first = last = 0
+            for i, degen in enumerate(degeneracies):
+                last += degen
+                if degen > 1:
+                    u_svd, _, v_svd = np.linalg.svd(qomega[first:last, n+first:n+last].real)
+                    u_list[i] = u_svd
+                    v_list[i] = v_svd.T
+                else:
+                    u_list[i] = np.sign(qomega[first, n+first])
+                    v_list[i] = 1
 
-        pmat1 = block_diag(*(u_list + v_list))
+                first = last
 
-        st1 = pmat1.T @ pmat @ np.diag(ss) @ pmat @ pmat1
-        ut1 = uss @ pmat @ pmat1
+            pmat1 = block_diag(*(u_list + v_list))
+
+        else:
+            pmat1 = np.block([[np.diag(np.sign(qomega[:n, n:].real.diagonal())), np.zeros((n, n))],
+                              [np.zeros((n, n)), np.eye(n)]])
+
+        permutation = pmat @ pmat1
+        st1 = permutation.T @ np.diag(ss) @ permutation
+        ut1 = uss @ permutation
         v1 = np.transpose(ut1) @ u
 
     else:
         ut1 = S
-        st1 = np.eye(2*n)
-        v1 = np.eye(2*n)
+        st1 = np.eye(2 * n)
+        v1 = np.eye(2 * n)
 
     return ut1.real, st1.real, v1.real
 
