@@ -1,3 +1,7 @@
+#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
+#include <pybind11/stl.h>
+
 #include "NonlinearMedium.hpp"
 
 // Pybind11 Python binding
@@ -110,6 +114,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFG.def("computeGreensFunction",
               &Chi2SFG::computeGreensFunction, py::return_value_policy::move,
+              "inTimeDomain"_a = false, "runPump"_a = true);
+
+  Chi2SFG.def("computeTotalGreen",
+              &Chi2SFG::computeTotalGreen, py::return_value_policy::move,
               "inTimeDomain"_a = false, "runPump"_a = true);
 
   Chi2SFG.def_property_readonly("pumpFreq", &Chi2SFG::getPumpFreq, py::return_value_policy::reference);

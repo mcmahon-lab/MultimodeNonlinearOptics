@@ -94,12 +94,6 @@ class _NonlinearMedium:
     # helper values
     self._nlStep = 1j * _Nsquared * self._dz
 
-    # Reset grids -- skip during construction
-    # try:
-    #   self._resetGrids()
-    # except AttributeError:
-    #   pass
-
 
   def _resetGrids(self, nFreqs=None, tMax=None):
 
@@ -116,12 +110,6 @@ class _NonlinearMedium:
       # time and frequency axes
       self.tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
       self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
-
-      # Reset dispersion and pulse
-      # try:
-      #   self._setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
-      # except AttributeError:
-      #   pass
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
@@ -204,11 +192,11 @@ class _NonlinearMedium:
     :param runPump      Whether to run pump simulation beforehand.
     :return: Green's functions C, S
     """
+    if runPump: s.runPumpSimulation()
+
     # Green function matrices
     greenC = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
     greenS = np.zeros((s._nFreqs, s._nFreqs), dtype=np.complex64)
-
-    if runPump: s.runPumpSimulation()
 
     grid = (s.signalTime if inTimeDomain else s.signalFreq)
 
@@ -266,6 +254,8 @@ class Chi3(_NonlinearMedium):
 
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+    if inputProf.size != s._nFreqs:
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -300,8 +290,7 @@ class _Chi2(_NonlinearMedium):
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
                beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, tMax=10, tPrecision=512, zPrecision=100,
                customPump=None, poling=None):
-    __doc__ = _NonlinearMedium.__init__.__doc__ + \
-    """
+    __doc__ = str(_NonlinearMedium.__init__.__doc__) + """
     :param poling:         Poling profile to simulate, specifying relative domain lengths.
     """
 
@@ -353,6 +342,8 @@ class Chi2PDC(_Chi2):
   """
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _Chi2.runSignalSimulation.__doc__
+    if inputProf.size != s._nFreqs:
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -392,7 +383,7 @@ class Chi2SFG(_Chi2):
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
                tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
-    __doc__ = _Chi2.__init__.__doc__ + \
+    __doc__ = str(_Chi2.__init__.__doc__) + \
     """
     :param nlLengthOrig:   Like nlLength but with respect to the original signal.
     :param beta1o:         Group velocity difference for original signal relative to simulation window.
@@ -460,15 +451,33 @@ class Chi2SFG(_Chi2):
 
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
     __doc__ = _Chi2.runSignalSimulation.__doc__
-    ## NOTE: Takes as input the signal in the first frequency and outputs in the second frequency
+    if inputProf.size == s._nFreqs:
+      # Takes as input the signal in the first frequency and outputs in the second frequency
+      inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
-    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+      s.originalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionOrig * s._dz)
+      s.originalTime[0, :] = ifft(s.originalFreq[0, :])
 
-    s.originalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionOrig * s._dz)
-    s.originalTime[0, :] = ifft(s.originalFreq[0, :])
+      s.signalFreq[0, :] = 0
+      s.signalTime[0, :] = 0
 
-    s.signalFreq[0, :] = 0
-    s.signalTime[0, :] = 0
+    elif inputProf.size == 2 * s._nFreqs:
+      # input array spanning both frequencies, ordered as signal then original
+      inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+
+      if inTimeDomain:
+        s.signalFreq[0, :]   = fft(inputProf[:s._nFreqs]) * np.exp(0.5j * s._dispersionSign * s._dz)
+        s.originalFreq[0, :] = fft(inputProf[s._nFreqs:]) * np.exp(0.5j * s._dispersionOrig * s._dz)
+
+      else:
+        s.signalFreq[0, :]   = inputProf[:s._nFreqs] * np.exp(0.5j * s._dispersionSign * s._dz)
+        s.originalFreq[0, :] = inputProf[s._nFreqs:] * np.exp(0.5j * s._dispersionOrig * s._dz)
+
+      s.signalTime[0, :]   = ifft(s.signalFreq[0, :])
+      s.originalTime[0, :] = ifft(s.originalFreq[0, :])
+
+    else:
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     for i in range(1, s._nZSteps):
       # Do a Runge-Kutta step for the non-linear propagation
@@ -514,6 +523,63 @@ class Chi2SFG(_Chi2):
 
     s.originalFreq[-1, :] *= np.exp(-0.5j * s._dispersionOrig * s._dz)
     s.originalTime[-1, :] = ifft(s.originalFreq[-1, :])
+
+
+  def computeTotalGreen(s, inTimeDomain=False, runPump=True):
+    """
+    Solve a(L) = C a(0) + S [a(0)]^t for C and S for the combined system of the generated and original signals
+    :param inTimeDomain Compute the Green's function in time or frequency domain.
+    :param runPump      Whether to run pump simulation beforehand.
+    :return: Green's functions C, S for the spectrum including both generated and original signals
+    """
+    if runPump: s.runPumpSimulation()
+
+    # Green function matrices
+    greenC = np.zeros((2 * s._nFreqs, 2 * s._nFreqs), dtype=np.complex64)
+    greenS = np.zeros((2 * s._nFreqs, 2 * s._nFreqs), dtype=np.complex64)
+
+    impulse = np.zeros(2 * s._nFreqs, dtype=np.complex64)
+
+    gridSignal   = (s.signalTime   if inTimeDomain else s.signalFreq)
+    gridOriginal = (s.originalTime if inTimeDomain else s.originalFreq)
+
+    # Calculate Green's functions with real and imaginary impulse response
+    for i in range(2 * s._nFreqs):
+      impulse[i] = 1
+      s.runSignalSimulation(impulse, inTimeDomain)
+
+      greenC[i, :s._nFreqs] += gridSignal[-1]   * 0.5
+      greenC[i, s._nFreqs:] += gridOriginal[-1] * 0.5
+      greenS[i, :s._nFreqs] += gridSignal[-1]   * 0.5
+      greenS[i, s._nFreqs:] += gridOriginal[-1] * 0.5
+
+      impulse[i] = 1j
+      s.runSignalSimulation(impulse, inTimeDomain)
+
+      greenC[i, :s._nFreqs] -= gridSignal[-1]   * 0.5j
+      greenC[i, s._nFreqs:] -= gridOriginal[-1] * 0.5j
+      greenS[i, :s._nFreqs] += gridSignal[-1]   * 0.5j
+      greenS[i, s._nFreqs:] += gridOriginal[-1] * 0.5j
+
+      impulse[i] = 0
+
+    greenC = greenC.T
+    greenS = greenS.T
+
+    # Need to fftshift each frequency block
+    greenC[s._nFreqs:, s._nFreqs:] = fftshift(greenC[s._nFreqs:, s._nFreqs:])
+    greenS[s._nFreqs:, s._nFreqs:] = fftshift(greenS[s._nFreqs:, s._nFreqs:])
+
+    greenC[s._nFreqs:, :s._nFreqs] = fftshift(greenC[s._nFreqs:, :s._nFreqs])
+    greenS[s._nFreqs:, :s._nFreqs] = fftshift(greenS[s._nFreqs:, :s._nFreqs])
+
+    greenC[:s._nFreqs, s._nFreqs:] = fftshift(greenC[:s._nFreqs, s._nFreqs:])
+    greenS[:s._nFreqs, s._nFreqs:] = fftshift(greenS[:s._nFreqs, s._nFreqs:])
+
+    greenC[:s._nFreqs, :s._nFreqs] = fftshift(greenC[:s._nFreqs, :s._nFreqs])
+    greenS[:s._nFreqs, :s._nFreqs] = fftshift(greenS[:s._nFreqs, :s._nFreqs])
+
+    return greenC, greenS
 
 
 class Cascade(_NonlinearMedium):
@@ -567,7 +633,7 @@ class Cascade(_NonlinearMedium):
     if not isinstance(medium, _NonlinearMedium):
       raise TypeError("Argument is not a NonlinearMedium object")
 
-    if medium._nFreqs != self.media[0]._nFreqs or medium._tMax != self.media[0]._tMax:
+    if medium._nFreqs != self._nFreqs or medium._tMax != self._tMax:
       ValueError("Medium does not have same time and frequency axes as the first")
 
     self.media.append(medium)
@@ -591,6 +657,9 @@ class Cascade(_NonlinearMedium):
 
   def runSignalSimulation(self, inputProf, inTimeDomain=True):
     __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
+
+    if inputProf.size != self._nFreqs:
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     self.media[0].runSignalSimulation(inputProf, inTimeDomain)
     for i in range(1, len(self.media)):

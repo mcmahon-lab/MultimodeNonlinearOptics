@@ -5,10 +5,6 @@
 #include <eigen3/unsupported/Eigen/FFT>
 #include <utility>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/eigen.h>
-#include <pybind11/stl.h>
-
 
 // Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
 // Also must specify row-major order for 2D
@@ -53,7 +49,7 @@ protected:
   inline const RowVectorcd& fft(const RowVectorcd& input);
   inline const RowVectorcd& ifft(const RowVectorcd& input);
   inline Arrayd fftshift(const Arrayd& input);
-  inline Array2Dcd fftshift(const Array2Dcd& input);
+  inline Array2Dcd fftshift2(const Array2Dcd& input);
 
   double _z;  /// length of medium
   double _DS; /// dispersion length
@@ -139,6 +135,8 @@ public:
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true);
+
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
   const Array2Dcd& getOriginalTime() {return originalTime;};
