@@ -94,12 +94,6 @@ class _NonlinearMedium:
     # helper values
     self._nlStep = 1j * _Nsquared * self._dz
 
-    # Reset grids -- skip during construction
-    # try:
-    #   self._resetGrids()
-    # except AttributeError:
-    #   pass
-
 
   def _resetGrids(self, nFreqs=None, tMax=None):
 
@@ -116,12 +110,6 @@ class _NonlinearMedium:
       # time and frequency axes
       self.tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
       self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
-
-      # Reset dispersion and pulse
-      # try:
-      #   self._setDispersion(self._beta2, self._beta2s, self._beta1, self._beta1, self._diffBeta0)
-      # except AttributeError:
-      #   pass
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
