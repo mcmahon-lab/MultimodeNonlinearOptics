@@ -102,6 +102,7 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   covMatrix[1,1] = localOscillP.T @ C @ localOscillP
   covMatrix[0,1] = covMatrix[1,0] = ((localOscillX + localOscillP).T @ C @ (localOscillX + localOscillP)
                                      - covMatrix[0,0] - covMatrix[1,1]) / 2
+  # more efficient version of (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
 
   variances = np.linalg.eigvals(covMatrix)
 

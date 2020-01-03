@@ -159,7 +159,7 @@ class _NonlinearMedium:
     else:
       if pulseType == 1:
         self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
-      if pulseType == 2:
+      elif pulseType == 2:
         self._env = np.sin(self.tau) / self.tau * np.exp(-0.5j * chirp * self.tau**2)
         self._env[np.isnan(self._env)] = 1
       else:
