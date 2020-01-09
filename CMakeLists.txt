@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 # Cmake module path for finding nonstandard libraries
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
-# Eigen
-include_directories(/usr/include/eigen3)
+# Eigen (might be located in various places)
+include_directories(/usr/include/eigen3 /usr/local/include/eigen3)
 
 # FFTW (optional)
 find_package(FFTW QUIET)

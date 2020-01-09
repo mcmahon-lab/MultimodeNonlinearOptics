@@ -7,9 +7,11 @@ Currently the code supports a few chi(2) and chi(3) processes, 1 dimensional pro
 This includes dispersion and nonlinear effects for arbitrary pump/signal shapes.
 Higher dimensions and decoherence processes may be added as needed.
 
-Two implementations are provided. One is a pure Python implementation with NumPy.
+Two implementations are provided. One is a Python implementation with NumPy.
 The other is a C++ library that can be imported in Python, that must be compiled but runs twice as fast.
-The interface to the C++ version is almost identical to the Python implementation. It requires [Pybind11](https://pybind11.readthedocs.io/en/master/) for Python binding and [Eigen](http://eigen.tuxfamily.org/) for vectorized operations.
+The interface to the C++ version is almost identical to the Python implementation.
+To compile, it requires [Pybind11](https://pybind11.readthedocs.io/en/master/) for Python binding and [Eigen](http://eigen.tuxfamily.org/) for vectorized operations.
+It will also compile with [fftwhttp://www.fftw.org/) if it is found.
 
 The `NonlinearMedium` (Python) or `nonlinearmedium` (C++) modules contain the classes for simulating propagation based on given parameters.
 The simulations solve the dimensionless propagation equations.
@@ -24,7 +26,8 @@ The `NonlinearHelper` module provides functions for analysis routines, for examp
 - homodyne detection and other squeezing related calculations,
 - converting to/from the quadrature and creation bases.
 
-The `decompositions` module is borrowed from [Strawberry Fields](https://strawberryfields.readthedocs.io/) and provides good implementations of matrix decompositions such as Bloch Messiah and Williamson.
+The `decompositions` module is borrowed from [Strawberry Fields](https://strawberryfields.readthedocs.io/) with minor modification and provides good implementations of matrix decompositions such as Takagi, Bloch Messiah and Williamson.
 
-To compile, create a build directory, from inside `cmake .. -DCMAKE_BUILD_TYPE=Release` and `make` (preferablly with some `-j`).
+To compile, create a build directory, from inside `cmake .. -DCMAKE_BUILD_TYPE=Release` and `make` (optionally with `-j`X for speed).
 The binary will be created in the main directory.
+The Python implementation can be used as is.
