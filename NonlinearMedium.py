@@ -105,11 +105,10 @@ class _NonlinearMedium:
 
     if not all(v is None for v in (nFreqs, tMax)):
       Nt = self._nFreqs
-      dt = 2 * self._tMax / Nt
 
       # time and frequency axes
-      self.tau = ifftshift(np.arange(-Nt / 2, Nt / 2) * dt)
-      self.omega = np.pi / self._tMax * fftshift(np.arange(-self._nFreqs / 2, self._nFreqs / 2))
+      self.tau = (-2 * self._tMax / Nt) * ifftshift(np.arange(-Nt // 2, Nt // 2))
+      self.omega = (-np.pi / self._tMax) * fftshift(np.arange(-Nt // 2, Nt // 2))
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex64)
@@ -160,7 +159,7 @@ class _NonlinearMedium:
     else:
       if pulseType == 1:
         self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
-      if pulseType == 2:
+      elif pulseType == 2:
         self._env = np.sin(self.tau) / self.tau * np.exp(-0.5j * chirp * self.tau**2)
         self._env[np.isnan(self._env)] = 1
       else:

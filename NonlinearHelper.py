@@ -102,6 +102,7 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   covMatrix[1,1] = localOscillP.T @ C @ localOscillP
   covMatrix[0,1] = covMatrix[1,0] = ((localOscillX + localOscillP).T @ C @ (localOscillX + localOscillP)
                                      - covMatrix[0,0] - covMatrix[1,1]) / 2
+  # more efficient version of (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
 
   variances = np.linalg.eigvals(covMatrix)
 
@@ -207,3 +208,17 @@ def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
   Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
   return Ctotal, Stotal
+
+
+def linearPoling(kMin, kMax, L, dL):
+  """
+  Create a poling design that has linearly increasing phase matching, up to a given resolution
+  This is done by defining an instantaneous (spatial frequency) that varies linearly in z
+  """
+  z = np.linspace(dL / 2, L + dL / 2, round(L / dL))
+  polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
+  polingDirection[polingDirection == 0.] = 1. # TODO improve how we correct for 0
+
+  p = np.concatenate([[0.], polingDirection, [0.]])
+  polingProfile = np.diff(np.where(p[:-1] != p[1:]))
+  return polingProfile.flatten()

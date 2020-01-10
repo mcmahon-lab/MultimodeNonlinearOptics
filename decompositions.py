@@ -42,8 +42,6 @@ Code details
 
 """
 
-from itertools import groupby
-
 import numpy as np
 from scipy.linalg import block_diag, sqrtm, polar, schur
 
