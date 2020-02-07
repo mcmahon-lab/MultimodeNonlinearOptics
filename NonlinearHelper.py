@@ -179,22 +179,22 @@ def blochMessiahVecs(Z):
   Obtain the full Bloch-Messiah decomposition.
   Less robust than version in decompositions.py; does not work well with degeneracies.
   """
-  sigma = sqrtm(Z @ Z.T)
-  eigenvalues, eigenvectors = eig(sigma)
+  polar = sqrtm(Z @ Z.T)
+  diagonal, leftVectors = eig(polar)
 
-  indices = np.argsort(eigenvalues)
+  indices = np.argsort(diagonal)
   N = Z.shape[0] // 2
   indices = np.concatenate([indices[-1:-N-1:-1], indices[:N]])
 
-  sortedEig = eigenvalues[indices].real
-  sortedVec = eigenvectors[:, indices]
+  sortedDiagonal = diagonal[indices].real
+  sortedLeftVecs = leftVectors[:, indices]
 
-  u = inv(sigma) @ Z
-  eigenvectors_ = eigenvectors.T @ u
+  polarUnitary = inv(polar) @ Z
+  rightVectors = leftVectors.T @ polarUnitary
 
-  sortedVec_ = eigenvectors_[indices]
+  sortedRightVecs = rightVectors[indices]
 
-  return sortedEig, sortedVec, sortedVec_
+  return sortedDiagonal, sortedLeftVecs, sortedRightVecs
 
 
 def convertGreenFreqToTime(greenC, greenS):

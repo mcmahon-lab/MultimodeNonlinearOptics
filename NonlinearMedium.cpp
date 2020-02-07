@@ -527,7 +527,7 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
   auto& gridOriginal = inTimeDomain ? originalTime : originalFreq;
 
   // Calculate Green's functions with real and imaginary impulse response
-  // Signal frequency comes first in the kernel, original frequency second
+  // Signal frequency comes first in the matrix, original frequency second
   for (uint i = 0; i < 2 * _nFreqs; i++) {
     impulse(i) = 1;
     runSignalSimulation(impulse, inTimeDomain);
