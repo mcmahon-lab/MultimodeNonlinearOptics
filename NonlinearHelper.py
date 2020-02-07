@@ -222,3 +222,12 @@ def linearPoling(kMin, kMax, L, dL):
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
   return polingProfile.flatten()
+
+
+def incoherentPowerGreens(Z):
+  """
+  Convert a Green's kernel in the quadrature basis into one for incoherent light.
+  Note: output is a linear transformation for power.
+  """
+  N = Z.shape[0] // 2
+  return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
