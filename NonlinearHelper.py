@@ -108,8 +108,8 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   else:
     freqDomain = fftshift(pumpProf)
 
-  localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
-  localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / np.linalg.norm(freqDomain)
+  localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / norm(freqDomain)
+  localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / norm(freqDomain)
 
   covMatrix = np.zeros((2, 2))
   covMatrix[0,0] = localOscillX.T @ C @ localOscillX
@@ -118,7 +118,7 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
                                      - covMatrix[0,0] - covMatrix[1,1]) / 2
   # more efficient version of (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
 
-  variances = np.linalg.eigvals(covMatrix)
+  variances = eigvals(covMatrix)
 
   assert abs(covMatrix[0,0] - 1) < tol, "C_xx = %f" % covMatrix[0,0]
 
@@ -158,7 +158,7 @@ def obtainFrequencySqueezing(C, bandSize=1):
     covMatrix[1,0] = C[nFreqs + i, i]
     covMatrix[1,1] = C[nFreqs + i, nFreqs + i]
 
-    variances = np.linalg.eigvals(covMatrix)
+    variances = eigvals(covMatrix)
     squeezing[i], antisqueezing[i] = np.min(variances), np.max(variances)
 
   return squeezing, antisqueezing
