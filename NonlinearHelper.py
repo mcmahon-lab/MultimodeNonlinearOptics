@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
-from scipy.linalg import det, sqrtm, inv, eig, norm, dft
+from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm, dft
 
 
 def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None):
@@ -169,7 +169,7 @@ def blochMessiahEigs(Z):
   Obtain the Bloch-Messiah principal values (supermode uncertainties).
   """
   sigma = sqrtm(Z @ Z.T)
-  eigenvalues, eigenvectors = eig(sigma)
+  eigenvalues = eigvals(sigma)
 
   sortedEig = np.sort(eigenvalues).real
   return sortedEig
@@ -182,10 +182,12 @@ def blochMessiahVecs(Z):
   sigma = sqrtm(Z @ Z.T)
   eigenvalues, eigenvectors = eig(sigma)
 
-  indices = np.argsort(eigenvalues, )
+  indices = np.argsort(eigenvalues)
+  N = Z.shape[0] // 2
+  indices = np.concatenate([indices[-1:-N-1:-1], indices[:N]])
 
   sortedEig = eigenvalues[indices].real
-  sortedVec = eigenvectors[indices]
+  sortedVec = eigenvectors[:, indices]
 
   u = inv(sigma) @ Z
   eigenvectors_ = eigenvectors.T @ u
