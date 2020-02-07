@@ -69,6 +69,10 @@ def calculateChi3NlLength(gamma, peakPower):
 
 
 def calcQuadratureGreens(greenC, greenS):
+  """
+  Convert the Green's (transmission) matrix to the x and p quadrature basis from the a basis
+  greenC and greenS are such that a_out = C a + S a^†:
+  """
   Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
                 [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
 
@@ -76,6 +80,10 @@ def calcQuadratureGreens(greenC, greenS):
 
 
 def calcCovarianceMtx(Z, tol=1e-4):
+  """
+  Calculate the covariance matrix in x/p quadrature basis from the transmission Green's matrix.
+  Checks that the determinant of the covariance matrix is approximately unity.
+  """
   cov = Z @ Z.T
   determinant = det(cov)
   assert abs(determinant - 1) < tol, "det(C) = %f" % determinant
@@ -83,12 +91,18 @@ def calcCovarianceMtx(Z, tol=1e-4):
 
 
 def normalizedCov(Cov):
+  """
+  Return a "normalized" covariance matrix to highlight differences from the identity.
+  """
   diagC = np.diag(Cov)
   normC = np.tile(diagC, (diagC.shape[0], 1))
   return (Cov - np.eye(Cov.shape[0])) / np.sqrt(normC * normC.T)
 
 
 def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
+  """
+  Compute the squeezing observed combining the covariance matrix and a local oscillator with a given profile.
+  """
   if inTimeDomain:
     freqDomain = fftshift(fft(pumpProf))
   else:
@@ -113,6 +127,9 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
 
 
 def downSampledCov(Z, perBin):
+  """
+  Downsample a covariance matrix by grouping modes together.
+  """
   N = Z.shape[0]
   assert N // 2 % perBin == 0
 
@@ -125,6 +142,9 @@ def downSampledCov(Z, perBin):
 
 
 def obtainFrequencySqueezing(C, bandSize=1):
+  """
+  Calculate squeezing as a function of frequency (single frequency LO).
+  """
 
   nFreqs = C.shape[0] // 2
   covMatrix = np.zeros((2, 2))
@@ -144,8 +164,10 @@ def obtainFrequencySqueezing(C, bandSize=1):
   return squeezing, antisqueezing
 
 
-# simpler version than Xanadu
 def blochMessiahEigs(Z):
+  """
+  Obtain the Bloch-Messiah principal values (supermode uncertainties).
+  """
   sigma = sqrtm(Z @ Z.T)
   eigenvalues, eigenvectors = eig(sigma)
 
@@ -153,6 +175,10 @@ def blochMessiahEigs(Z):
   return sortedEig
 
 def blochMessiahVecs(Z):
+  """
+  Obtain the full Bloch-Messiah decomposition.
+  Less robust than version in decompositions.py; does not work well with degeneracies.
+  """
   sigma = sqrtm(Z @ Z.T)
   eigenvalues, eigenvectors = eig(sigma)
 
@@ -170,6 +196,9 @@ def blochMessiahVecs(Z):
 
 
 def convertGreenFreqToTime(greenC, greenS):
+  """
+  Convert Green's matrix from frequency to time domain
+  """
   # TODO might need some transposition steps doesn't seem 100% correct
   nFreqs = greenC.shape[0]
   dftMat = np.conj(dft(nFreqs))
@@ -203,7 +232,7 @@ def basisTransforms(n):
 
 def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   """
-  Combine sucessive a basis C and S Green's kernels.
+  Combine successive a basis C and S Green's matrices.
   """
   Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
   Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
@@ -226,7 +255,7 @@ def linearPoling(kMin, kMax, L, dL):
 
 def incoherentPowerGreens(Z):
   """
-  Convert a Green's kernel in the quadrature basis into one for incoherent light.
+  Convert a Green's matrix in the quadrature basis into one for incoherent light.
   Note: output is a linear transformation for power.
   """
   N = Z.shape[0] // 2
