@@ -107,7 +107,7 @@ class _NonlinearMedium:
       Nt = self._nFreqs
 
       # time and frequency axes
-      self.tau = (-2 * self._tMax / Nt) * ifftshift(np.arange(-Nt // 2, Nt // 2))
+      self.tau = (2 * self._tMax / Nt) * ifftshift(np.arange(-Nt // 2, Nt // 2))
       self.omega = (-np.pi / self._tMax) * fftshift(np.arange(-Nt // 2, Nt // 2))
 
     # Grids for PDE propagation

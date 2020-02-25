@@ -68,7 +68,7 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
     int Nt = _nFreqs;
 
     // time and frequency axes
-    _tau = -2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _tau = fftshift(_tau);
     _omega = -M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
     _omega = fftshift(_omega);
