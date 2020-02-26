@@ -255,6 +255,24 @@ def linearPoling(kMin, kMax, L, dL):
   return polingProfile.flatten()
 
 
+def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
+                           beta1a=0, beta2a=0, beta3a=0,
+                           beta1b=0, beta2b=0, beta3b=0,
+                           beta1c=0, beta2c=0, beta3c=0):
+  """
+  Estimate the range of wavenumber mismatch of a three-wave mixing process over some bandwidth.
+  """
+  assert abs(sign1) == 1 and abs(sign2) == 1, "Sign must be +/-1"
+  disp = lambda b1, b2, b3, w: b1 * w + 0.5 * b2 * w**2 + 1/6 * b3 * w**3
+  mismatch = dbeta0 + disp(beta1a, beta2a, beta3a, omega) \
+            + sign1 * disp(beta1b, beta2b, beta3b, omega) \
+            + sign2 * disp(beta1c, beta2c, beta3c, omega)
+
+  maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
+  mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  return mindk, maxdk
+
+
 def incoherentPowerGreens(Z):
   """
   Convert a Green's matrix in the quadrature basis into one for incoherent light.
@@ -262,3 +280,19 @@ def incoherentPowerGreens(Z):
   """
   N = Z.shape[0] // 2
   return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
+
+
+def parametricFluorescence(modes, diag):
+  """
+  Given decomposition of a transmission matrix in the complex frequency domain, predict observed parametric fluorescence.
+  """
+  incoherent = np.sum(np.abs(modes)**2 * np.sinh(np.log(diag[:, np.newaxis]))**2, axis=0)
+  coherent   = np.abs(np.sum(modes * np.sinh(np.log(diag[:, np.newaxis])), axis=0))**2
+  return incoherent, coherent
+
+
+def effectiveAdjacencyMatrix(modes, diag):
+  """
+  Given decomposition of a transmission matrix in the complex frequency domain, find the effective GBS adjacency matrix.
+  """
+  return modes.T @ np.diag(np.tanh(np.abs(np.log(diag)))) @ modes
