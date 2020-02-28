@@ -1,6 +1,7 @@
 #include "NonlinearMedium.hpp"
 #include <stdexcept>
 #include <limits>
+#include <thread>
 
 inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
 
@@ -142,32 +143,60 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump) {
+void _NonlinearMedium::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
+}
+
+
+std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads) {
   if (runPump) runPumpSimulation();
 
-  // Green function matrices
+  // Green function matrices -- Note: hopefully large enough to avoid dirtying cache?
   Array2Dcd greenC;
   Array2Dcd greenS;
   greenC.setZero(_nFreqs, _nFreqs);
   greenS.setZero(_nFreqs, _nFreqs);
 
-  auto& grid = inTimeDomain ? signalTime : signalFreq;
+  // run n-1 separate threads, run part on this process
+  std::vector<std::thread> threads(nThreads - 1);
+
+  // Each thread needs a separate computation grid to avoid interfering with other threads
+  std::vector<Array2Dcd> timeGrids(nThreads - 1);
+  std::vector<Array2Dcd> freqGrids(nThreads - 1);
 
   // Calculate Green's functions with real and imaginary impulse response
-  for (uint i = 0; i < _nFreqs; i++) {
-    grid.row(0) = 0;
-    grid(0, i) = 1;
-    runSignalSimulation(grid.row(0), inTimeDomain);
+  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+    for (uint i = start; i < stop; i++) {
 
-    greenC.row(i) += 0.5 * grid.bottomRows<1>();
-    greenS.row(i) += 0.5 * grid.bottomRows<1>();
+      if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
+      if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
 
-    grid.row(0) = 0;
-    grid(0, i) = 1._I;
-    runSignalSimulation(grid.row(0), inTimeDomain);
+      auto& grid = inTimeDomain ? gridTime : gridFreq;
+      grid.row(0) = 0;
+      grid(0, i) = 1;
+      runSignalSimulation(grid.row(0), inTimeDomain, gridFreq, gridTime);
 
-    greenC.row(i) -= (0.5_I) * grid.bottomRows<1>();
-    greenS.row(i) += (0.5_I) * grid.bottomRows<1>();
+      greenC.row(i) += 0.5 * grid.bottomRows<1>();
+      greenS.row(i) += 0.5 * grid.bottomRows<1>();
+
+      grid.row(0) = 0;
+      grid(0, i) = 1._I;
+      runSignalSimulation(grid.row(0), inTimeDomain, gridFreq, gridTime);
+
+      greenC.row(i) -= (0.5_I) * grid.bottomRows<1>();
+      greenS.row(i) += (0.5_I) * grid.bottomRows<1>();
+    }
+  };
+
+  for (uint i = 1; i < nThreads; i ++) {
+    threads.emplace_back(calcGreensPart, std::ref(freqGrids[i-1]), std::ref(timeGrids[i-1]),
+                         i * _nFreqs / nThreads, (i + 1) * _nFreqs / nThreads);
+  }
+  calcGreensPart(signalFreq, signalTime, 0, _nFreqs / nThreads);
+  for (auto& thread : threads) {
+    if (thread.joinable()) thread.join();
   }
 
   greenC.transposeInPlace();
@@ -238,10 +267,8 @@ void Chi3::runPumpSimulation() {
 }
 
 
-void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
-  if (inputProf.size() != _nFreqs)
-    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
-
+void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                               Array2Dcd& signalFreq, Array2Dcd& signalTime) {
   if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionSign).exp();
   else
@@ -331,10 +358,8 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 }
 
 
-void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
-  if (inputProf.size() != _nFreqs)
-    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
-
+void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
   if (inTimeDomain)
     signalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionSign).exp();
   else
@@ -612,7 +637,7 @@ void Cascade::runPumpSimulation() {
 }
 
 
-void Cascade::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
+void Cascade::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
   if (inputProf.size() != _nFreqs)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
 
@@ -623,7 +648,7 @@ void Cascade::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump) {
+std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads) {
   // Green function matrices
   Array2Dcd greenC;
   Array2Dcd greenS;
@@ -634,7 +659,7 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
 
   Array2Dcd tempC, tempS;
   for (auto& medium : media) {
-    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false);
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads);
     tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
     tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
     greenC.swap(tempC);

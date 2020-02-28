@@ -40,11 +40,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation);
 
-  Chi3.def("runSignalSimulation", &Chi3::runSignalSimulation,
+  Chi3.def("runSignalSimulation", (void (Chi3::*)(Eigen::Ref<const Arraycd>, bool))&Chi3::runSignalSimulation,
            "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi3.def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move,
-           "inTimeDomain"_a = false, "runPump"_a = true);
+           "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi3.def_property_readonly("pumpFreq", &Chi3::getPumpFreq, py::return_value_policy::reference);
   Chi3.def_property_readonly("pumpTime", &Chi3::getPumpTime, py::return_value_policy::reference);
@@ -73,12 +73,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2PDC.def("runPumpSimulation", &Chi2PDC::runPumpSimulation);
 
-  Chi2PDC.def("runSignalSimulation", &Chi2PDC::runSignalSimulation,
+  Chi2PDC.def("runSignalSimulation", (void (Chi2PDC::*)(Eigen::Ref<const Arraycd>, bool))&Chi2PDC::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2PDC.def("computeGreensFunction",
               &Chi2PDC::computeGreensFunction, py::return_value_policy::move,
-              "inTimeDomain"_a = false, "runPump"_a = true);
+              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi2PDC.def_property_readonly("pumpFreq", &Chi2PDC::getPumpFreq, py::return_value_policy::reference);
   Chi2PDC.def_property_readonly("pumpTime", &Chi2PDC::getPumpTime, py::return_value_policy::reference);
@@ -109,12 +109,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFG.def("runPumpSimulation", &Chi2SFG::runPumpSimulation);
 
-  Chi2SFG.def("runSignalSimulation", &Chi2SFG::runSignalSimulation,
+  Chi2SFG.def("runSignalSimulation", (void (Chi2SFG::*)(Eigen::Ref<const Arraycd>, bool))&Chi2SFG::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2SFG.def("computeGreensFunction",
               &Chi2SFG::computeGreensFunction, py::return_value_policy::move,
-              "inTimeDomain"_a = false, "runPump"_a = true);
+              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi2SFG.def("computeTotalGreen",
               &Chi2SFG::computeTotalGreen, py::return_value_policy::move,
@@ -140,12 +140,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
 
-  Cascade.def("runSignalSimulation", &Cascade::runSignalSimulation,
+  Cascade.def("runSignalSimulation", (void (Cascade::*)(Eigen::Ref<const Arraycd>, bool))&Cascade::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Cascade.def("computeGreensFunction",
               &Cascade::computeGreensFunction, py::return_value_policy::move,
-              "inTimeDomain"_a = false, "runPump"_a = true);
+              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Cascade.def("addMedium", &Cascade::addMedium,
               "medium"_a);

@@ -28,8 +28,8 @@ public:
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
 
   virtual void runPumpSimulation() = 0;
-  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) = 0;
-  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
+  virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
+  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
 
   const Array2Dcd& getPumpFreq()   {return pumpFreq;};
   const Array2Dcd& getPumpTime()   {return pumpTime;};
@@ -44,6 +44,8 @@ protected:
   void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
                      double beta3=0, double beta3s=0, double diffBeta0=0);
   _NonlinearMedium() = default;
+  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) = 0;
 
 
   inline const RowVectorcd& fft(const RowVectorcd& input);
@@ -95,7 +97,11 @@ public:
        double beta3=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+  using _NonlinearMedium::runSignalSimulation;
+
+protected:
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
 
@@ -121,7 +127,10 @@ protected:
 class Chi2PDC : public _Chi2 {
 public:
   using _Chi2::_Chi2;
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
+  using _NonlinearMedium::runSignalSimulation;
+protected:
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
 
@@ -134,9 +143,8 @@ public:
           double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
   std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true);
-
+  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
   const Array2Dcd& getOriginalTime() {return originalTime;};
@@ -151,6 +159,9 @@ protected:
   void resetGrids(uint nFreqs=0, double tMax=0) override;
   void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
                      double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
+
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 
   double _beta2o; /// second order dispersion of the original signal's frequency
   double _beta1o; /// group velocity difference for original signal relative to simulation window
@@ -172,8 +183,8 @@ public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
   void addMedium(_NonlinearMedium& medium);
   void runPumpSimulation() override;
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain=true) override;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true);
+  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true) override;
+  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
 
   _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
@@ -192,6 +203,7 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::getPumpTime;
   using _NonlinearMedium::getSignalFreq;
   using _NonlinearMedium::getSignalTime;
+  void runSignalSimulation(const Arraycd&, bool, Array2Dcd&, Array2Dcd&) override {};
 
 protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects
