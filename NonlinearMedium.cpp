@@ -160,20 +160,20 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   greenS.setZero(_nFreqs, _nFreqs);
 
   // run n-1 separate threads, run part on this process
-  std::vector<std::thread> threads(nThreads - 1);
+  std::vector<std::thread> threads;
+  threads.reserve(nThreads - 1);
 
   // Each thread needs a separate computation grid to avoid interfering with other threads
-  std::vector<Array2Dcd> timeGrids(nThreads - 1);
-  std::vector<Array2Dcd> freqGrids(nThreads - 1);
+  std::vector<Array2Dcd> grids(2 * (nThreads - 1));
 
   // Calculate Green's functions with real and imaginary impulse response
   auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+    if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
+    if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
+    auto& grid = inTimeDomain ? gridTime : gridFreq;
+
     for (uint i = start; i < stop; i++) {
 
-      if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
-      if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
-
-      auto& grid = inTimeDomain ? gridTime : gridFreq;
       grid.row(0) = 0;
       grid(0, i) = 1;
       runSignalSimulation(grid.row(0), inTimeDomain, gridFreq, gridTime);
@@ -191,8 +191,8 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   };
 
   for (uint i = 1; i < nThreads; i ++) {
-    threads.emplace_back(calcGreensPart, std::ref(freqGrids[i-1]), std::ref(timeGrids[i-1]),
-                         i * _nFreqs / nThreads, (i + 1) * _nFreqs / nThreads);
+    threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
+                         (i * _nFreqs) / nThreads, ((i + 1) * _nFreqs) / nThreads);
   }
   calcGreensPart(signalFreq, signalTime, 0, _nFreqs / nThreads);
   for (auto& thread : threads) {
@@ -453,27 +453,50 @@ void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double b
 }
 
 
-void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
-  if (inputProf.size() == _nFreqs) { // Takes as input the signal in the first frequency and outputs in the second frequency
+void Chi2SFG::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs && inputProf.size() != 2 * _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
+}
+
+
+void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+
+  // Hack: If we are using grids that are the member variables of the class, then proceed normally.
+  // However if called from computeGreensFunction we need a workaround to use only one grid.
+  const bool usingMemberGrids = (&signalFreq == &this->signalFreq);
+  uint O = 0; // offset
+  if (!usingMemberGrids) {
+    signalFreq.resize(2 * _nZSteps, _nFreqs);
+    signalTime.resize(2 * _nZSteps, _nFreqs);
+    O = _nZSteps;
+  }
+  Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
+  Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalFreq;
+
+  // Takes as input the signal in the first frequency and outputs in the second frequency
+  if (inputProf.size() == _nFreqs) {
     if (inTimeDomain)
       originalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionOrig).exp();
     else
       originalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionOrig).exp();
     originalTime.row(0) = ifft(originalFreq.row(0));
 
-    signalFreq.row(0) = 0;
-    signalTime.row(0) = 0;
+    signalFreq.row(O) = 0;
+    signalTime.row(O) = 0;
   }
-  else if (inputProf.size() == 2 * _nFreqs) { // input array spanning both frequencies, ordered as signal then original
+  // input array spanning both frequencies, ordered as signal then original TODO change order?
+  else if (inputProf.size() == 2 * _nFreqs) {
     if (inTimeDomain) {
-      signalFreq.row(0)   = fft(inputProf.head(_nFreqs)).array() * ((0.5_I * _dz) * _dispersionSign).exp();
+      signalFreq.row(O)   = fft(inputProf.head(_nFreqs)).array() * ((0.5_I * _dz) * _dispersionSign).exp();
       originalFreq.row(0) = fft(inputProf.tail(_nFreqs)).array() * ((0.5_I * _dz) * _dispersionOrig).exp();
     }
     else {
-      signalFreq.row(0)   = inputProf.head(_nFreqs) * ((0.5_I * _dz) * _dispersionSign).exp();
+      signalFreq.row(O)   = inputProf.head(_nFreqs) * ((0.5_I * _dz) * _dispersionSign).exp();
       originalFreq.row(0) = inputProf.tail(_nFreqs) * ((0.5_I * _dz) * _dispersionOrig).exp();
     }
-    signalTime.row(0)   = ifft(signalFreq.row(0));
+    signalTime.row(O)   = ifft(signalFreq.row(O));
     originalTime.row(0) = ifft(originalFreq.row(0));
   }
   else {
@@ -485,7 +508,7 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
   Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempSign(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prevS = signalTime.row(i-1);
+    const auto& prevS = signalTime.row(O+i-1);
     const auto& prevO = originalTime.row(i-1);
     const auto& prevP = pumpTime.row(i-1);
     const auto& currP = pumpTime.row(i);
@@ -517,61 +540,78 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain) {
     l4 = (currPolDir * _nlStep   *  currMismatch) * currP             * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-    tempSign = signalTime.row(i-1)   + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
+    tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
 
     // Dispersion step
-    signalFreq.row(i) = fft(tempSign).array() * _dispStepSign;
-    signalTime.row(i) = ifft(signalFreq.row(i));
+    signalFreq.row(O+i) = fft(tempSign).array() * _dispStepSign;
+    signalTime.row(O+i) = ifft(signalFreq.row(O+i));
 
     originalFreq.row(i) = fft(tempOrig).array() * _dispStepOrig;
     originalTime.row(i) = ifft(originalFreq.row(i));
   }
 
-  signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
+  signalFreq.row(O+_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
+  signalTime.row(O+_nZSteps-1)  = ifft(signalFreq.row(O+_nZSteps-1));
 
   originalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionOrig).exp();
   originalTime.row(_nZSteps-1)  = ifft(originalFreq.row(_nZSteps-1));
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bool runPump) {
+std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bool runPump, uint nThreads) {
 
   if (runPump) runPumpSimulation();
 
-  // Green function matrices
+  // Green function matrices -- Note: hopefully large enough to avoid dirtying cache?
   Array2Dcd greenC;
   Array2Dcd greenS;
   greenC.setZero(2 * _nFreqs, 2 * _nFreqs);
   greenS.setZero(2 * _nFreqs, 2 * _nFreqs);
 
-  Arraycd impulse;
-  impulse.setZero(2 * _nFreqs);
-
-  auto& gridSignal   = inTimeDomain ? signalTime : signalFreq;
-  auto& gridOriginal = inTimeDomain ? originalTime : originalFreq;
+  // run n-1 separate threads, run part on this process
+  std::vector<std::thread> threads;
+  threads.reserve(nThreads - 1);
+  // Each thread needs a separate computation grid to avoid interfering with other threads
+  std::vector<Array2Dcd> grids(2 * (nThreads - 1));
 
   // Calculate Green's functions with real and imaginary impulse response
   // Signal frequency comes first in the matrix, original frequency second
-  for (uint i = 0; i < 2 * _nFreqs; i++) {
-    impulse(i) = 1;
-    runSignalSimulation(impulse, inTimeDomain);
+  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+    auto& grid = inTimeDomain ? gridTime : gridFreq;
+    const auto& gridOriginal = start != 0? grid.topRows(_nZSteps)    : (inTimeDomain? originalTime : originalFreq);
+    const auto& gridSignal   = start != 0? grid.bottomRows(_nZSteps) : (inTimeDomain? signalTime   : signalFreq);
 
-    greenC.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
-    greenC.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
-    greenS.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
-    greenS.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
+    Arraycd impulse;
+    impulse.setZero(2 * _nFreqs);
 
-    impulse(i) = 1._I;
-    runSignalSimulation(impulse, inTimeDomain);
+    for (uint i = start; i < stop; i++) {
+      impulse(i) = 1;
+      runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
 
-    greenC.row(i).head(_nFreqs) -= (0.5_I) * gridSignal.bottomRows<1>();
-    greenC.row(i).tail(_nFreqs) -= (0.5_I) * gridOriginal.bottomRows<1>();
-    greenS.row(i).head(_nFreqs) += (0.5_I) * gridSignal.bottomRows<1>();
-    greenS.row(i).tail(_nFreqs) += (0.5_I) * gridOriginal.bottomRows<1>();
+      greenC.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
+      greenC.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
+      greenS.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
+      greenS.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
 
-    impulse(i) = 0;
+      impulse(i) = 1._I;
+      runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
+
+      greenC.row(i).head(_nFreqs) -= (0.5_I) * gridSignal.bottomRows<1>();
+      greenC.row(i).tail(_nFreqs) -= (0.5_I) * gridOriginal.bottomRows<1>();
+      greenS.row(i).head(_nFreqs) += (0.5_I) * gridSignal.bottomRows<1>();
+      greenS.row(i).tail(_nFreqs) += (0.5_I) * gridOriginal.bottomRows<1>();
+
+      impulse(i) = 0;
+    }
+  };
+
+  for (uint i = 1; i < nThreads; i ++) {
+    threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
+                         (i * 2 * _nFreqs) / nThreads, ((i + 1) * 2 * _nFreqs) / nThreads);
   }
+  calcGreensPart(signalFreq, signalTime, 0, (2 * _nFreqs) / nThreads);
+  for (auto& thread : threads)
+    if (thread.joinable()) thread.join();
 
   greenC.transposeInPlace();
   greenS.transposeInPlace();

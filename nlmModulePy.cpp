@@ -118,7 +118,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFG.def("computeTotalGreen",
               &Chi2SFG::computeTotalGreen, py::return_value_policy::move,
-              "inTimeDomain"_a = false, "runPump"_a = true);
+              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi2SFG.def_property_readonly("pumpFreq", &Chi2SFG::getPumpFreq, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("pumpTime", &Chi2SFG::getPumpTime, py::return_value_policy::reference);

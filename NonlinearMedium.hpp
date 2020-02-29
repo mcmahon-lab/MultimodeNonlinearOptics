@@ -143,7 +143,7 @@ public:
           double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true);
+  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
   void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
 
   const Array2Dcd& getOriginalFreq() {return originalFreq;};
