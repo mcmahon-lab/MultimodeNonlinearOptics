@@ -503,7 +503,7 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
   }
 
-  Arraycd interpP(_nFreqs), conjInterpP(_nFreqs);
+  Arraycd interpP(_nFreqs);
   Arraycd k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), tempOrig(_nFreqs);
   Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempSign(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
@@ -514,7 +514,6 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     const auto& currP = pumpTime.row(i);
 
     interpP = 0.5 * (prevP + currP);
-    conjInterpP = interpP.conjugate();
 
     const double prevPolDir = _poling(i-1);
     const double currPolDir = _poling(i);
@@ -530,14 +529,14 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
     const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
 
-    k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate() *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
-    l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP             *  prevO;
-    k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
-    l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k1);
-    k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * conjInterpP       * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
-    l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP           * (prevO + 0.5 * k2);
-    k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate() * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
-    l4 = (currPolDir * _nlStep   *  currMismatch) * currP             * (prevO + k3);
+    k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate()   *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
+    l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP               *  prevO;
+    k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
+    l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k1);
+    k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
+    l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k2);
+    k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate()   * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
+    l4 = (currPolDir * _nlStep   *  currMismatch) * currP               * (prevO + k3);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
