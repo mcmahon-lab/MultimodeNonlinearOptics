@@ -8,10 +8,10 @@ This includes dispersion and nonlinear effects for arbitrary pump/signal shapes.
 Higher dimensions and decoherence processes may be added as needed.
 
 Two implementations are provided. One is a Python implementation with NumPy.
-The other is a C++ library that can be imported in Python, that must be compiled but runs twice as fast.
+The other is a C++ library that can be imported in Python, that must be compiled but runs significantly faster (x3 for PDC, x20 for SFG).
 The interface to the C++ version is almost identical to the Python implementation.
 To compile, it requires [Pybind11](https://pybind11.readthedocs.io/en/master/) for Python binding and [Eigen](http://eigen.tuxfamily.org/) for vectorized operations.
-It will also compile with [fftwhttp://www.fftw.org/) if it is found.
+It will also compile with [fftw](http://www.fftw.org/) if it is found.
 
 The `NonlinearMedium` (Python) or `nonlinearmedium` (C++) modules contain the classes for simulating propagation based on given parameters.
 The simulations solve the dimensionless propagation equations.
@@ -24,7 +24,7 @@ The `NonlinearHelper` module provides functions for analysis routines, for examp
 - converting to dimensionless quantities,
 - calculating covarience matrices and related quantities,
 - homodyne detection and other squeezing related calculations,
-- converting to/from the quadrature and creation bases.
+- converting to/from the quadrature and creation operator bases.
 
 The `decompositions` module is borrowed from [Strawberry Fields](https://strawberryfields.readthedocs.io/) with minor modification and provides good implementations of matrix decompositions such as Takagi, Bloch Messiah and Williamson.
 
