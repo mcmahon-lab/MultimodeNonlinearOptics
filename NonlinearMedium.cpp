@@ -161,6 +161,10 @@ void _NonlinearMedium::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, 
 
 
 std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads) {
+
+  if (nThreads > _nFreqs)
+    throw std::invalid_argument("Too many threads requested!");
+
   if (runPump) runPumpSimulation();
 
   // Green function matrices -- Note: hopefully large enough to avoid dirtying cache?
@@ -566,6 +570,9 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 
 
 std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bool runPump, uint nThreads) {
+
+  if (nThreads > 2 * _nFreqs)
+    throw std::invalid_argument("Too many threads requested!");
 
   if (runPump) runPumpSimulation();
 
