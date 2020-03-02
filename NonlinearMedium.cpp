@@ -200,7 +200,7 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     }
   };
 
-  for (uint i = 1; i < nThreads; i ++) {
+  for (uint i = 1; i < nThreads; i++) {
     threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
                          (i * _nFreqs) / nThreads, ((i + 1) * _nFreqs) / nThreads);
   }
@@ -473,14 +473,13 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
   // Hack: If we are using grids that are the member variables of the class, then proceed normally.
   // However if called from computeGreensFunction we need a workaround to use only one grid.
   const bool usingMemberGrids = (&signalFreq == &this->signalFreq);
-  uint O = 0; // offset
+  const uint O = usingMemberGrids? 0 : _nZSteps; // offset
+  Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
+  Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalTime;
   if (!usingMemberGrids) {
     signalFreq.resize(2 * _nZSteps, _nFreqs);
     signalTime.resize(2 * _nZSteps, _nFreqs);
-    O = _nZSteps;
   }
-  Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
-  Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalFreq;
 
   // Takes as input the signal in the first frequency and outputs in the second frequency
   if (inputProf.size() == _nFreqs) {
@@ -585,9 +584,16 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
   // Calculate Green's functions with real and imaginary impulse response
   // Signal frequency comes first in the matrix, original frequency second
   auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
-    auto& grid = inTimeDomain ? gridTime : gridFreq;
-    const auto& gridOriginal = start != 0? grid.topRows(_nZSteps)    : (inTimeDomain? originalTime : originalFreq);
-    const auto& gridSignal   = start != 0? grid.bottomRows(_nZSteps) : (inTimeDomain? signalTime   : signalFreq);
+
+    const bool usingMemberGrids = (start == 0);
+    if (!usingMemberGrids) {
+      gridTime.resize(2 * _nZSteps, _nFreqs);
+      gridFreq.resize(2 * _nZSteps, _nFreqs);
+    }
+    const auto& outputOriginal = usingMemberGrids? (inTimeDomain? originalTime.bottomRows<1>() : originalFreq.bottomRows<1>()) :
+                                                   (inTimeDomain? gridTime.row(_nZSteps-1) : gridFreq.row(_nZSteps-1));
+    const auto& outputSignal   = usingMemberGrids? (inTimeDomain? signalTime.bottomRows<1>() : signalFreq.bottomRows<1>()) :
+                                                   (inTimeDomain? gridTime.bottomRows<1>() : gridFreq.bottomRows<1>());
 
     Arraycd impulse;
     impulse.setZero(2 * _nFreqs);
@@ -596,24 +602,24 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
       impulse(i) = 1;
       runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
 
-      greenC.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
-      greenC.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
-      greenS.row(i).head(_nFreqs) += 0.5 * gridSignal.bottomRows<1>();
-      greenS.row(i).tail(_nFreqs) += 0.5 * gridOriginal.bottomRows<1>();
+      greenC.row(i).head(_nFreqs) += 0.5 * outputSignal;
+      greenC.row(i).tail(_nFreqs) += 0.5 * outputOriginal;
+      greenS.row(i).head(_nFreqs) += 0.5 * outputSignal;
+      greenS.row(i).tail(_nFreqs) += 0.5 * outputOriginal;
 
       impulse(i) = 1._I;
       runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
 
-      greenC.row(i).head(_nFreqs) -= (0.5_I) * gridSignal.bottomRows<1>();
-      greenC.row(i).tail(_nFreqs) -= (0.5_I) * gridOriginal.bottomRows<1>();
-      greenS.row(i).head(_nFreqs) += (0.5_I) * gridSignal.bottomRows<1>();
-      greenS.row(i).tail(_nFreqs) += (0.5_I) * gridOriginal.bottomRows<1>();
+      greenC.row(i).head(_nFreqs) -= (0.5_I) * outputSignal.bottomRows<1>();
+      greenC.row(i).tail(_nFreqs) -= (0.5_I) * outputOriginal.bottomRows<1>();
+      greenS.row(i).head(_nFreqs) += (0.5_I) * outputSignal.bottomRows<1>();
+      greenS.row(i).tail(_nFreqs) += (0.5_I) * outputOriginal.bottomRows<1>();
 
       impulse(i) = 0;
     }
   };
 
-  for (uint i = 1; i < nThreads; i ++) {
+  for (uint i = 1; i < nThreads; i++) {
     threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
                          (i * 2 * _nFreqs) / nThreads, ((i + 1) * 2 * _nFreqs) / nThreads);
   }
