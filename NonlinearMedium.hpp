@@ -12,7 +12,6 @@ typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayd;
 typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycd;
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcd;
 typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
-// TODO consider making everything row major matrix for FFT compatibility
 
 
 class _NonlinearMedium {
@@ -47,9 +46,6 @@ protected:
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                    Array2Dcd& signalFreq, Array2Dcd& signalTime) = 0;
 
-
-  inline const RowVectorcd& fft(const RowVectorcd& input);
-  inline const RowVectorcd& ifft(const RowVectorcd& input);
   inline Arrayd fftshift(const Arrayd& input);
   inline Array2Dcd fftshift2(const Array2Dcd& input);
 
@@ -85,7 +81,6 @@ protected:
   Array2Dcd signalFreq; /// grid for numerically solving ODE representing signal propagation in frequency domain
   Array2Dcd signalTime; /// grid for numerically solving ODE representing signal propagation in time domain
 
-  RowVectorcd fftTemp; /// vector for temporarily storing fft calculations
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 

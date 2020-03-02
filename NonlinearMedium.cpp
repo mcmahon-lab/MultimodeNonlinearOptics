@@ -5,6 +5,18 @@
 
 inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
 
+// This way is verified to be the most efficient, avoiding allocation of temporaries
+#define FFT(output, input) { \
+  fftObj.fwd(fftTemp, (input).matrix()); \
+  output = fftTemp.array(); }
+#define FFTtimes(output, input, phase) { \
+  fftObj.fwd(fftTemp, (input).matrix()); \
+  output = fftTemp.array() * phase; }
+#define IFFT(output, input) { \
+  fftObj.inv(fftTemp, (input).matrix()); \
+  output = fftTemp.array(); }
+
+
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                                    double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
@@ -83,8 +95,6 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   pumpTime.resize(_nZSteps, _nFreqs);
   signalFreq.resize(_nZSteps, _nFreqs);
   signalTime.resize(_nZSteps, _nFreqs);
-
-  fftTemp.resize(_nFreqs);
 }
 
 
@@ -209,16 +219,6 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
-inline const RowVectorcd& _NonlinearMedium::fft(const RowVectorcd& input) {
-  fftObj.fwd(fftTemp, input);
-  return fftTemp;
-}
-
-inline const RowVectorcd& _NonlinearMedium::ifft(const RowVectorcd& input) {
-  fftObj.inv(fftTemp, input);
-  return fftTemp;
-}
-
 inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
   Arrayd out(input.rows(), input.cols());
   auto half = input.cols() / 2;
@@ -251,29 +251,32 @@ Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
 
 
 void Chi3::runPumpSimulation() {
+  RowVectorcd fftTemp(_nFreqs);
 
-  pumpFreq.row(0) = fft(_env).array() * ((0.5_I * _dz) * _dispersionPump).exp();
-  pumpTime.row(0) = ifft(pumpFreq.row(0));
+  FFTtimes(pumpFreq.row(0), _env, ((0.5_I * _dz) * _dispersionPump).exp())
+  IFFT(pumpTime.row(0), pumpFreq.row(0))
 
   Arraycd temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
     temp = pumpTime.row(i-1) * (_nlStep * pumpTime.row(i-1).abs2()).exp();
-    pumpFreq.row(i) = fft(temp).array() * _dispStepPump;
-    pumpTime.row(i) = ifft(pumpFreq.row(i));
+    FFTtimes(pumpFreq.row(i), temp, _dispStepPump)
+    IFFT(pumpTime.row(i), pumpFreq.row(i))
   }
 
   pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
-  pumpTime.row(_nZSteps-1)  = ifft(pumpFreq.row(_nZSteps-1));
+  IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
 }
 
 
 void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionSign).exp();
+    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
   else
     signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(0) = ifft(signalFreq.row(0));
+  IFFT(signalTime.row(0), signalFreq.row(0))
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
@@ -292,12 +295,12 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalFreq.row(i) = fft(temp).array() * _dispStepSign;
-    signalTime.row(i) = ifft(signalFreq.row(i));
+    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
+    IFFT(signalTime.row(i), signalFreq.row(i))
   }
 
   signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
+  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
 }
 
 
@@ -314,13 +317,14 @@ _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double b
 
 
 void _Chi2::runPumpSimulation() {
+  RowVectorcd fftTemp(_nFreqs);
 
-  pumpFreq.row(0) = fft(_env);
+  FFT(pumpFreq.row(0), _env)
   pumpTime.row(0) = _env;
 
   for (uint i = 1; i < _nZSteps; i++) {
     pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
-    pumpTime.row(i) = ifft(pumpFreq.row(i));
+    IFFT(pumpTime.row(i), pumpFreq.row(i))
   }
 }
 
@@ -360,11 +364,13 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 
 void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
   if (inTimeDomain)
-    signalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionSign).exp();
+    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
   else
     signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(0) = ifft(signalFreq.row(0));
+  IFFT(signalTime.row(0), signalFreq.row(0))
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
@@ -388,12 +394,12 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
     // Dispersion step
-    signalFreq.row(i) = fft(temp).array() * _dispStepSign;
-    signalTime.row(i) = ifft(signalFreq.row(i));
+    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
+    IFFT(signalTime.row(i), signalFreq.row(i))
   }
 
   signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(_nZSteps-1)  = ifft(signalFreq.row(_nZSteps-1));
+  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
 }
 
 
@@ -462,6 +468,7 @@ void Chi2SFG::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTi
 
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
 
   // Hack: If we are using grids that are the member variables of the class, then proceed normally.
   // However if called from computeGreensFunction we need a workaround to use only one grid.
@@ -478,26 +485,28 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
   // Takes as input the signal in the first frequency and outputs in the second frequency
   if (inputProf.size() == _nFreqs) {
     if (inTimeDomain)
-      originalFreq.row(0) = fft(inputProf).array() * ((0.5_I * _dz) * _dispersionOrig).exp();
+      FFTtimes(originalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionOrig).exp())
     else
       originalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionOrig).exp();
-    originalTime.row(0) = ifft(originalFreq.row(0));
+    IFFT(originalTime.row(0), originalFreq.row(0))
 
     signalFreq.row(O) = 0;
     signalTime.row(O) = 0;
   }
-  // input array spanning both frequencies, ordered as signal then original TODO change order?
+  // input array spanning both frequencies, ordered as signal then original
   else if (inputProf.size() == 2 * _nFreqs) {
     if (inTimeDomain) {
-      signalFreq.row(O)   = fft(inputProf.head(_nFreqs)).array() * ((0.5_I * _dz) * _dispersionSign).exp();
-      originalFreq.row(0) = fft(inputProf.tail(_nFreqs)).array() * ((0.5_I * _dz) * _dispersionOrig).exp();
+      const Arraycd& inputSignal = inputProf.head(_nFreqs);
+      FFTtimes(signalFreq.row(O), inputSignal, ((0.5_I * _dz) * _dispersionSign).exp())
+      const Arraycd& inputOriginal = inputProf.tail(_nFreqs);
+      FFTtimes(originalFreq.row(0), inputOriginal, ((0.5_I * _dz) * _dispersionOrig).exp())
     }
     else {
       signalFreq.row(O)   = inputProf.head(_nFreqs) * ((0.5_I * _dz) * _dispersionSign).exp();
       originalFreq.row(0) = inputProf.tail(_nFreqs) * ((0.5_I * _dz) * _dispersionOrig).exp();
     }
-    signalTime.row(O)   = ifft(signalFreq.row(O));
-    originalTime.row(0) = ifft(originalFreq.row(0));
+    IFFT(signalTime.row(O),   signalFreq.row(O))
+    IFFT(originalTime.row(0), originalFreq.row(0))
   }
   else {
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
@@ -542,18 +551,18 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
 
     // Dispersion step
-    signalFreq.row(O+i) = fft(tempSign).array() * _dispStepSign;
-    signalTime.row(O+i) = ifft(signalFreq.row(O+i));
+    FFTtimes(signalFreq.row(O+i), tempSign, _dispStepSign)
+    IFFT(signalTime.row(O+i), signalFreq.row(O+i))
 
-    originalFreq.row(i) = fft(tempOrig).array() * _dispStepOrig;
-    originalTime.row(i) = ifft(originalFreq.row(i));
+    FFTtimes(originalFreq.row(i), tempOrig, _dispStepOrig)
+    IFFT(originalTime.row(i), originalFreq.row(i))
   }
 
   signalFreq.row(O+_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  signalTime.row(O+_nZSteps-1)  = ifft(signalFreq.row(O+_nZSteps-1));
+  IFFT(signalTime.row(O+_nZSteps-1), signalFreq.row(O+_nZSteps-1))
 
   originalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionOrig).exp();
-  originalTime.row(_nZSteps-1)  = ifft(originalFreq.row(_nZSteps-1));
+  IFFT(originalTime.row(_nZSteps-1), originalFreq.row(_nZSteps-1))
 }
 
 
