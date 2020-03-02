@@ -709,11 +709,9 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   greenC = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Identity(_nFreqs, _nFreqs);
   greenS.setZero(_nFreqs, _nFreqs);
 
-  if (runPump) runPumpSimulation();
-
   Array2Dcd tempC, tempS;
   for (auto& medium : media) {
-    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads);
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, runPump, nThreads);
     tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
     tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
     greenC.swap(tempC);
