@@ -184,7 +184,7 @@ class _NonlinearMedium:
     pass
 
 
-  def computeGreensFunction(s, inTimeDomain=False, runPump=True):
+  def computeGreensFunction(s, inTimeDomain=False, runPump=True, nThreads=1):
     """
     Solve a(L) = C a(0) + S [a(0)]^t for C and S
     :param inTimeDomain Compute the Green's function in time or frequency domain.
@@ -524,7 +524,7 @@ class Chi2SFG(_Chi2):
     s.originalTime[-1, :] = ifft(s.originalFreq[-1, :])
 
 
-  def computeTotalGreen(s, inTimeDomain=False, runPump=True):
+  def computeTotalGreen(s, inTimeDomain=False, runPump=True, nThreads=1):
     """
     Solve a(L) = C a(0) + S [a(0)]^t for C and S for the combined system of the generated and original signals
     :param inTimeDomain Compute the Green's function in time or frequency domain.
