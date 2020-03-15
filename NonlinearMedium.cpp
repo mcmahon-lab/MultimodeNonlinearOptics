@@ -598,9 +598,9 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
       gridFreq.resize(2 * _nZSteps, _nFreqs);
     }
     const auto& outputOriginal = usingMemberGrids? (inTimeDomain? originalTime.bottomRows<1>() : originalFreq.bottomRows<1>()) :
-                                                   (inTimeDomain? gridTime.row(_nZSteps-1) : gridFreq.row(_nZSteps-1));
+                                                   (inTimeDomain? gridTime.row(_nZSteps-1)     : gridFreq.row(_nZSteps-1));
     const auto& outputSignal   = usingMemberGrids? (inTimeDomain? signalTime.bottomRows<1>() : signalFreq.bottomRows<1>()) :
-                                                   (inTimeDomain? gridTime.bottomRows<1>() : gridFreq.bottomRows<1>());
+                                                   (inTimeDomain? gridTime.bottomRows<1>()   : gridFreq.bottomRows<1>());
 
     Arraycd impulse;
     impulse.setZero(2 * _nFreqs);

@@ -252,7 +252,7 @@ def linearPoling(kMin, kMax, L, dL):
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
-  return polingProfile.flatten()
+  return polingProfile.flatten() * dL
 
 
 def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
