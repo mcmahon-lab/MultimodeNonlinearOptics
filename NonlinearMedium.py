@@ -486,11 +486,11 @@ class Chi2SFG(_Chi2):
     # However if called from computeGreensFunction we need a workaround to use only one grid.
     usingMemberGrids = (signalFreq is s.signalFreq)
     O = 0 if usingMemberGrids else s._nZSteps # offset
-    originalFreq = s.originalFreq if usingMemberGrids else signalFreq[:s._nZSteps, :]
-    originalTime = s.originalTime if usingMemberGrids else signalTime[:s._nZSteps, :]
     if not usingMemberGrids:
       if signalFreq.shape != (2 * s._nZSteps, s._nFreqs): signalFreq.resize((2 * s._nZSteps, s._nFreqs), refcheck=False)
       if signalTime.shape != (2 * s._nZSteps, s._nFreqs): signalTime.resize((2 * s._nZSteps, s._nFreqs), refcheck=False)
+    originalFreq = s.originalFreq if usingMemberGrids else signalFreq[:s._nZSteps, :]
+    originalTime = s.originalTime if usingMemberGrids else signalTime[:s._nZSteps, :]
 
     if inputProf.size == s._nFreqs:
       # Takes as input the signal in the first frequency and outputs in the second frequency
