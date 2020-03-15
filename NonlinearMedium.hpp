@@ -39,7 +39,7 @@ public:
 
 protected:
   void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
-  virtual void resetGrids(uint nFreqs=0, double tMax=0);
+  virtual void resetGrids(uint nFreqs, double tMax);
   void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
                      double beta3=0, double beta3s=0, double diffBeta0=0);
   _NonlinearMedium() = default;
@@ -151,7 +151,7 @@ private: // Disable functions (note: still accessible from base class)
 
 protected:
   void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
-  void resetGrids(uint nFreqs=0, double tMax=0) override;
+  void resetGrids(uint nFreqs, double tMax) override;
   void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
                      double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
 

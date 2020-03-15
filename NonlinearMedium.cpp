@@ -72,23 +72,19 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
 void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 
   // time windowing and resolution
-  if (nFreqs != 0)
-    _nFreqs = nFreqs;
-  if (tMax != 0)
-    _tMax = tMax;
-
-  if (nFreqs != 0 || tMax != 0) {
-    int Nt = _nFreqs;
-
-    // time and frequency axes
-    _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
-    _tau = fftshift(_tau);
-    _omega = -M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
-    _omega = fftshift(_omega);
-  }
-
-  if (_nFreqs % 2 != 0 || _nFreqs == 0 || _nZSteps == 0)
+  if (nFreqs % 2 != 0 || nFreqs == 0 || _nZSteps == 0 || tMax <= 0)
     throw std::invalid_argument("Invalid PDE grid size");
+
+  _nFreqs = nFreqs;
+  _tMax = tMax;
+
+  int Nt = _nFreqs;
+
+  // time and frequency axes
+  _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+  _tau = fftshift(_tau);
+  _omega = -M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+  _omega = fftshift(_omega);
 
   // Grids for PDE propagation
   pumpFreq.resize(_nZSteps, _nFreqs);
@@ -199,8 +195,8 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
       grid(0, i) = 1._I;
       runSignalSimulation(grid.row(0), inTimeDomain, gridFreq, gridTime);
 
-      greenC.row(i) -= (0.5_I) * grid.bottomRows<1>();
-      greenS.row(i) += (0.5_I) * grid.bottomRows<1>();
+      greenC.row(i) -= 0.5_I * grid.bottomRows<1>();
+      greenS.row(i) += 0.5_I * grid.bottomRows<1>();
     }
   };
 

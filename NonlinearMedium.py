@@ -96,20 +96,20 @@ class _NonlinearMedium:
     self._nlStep = 1j * _Nsquared * self._dz
 
 
-  def _resetGrids(self, nFreqs=None, tMax=None):
+  def _resetGrids(self, nFreqs, tMax):
 
     # time windowing and resolution
-    if nFreqs is not None:
-      self._nFreqs = nFreqs
-    if tMax is not None:
-      self._tMax = tMax
+    if nFreqs % 2 != 0 or nFreqs <= 0 or self._nZSteps <= 0 or tMax <= 0:
+      raise ValueError("Invalid PDE grid size")
 
-    if not all(v is None for v in (nFreqs, tMax)):
-      Nt = self._nFreqs
+    self._nFreqs = nFreqs
+    self._tMax = tMax
 
-      # time and frequency axes
-      self.tau = (2 * self._tMax / Nt) * ifftshift(np.arange(-Nt // 2, Nt // 2, dtype=np.float64))
-      self.omega = (-np.pi / self._tMax) * fftshift(np.arange(-Nt // 2, Nt // 2, dtype=np.float64))
+    Nt = self._nFreqs
+
+    # time and frequency axes
+    self.tau = (2 * self._tMax / Nt) * ifftshift(np.arange(-Nt // 2, Nt // 2, dtype=np.float64))
+    self.omega = (-np.pi / self._tMax) * fftshift(np.arange(-Nt // 2, Nt // 2, dtype=np.float64))
 
     # Grids for PDE propagation
     self.pumpFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex128)
