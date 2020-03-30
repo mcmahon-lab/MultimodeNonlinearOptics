@@ -225,7 +225,7 @@ def calcRayleighWidth(length, wavelength, index):
 
 def basisTransforms(n):
   """
-  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the quadrature basis
+  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the a basis
   """
   toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]]) / np.sqrt(2)
   frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) / np.sqrt(2)
@@ -294,5 +294,6 @@ def parametricFluorescence(modes, diag):
 def effectiveAdjacencyMatrix(modes, diag):
   """
   Given decomposition of a transmission matrix in the complex frequency domain, find the effective GBS adjacency matrix.
+  The matrix is B = U tanh(r_j) U^T, and the sampling probability is proportional to |Haf(B_n)|^2 for submatrix B_n.
   """
   return modes.T @ np.diag(np.tanh(np.abs(np.log(diag)))) @ modes

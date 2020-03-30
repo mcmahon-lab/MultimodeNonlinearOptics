@@ -52,12 +52,12 @@ protected:
   double _z;  /// length of medium
   double _DS; /// dispersion length
   double _NL; /// nonlinear length
-  bool _noDispersion; /// indicate system is dispersionless
-  bool _noNonlinear;  /// indicate system is linear
+  bool _noDispersion; /// indicates system is dispersionless
+  bool _noNonlinear;  /// indicates system is linear
   double _dz;    /// length increment
-  uint _nZSteps; /// number of length steps in simulation ODE
-  uint _nFreqs;  /// number of frequency/time bins in the simulation ODE
-  double _tMax;  /// positive and negative extent of the simulation window
+  uint _nZSteps; /// number of length steps in simulating the PDE
+  uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
+  double _tMax;  /// positive and negative extent of the simulation window in time
   double _beta2;  /// second order dispersion of the pump's frequency
   double _beta2s; /// second order dispersion of the signal's frequency
   double _beta1;  /// group velocity difference for pump relative to simulation window
@@ -66,8 +66,8 @@ protected:
   double _beta3s; /// third order dispersion of the signal's frequency
   double _diffBeta0; /// wave-vector mismatch of the simulated process
 
-  Arraycd _dispStepPump; /// incremental phase for dispersion over length dz for the pump
-  Arraycd _dispStepSign; /// incremental phase for dispersion over length dz for the signal
+  Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
+  Arraycd _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
   std::complex<double> _nlStep; /// strength of nonlinear process over length dz
 
   Arrayd _tau;   /// array representing the time axis
@@ -76,10 +76,10 @@ protected:
   Arrayd _dispersionSign; /// dispersion profile of signal
   Arraycd _env; /// initial envelope of the pump
 
-  Array2Dcd pumpFreq;   /// grid for numerically solving ODE representing pump propagation in frequency domain
-  Array2Dcd pumpTime;   /// grid for numerically solving ODE representing pump propagation in time domain
-  Array2Dcd signalFreq; /// grid for numerically solving ODE representing signal propagation in frequency domain
-  Array2Dcd signalTime; /// grid for numerically solving ODE representing signal propagation in time domain
+  Array2Dcd pumpFreq;   /// grid for numerically solving PDE, representing pump propagation in frequency domain
+  Array2Dcd pumpTime;   /// grid for numerically solving PDE, representing pump propagation in time domain
+  Array2Dcd signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
+  Array2Dcd signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
@@ -115,7 +115,7 @@ protected:
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
   _Chi2() = default;
 
-  Arrayd _poling;
+  Arrayd _poling; /// array representing the poling direction at a given point on the grid.
 };
 
 
@@ -165,11 +165,11 @@ protected:
   double _NLo; /// like nlLength but with respect to the original signal
   std::complex<double> _nlStepO; /// strength of nonlinear process over length dz; DOPA process of original signal
 
-  Arrayd _dispersionOrig; /// dispersion profile of signal
-  Arraycd _dispStepOrig;  /// incremental phase for dispersion over length dz for the signal
+  Arrayd _dispersionOrig; /// dispersion profile of original signal
+  Arraycd _dispStepOrig;  /// incremental phase due to dispersion over length dz for the signal
 
-  Array2Dcd originalFreq; /// grid for numerically solving ODE representing original signal propagation in frequency domain
-  Array2Dcd originalTime; /// grid for numerically solving ODE representing original signal propagation in time domain
+  Array2Dcd originalFreq; /// grid for numerically solving PDE, representing original signal propagation in frequency domain
+  Array2Dcd originalTime; /// grid for numerically solving PDE, representing original signal propagation in time domain
 };
 
 

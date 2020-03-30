@@ -5,7 +5,9 @@
 
 inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
 
-// This way is verified to be the most efficient, avoiding allocation of temporaries
+// This way is verified to be the most efficient, avoiding allocation of temporaries.
+// Note: it seems that some compilers will throw a taking address of temporary error in EigenFFT.
+// This is due to array->matrix casting, the code will work if disabling the warning and compiling.
 #define FFT(output, input) { \
   fftObj.fwd(fftTemp, (input).matrix()); \
   output = fftTemp.array(); }
@@ -32,7 +34,7 @@ _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, doubl
 
 
 void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision) {
-  // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = Lds / Lnl
+  // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = L_ds / L_nl
   // The length z is given in units of dispersion length (of pump)
   // The time is given in units of initial width (of pump)
 
