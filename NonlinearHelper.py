@@ -3,27 +3,6 @@ from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
 from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm, dft
 
 
-def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None):
-  """
-  Return dispersion length and nonlinear lengths (meters).
-  gamma: nonlinear coefficient (W^-1 km^-1)
-  peakPower: pulse peak power (W)
-  beta2: group velocity dispersion (ps^2 / km)
-  timeScale:  width of pulse (ps)
-  pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
-  """
-  # TODO DEPRECATED
-  NL = 1000 / (peakPower * gamma)
-  DS = 1000 * timeScale**2 / abs(beta2)
-  if pulseTypeFWHM == "sech":
-    DS /= 4 * np.log(1 + np.sqrt(2))**2
-    # DS /= 4 * np.log(2 + np.sqrt(3))**2
-  elif pulseTypeFWHM == "gauss":
-    DS /= 4 * np.log(2)
-    # DS /= 8 * np.log(2)
-  return NL, DS
-
-
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
   """
   Return dispersion length (meters).
@@ -71,7 +50,7 @@ def calculateChi3NlLength(gamma, peakPower):
 def calcQuadratureGreens(greenC, greenS):
   """
   Convert the Green's (transmission) matrix to the x and p quadrature basis from the a basis
-  greenC and greenS are such that a_out = C a + S a^†:
+  greenC and greenS are such that a_out = C a + S a^†.
   """
   Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
                 [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
@@ -87,6 +66,17 @@ def calcCovarianceMtx(Z, tol=1e-4):
   cov = Z @ Z.T
   determinant = det(cov)
   assert abs(determinant - 1) < tol, "det(C) = %f" % determinant
+  return cov
+
+
+def calcCovarianceMtxABasis(greenC, greenS):
+  """
+  Calculate the covariance matrix in a basis from the transmission Green's matrices.
+  Checks that the determinant of the covariance matrix is approximately unity.
+  """
+  Z = np.block([[greenC, greenS],
+                [greenS.conj(),  greenC.conj()]]) * np.sqrt(1 / 2)
+  cov = Z @ Z.T.conj()
   return cov
 
 
@@ -129,6 +119,7 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
 def downSampledCov(Z, perBin):
   """
   Downsample a covariance matrix by grouping modes together.
+  assert N // 2 % perBin == 0
   """
   N = Z.shape[0]
   assert N // 2 % perBin == 0
@@ -139,29 +130,6 @@ def downSampledCov(Z, perBin):
     newZ[:, i] = np.sum(Z[:, i].flatten().reshape(-1, perBin), axis=1) / np.sqrt(perBin)
 
   return newZ @ newZ.T
-
-
-def obtainFrequencySqueezing(C, bandSize=1):
-  """
-  Calculate squeezing as a function of frequency (single frequency LO).
-  """
-
-  nFreqs = C.shape[0] // 2
-  covMatrix = np.zeros((2, 2))
-
-  squeezing = np.zeros(nFreqs)
-  antisqueezing = np.zeros(nFreqs)
-
-  for i in range(nFreqs):
-    covMatrix[0,0] = C[i, i]
-    covMatrix[0,1] = C[i, nFreqs + i]
-    covMatrix[1,0] = C[nFreqs + i, i]
-    covMatrix[1,1] = C[nFreqs + i, nFreqs + i]
-
-    variances = eigvals(covMatrix)
-    squeezing[i], antisqueezing[i] = np.min(variances), np.max(variances)
-
-  return squeezing, antisqueezing
 
 
 def blochMessiahEigs(Z):
@@ -295,5 +263,21 @@ def effectiveAdjacencyMatrix(modes, diag):
   """
   Given decomposition of a transmission matrix in the complex frequency domain, find the effective GBS adjacency matrix.
   The matrix is B = U tanh(r_j) U^T, and the sampling probability is proportional to |Haf(B_n)|^2 for submatrix B_n.
+  Expects a vector of exp(r_j).
   """
   return modes.T @ np.diag(np.tanh(np.abs(np.log(diag)))) @ modes
+
+
+def fullEffectiveAdjacencyMatrix(cov):
+  """
+  Given a covariance matrix, find the full effective GBS adjacency matrix.
+  Note: returns a 2Mx2M matrix, if the covariance matrix is purely a result of squeezing,
+  the 1st and 4th quadrants are populated (quadrants are complex conjugates).
+  The 2nd and 3rd quadrants are due to thermal modes, or losses (quadrants are transpositions).
+  With only squeezing you can reduce to a MxM, Haf(*) -> |Haf(*)|^2 and you recover the form U tanh(r_j) U^T (as above).
+  """
+  n = cov.shape[0]
+  idnt = np.identity(n)
+  zero = np.zeros((n // 2, n // 2))
+  return np.block([[zero, idnt[:n//2,:n//2]],
+                   [idnt[:n//2,:n//2], zero]]) @ (np.eye(n) - inv(cov + np.eye(n) / 2))
