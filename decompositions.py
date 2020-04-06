@@ -55,10 +55,9 @@ def sympmat(n):
     Returns:
         array: symplectic matrix
     """
-    idm = np.identity(n)
-    omega = np.concatenate((np.concatenate((0*idm, idm), axis=1),
-                            np.concatenate((-idm, 0*idm), axis=1)), axis=0)
-    return omega
+    idnt = np.identity(n)
+    zero = np.zeros((n, n))
+    return np.block([[zero, idnt], [-idnt, zero]])
 
 
 def takagi(N, tol=1e-13, rounding=13):

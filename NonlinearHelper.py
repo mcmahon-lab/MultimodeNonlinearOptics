@@ -1,27 +1,6 @@
 import numpy as np
 from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
-from scipy.linalg import det, sqrtm, inv, eig, norm, dft
-
-
-def calculateLengthScales(gamma, peakPower, beta2, timeScale, pulseTypeFWHM=None):
-  """
-  Return dispersion length and nonlinear lengths (meters).
-  gamma: nonlinear coefficient (W^-1 km^-1)
-  peakPower: pulse peak power (W)
-  beta2: group velocity dispersion (ps^2 / km)
-  timeScale:  width of pulse (ps)
-  pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
-  """
-  # TODO DEPRECATED
-  NL = 1000 / (peakPower * gamma)
-  DS = 1000 * timeScale**2 / abs(beta2)
-  if pulseTypeFWHM == "sech":
-    DS /= 4 * np.log(1 + np.sqrt(2))**2
-    # DS /= 4 * np.log(2 + np.sqrt(3))**2
-  elif pulseTypeFWHM == "gauss":
-    DS /= 4 * np.log(2)
-    # DS /= 8 * np.log(2)
-  return NL, DS
+from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm, dft
 
 
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
@@ -69,6 +48,10 @@ def calculateChi3NlLength(gamma, peakPower):
 
 
 def calcQuadratureGreens(greenC, greenS):
+  """
+  Convert the Green's (transmission) matrix to the x and p quadrature basis from the a basis
+  greenC and greenS are such that a_out = C a + S a^†.
+  """
   Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
                 [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
 
@@ -76,26 +59,47 @@ def calcQuadratureGreens(greenC, greenS):
 
 
 def calcCovarianceMtx(Z, tol=1e-4):
+  """
+  Calculate the covariance matrix in x/p quadrature basis from the transmission Green's matrix.
+  Checks that the determinant of the covariance matrix is approximately unity.
+  """
   cov = Z @ Z.T
   determinant = det(cov)
   assert abs(determinant - 1) < tol, "det(C) = %f" % determinant
   return cov
 
 
+def calcCovarianceMtxABasis(greenC, greenS):
+  """
+  Calculate the covariance matrix in a basis from the transmission Green's matrices.
+  Checks that the determinant of the covariance matrix is approximately unity.
+  """
+  Z = np.block([[greenC, greenS],
+                [greenS.conj(),  greenC.conj()]]) * np.sqrt(1 / 2)
+  cov = Z @ Z.T.conj()
+  return cov
+
+
 def normalizedCov(Cov):
+  """
+  Return a "normalized" covariance matrix to highlight differences from the identity.
+  """
   diagC = np.diag(Cov)
   normC = np.tile(diagC, (diagC.shape[0], 1))
   return (Cov - np.eye(Cov.shape[0])) / np.sqrt(normC * normC.T)
 
 
 def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
+  """
+  Compute the squeezing observed combining the covariance matrix and a local oscillator with a given profile.
+  """
   if inTimeDomain:
     freqDomain = fftshift(fft(pumpProf))
   else:
     freqDomain = fftshift(pumpProf)
 
-  localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / np.linalg.norm(freqDomain)
-  localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / np.linalg.norm(freqDomain)
+  localOscillX = np.hstack([freqDomain.real,  freqDomain.imag]) / norm(freqDomain)
+  localOscillP = np.hstack([freqDomain.imag, -freqDomain.real]) / norm(freqDomain)
 
   covMatrix = np.zeros((2, 2))
   covMatrix[0,0] = localOscillX.T @ C @ localOscillX
@@ -104,7 +108,7 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
                                      - covMatrix[0,0] - covMatrix[1,1]) / 2
   # more efficient version of (localOscillX.T @ C @ localOscillP + localOscillP.T @ C @ localOscillX) / 2
 
-  variances = np.linalg.eigvals(covMatrix)
+  variances = eigvals(covMatrix)
 
   assert abs(covMatrix[0,0] - 1) < tol, "C_xx = %f" % covMatrix[0,0]
 
@@ -113,6 +117,10 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
 
 
 def downSampledCov(Z, perBin):
+  """
+  Downsample a covariance matrix by grouping modes together.
+  assert N // 2 % perBin == 0
+  """
   N = Z.shape[0]
   assert N // 2 % perBin == 0
 
@@ -124,52 +132,43 @@ def downSampledCov(Z, perBin):
   return newZ @ newZ.T
 
 
-def obtainFrequencySqueezing(C, bandSize=1):
-
-  nFreqs = C.shape[0] // 2
-  covMatrix = np.zeros((2, 2))
-
-  squeezing = np.zeros(nFreqs)
-  antisqueezing = np.zeros(nFreqs)
-
-  for i in range(nFreqs):
-    covMatrix[0,0] = C[i, i]
-    covMatrix[0,1] = C[i, nFreqs + i]
-    covMatrix[1,0] = C[nFreqs + i, i]
-    covMatrix[1,1] = C[nFreqs + i, nFreqs + i]
-
-    variances = np.linalg.eigvals(covMatrix)
-    squeezing[i], antisqueezing[i] = np.min(variances), np.max(variances)
-
-  return squeezing, antisqueezing
-
-
-# simpler version than Xanadu
 def blochMessiahEigs(Z):
+  """
+  Obtain the Bloch-Messiah principal values (supermode uncertainties).
+  """
   sigma = sqrtm(Z @ Z.T)
-  eigenvalues, eigenvectors = eig(sigma)
+  eigenvalues = eigvals(sigma)
 
   sortedEig = np.sort(eigenvalues).real
   return sortedEig
 
 def blochMessiahVecs(Z):
-  sigma = sqrtm(Z @ Z.T)
-  eigenvalues, eigenvectors = eig(sigma)
+  """
+  Obtain the full Bloch-Messiah decomposition.
+  Less robust than version in decompositions.py; does not work well with degeneracies.
+  """
+  polar = sqrtm(Z @ Z.T)
+  diagonal, leftVectors = eig(polar)
 
-  indices = np.argsort(eigenvalues, )
+  indices = np.argsort(diagonal)
+  N = Z.shape[0] // 2
+  indices = np.concatenate([indices[-1:-N-1:-1], indices[:N]])
 
-  sortedEig = eigenvalues[indices].real
-  sortedVec = eigenvectors[indices]
+  sortedDiagonal = diagonal[indices].real
+  sortedLeftVecs = leftVectors[:, indices]
 
-  u = inv(sigma) @ Z
-  eigenvectors_ = eigenvectors.T @ u
+  polarUnitary = inv(polar) @ Z
+  rightVectors = leftVectors.T @ polarUnitary
 
-  sortedVec_ = eigenvectors_[indices]
+  sortedRightVecs = rightVectors[indices]
 
-  return sortedEig, sortedVec, sortedVec_
+  return sortedDiagonal, sortedLeftVecs, sortedRightVecs
 
 
 def convertGreenFreqToTime(greenC, greenS):
+  """
+  Convert Green's matrix from frequency to time domain
+  """
   # TODO might need some transposition steps doesn't seem 100% correct
   nFreqs = greenC.shape[0]
   dftMat = np.conj(dft(nFreqs))
@@ -194,7 +193,7 @@ def calcRayleighWidth(length, wavelength, index):
 
 def basisTransforms(n):
   """
-  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the quadrature basis
+  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the a basis
   """
   toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]]) / np.sqrt(2)
   frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) / np.sqrt(2)
@@ -203,7 +202,7 @@ def basisTransforms(n):
 
 def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   """
-  Combine sucessive a basis C and S Green's kernels.
+  Combine successive a basis C and S Green's matrices.
   """
   Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
   Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
@@ -221,4 +220,64 @@ def linearPoling(kMin, kMax, L, dL):
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
-  return polingProfile.flatten()
+  return polingProfile.flatten() * dL
+
+
+def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
+                           beta1a=0, beta2a=0, beta3a=0,
+                           beta1b=0, beta2b=0, beta3b=0,
+                           beta1c=0, beta2c=0, beta3c=0):
+  """
+  Estimate the range of wavenumber mismatch of a three-wave mixing process over some bandwidth.
+  """
+  assert abs(sign1) == 1 and abs(sign2) == 1, "Sign must be +/-1"
+  disp = lambda b1, b2, b3, w: b1 * w + 0.5 * b2 * w**2 + 1/6 * b3 * w**3
+  mismatch = dbeta0 + disp(beta1a, beta2a, beta3a, omega) \
+            + sign1 * disp(beta1b, beta2b, beta3b, omega) \
+            + sign2 * disp(beta1c, beta2c, beta3c, omega)
+
+  maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
+  mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  return mindk, maxdk
+
+
+def incoherentPowerGreens(Z):
+  """
+  Convert a Green's matrix in the quadrature basis into one for incoherent light.
+  Note: output is a linear transformation for power.
+  """
+  N = Z.shape[0] // 2
+  return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
+
+
+def parametricFluorescence(modes, diag):
+  """
+  Given decomposition of a transmission matrix in the complex frequency domain, predict observed parametric fluorescence.
+  """
+  incoherent = np.sum(np.abs(modes)**2 * np.sinh(np.log(diag[:, np.newaxis]))**2, axis=0)
+  coherent   = np.abs(np.sum(modes * np.sinh(np.log(diag[:, np.newaxis])), axis=0))**2
+  return incoherent, coherent
+
+
+def effectiveAdjacencyMatrix(modes, diag):
+  """
+  Given decomposition of a transmission matrix in the complex frequency domain, find the effective GBS adjacency matrix.
+  The matrix is B = U tanh(r_j) U^T, and the sampling probability is proportional to |Haf(B_n)|^2 for submatrix B_n.
+  Expects a vector of exp(r_j).
+  """
+  return modes.T @ np.diag(np.tanh(np.abs(np.log(diag)))) @ modes
+
+
+def fullEffectiveAdjacencyMatrix(cov):
+  """
+  Given a covariance matrix, find the full effective GBS adjacency matrix.
+  Note: returns a 2Mx2M matrix, if the covariance matrix is purely a result of squeezing,
+  the 1st and 4th quadrants are populated (quadrants are complex conjugates).
+  The 2nd and 3rd quadrants are due to thermal modes, or losses (quadrants are transpositions).
+  With only squeezing you can reduce to a MxM, Haf(*) -> |Haf(*)|^2 and you recover the form U tanh(r_j) U^T (as above).
+  """
+  n = cov.shape[0]
+  idnt = np.identity(n)
+  zero = np.zeros((n // 2, n // 2))
+  return np.block([[zero, idnt[:n//2,:n//2]],
+                   [idnt[:n//2,:n//2], zero]]) @ (np.eye(n) - inv(cov + np.eye(n) / 2))
