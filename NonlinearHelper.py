@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
-from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm, dft
+from numpy.fft import fft, ifft, fftshift, ifftshift, fft2, ifft2
+from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm
 
 
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
@@ -72,7 +72,6 @@ def calcCovarianceMtx(Z, tol=1e-4):
 def calcCovarianceMtxABasis(greenC, greenS):
   """
   Calculate the covariance matrix in a basis from the transmission Green's matrices.
-  Checks that the determinant of the covariance matrix is approximately unity.
   """
   Z = np.block([[greenC, greenS],
                 [greenS.conj(),  greenC.conj()]]) * np.sqrt(1 / 2)
@@ -165,16 +164,19 @@ def blochMessiahVecs(Z):
   return sortedDiagonal, sortedLeftVecs, sortedRightVecs
 
 
-def convertGreenFreqToTime(greenC, greenS):
+def ftGreens(greenC, greenS, toTime=True):
   """
   Convert Green's matrix from frequency to time domain
   """
-  # TODO might need some transposition steps doesn't seem 100% correct
-  nFreqs = greenC.shape[0]
-  dftMat = np.conj(dft(nFreqs))
-  gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
-  gStime = ifftshift(dftMat.T @ fftshift(greenS) @ dftMat / nFreqs)
-  return gCtime, gStime
+  nt = greenS.shape[0]
+  if toTime:
+    convertedC = fftshift(fft(ifft(ifftshift(greenC), axis=0), axis=1))
+    convertedS = fftshift(ifft2(ifftshift(greenS))) * nt
+  else:
+    convertedC = fftshift(ifft(fft(ifftshift(greenC), axis=0), axis=1))
+    convertedS = fftshift(fft2(ifftshift(greenS))) / nt
+
+  return convertedC, convertedS
 
 
 def calcChirp(z):
