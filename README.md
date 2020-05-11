@@ -19,11 +19,12 @@ Perhaps the most useful feature provided is calculating an equation's Green's fu
 
 Also in this repository are a collection of Jupyter notebooks that test for correct behavior and reproduce the results of some relevant theory/computation papers.
 These are found in the `tests/` directory, and may also serve as useful examples.
+They are saved with [Jupytext]{https://jupytext.readthedocs.io/en/latest/}.
 
 The `NonlinearHelper` module provides functions for analysis routines, for example:
+- calculating covariance matrices and related quantities,
+- homodyne detection and other squeezing-related calculations,
 - converting to dimensionless quantities,
-- calculating covarience matrices and related quantities,
-- homodyne detection and other squeezing related calculations,
 - converting to/from the quadrature and creation operator bases.
 
 The `decompositions` module is borrowed from [Strawberry Fields](https://strawberryfields.readthedocs.io/) with minor modification and provides good implementations of matrix decompositions such as Takagi, Bloch Messiah and Williamson.
