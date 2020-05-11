@@ -238,8 +238,15 @@ def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
             + sign1 * disp(beta1b, beta2b, beta3b, omega) \
             + sign2 * disp(beta1c, beta2c, beta3c, omega)
 
-  maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
-  mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  if isinstance(domega, (float, int)):
+    maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
+    mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  elif isinstance(domega, (tuple, list, np.ndarray)):
+    maxdk = np.max(np.abs(mismatch[np.logical_and(-domega[0] < omega, omega < domega[1])]))
+    mindk = np.min(np.abs(mismatch[np.logical_and(-domega[0] < omega, omega < domega[1])]))
+  else:
+    raise ValueError("unrecognized type for domega")
+
   return mindk, maxdk
 
 
