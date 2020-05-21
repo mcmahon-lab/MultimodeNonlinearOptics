@@ -134,23 +134,35 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
 }
 
 
-void _NonlinearMedium::setPump(int pulseType, double chirp) {
+void _NonlinearMedium::setPump(int pulseType, double chirpLength) {
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   if (pulseType == 1)
-    _env = 1 / _tau.cosh() * (-0.5_I * chirp * _tau.square()).exp();
+    _env = (1 / _tau.cosh()).cast<std::complex<double>>();
   else if (pulseType == 2) {
-    _env = _tau.sin() / _tau * (-0.5_I * chirp * _tau.square()).exp();
+    _env = (_tau.sin() / _tau).cast<std::complex<double>>();
     _env(0) = 1;
   }
   else
-    _env = (-0.5 * _tau.square() * (1. + 1._I * chirp)).exp();
+    _env = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
+
+  if (chirpLength != 0) {
+    RowVectorcd fftTemp(_nFreqs);
+    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    IFFT(_env, fftTemp)
+  }
 }
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
-  _env = customPump * (-0.5_I * chirp * _tau.square()).exp();
+  _env = customPump;
+
+  if (chirpLength != 0) {
+    RowVectorcd fftTemp(_nFreqs);
+    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    IFFT(_env, fftTemp)
+  }
 }
 
 

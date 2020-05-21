@@ -24,8 +24,8 @@ public:
                    double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
                    double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
-  void setPump(int pulseType, double chirp=0);
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
+  void setPump(int pulseType, double chirpLength=0);
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
 
   virtual void runPumpSimulation() = 0;
   virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
