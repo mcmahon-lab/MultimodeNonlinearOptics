@@ -22,7 +22,7 @@ class _NonlinearMedium:
     :param beta3:          Pump third order dispersion.
     :param beta3s:         Signal third order dispersion.
     :param diffBeta0:      Wave-vector mismatch of the simulated process.
-    :param chirp:          Initial chirp for pump pulse.
+    :param chirp:          Initial chirp for pump pulse, in terms of propagation length.
     :param rayleighLength: Rayleigh length of propagation, assumes focused at medium's center.
     :param tMax:           Time window size in terms of pump width.
     :param tPrecision:     Number of time bins. Preferably power of 2 for better FFT performance.
@@ -155,20 +155,23 @@ class _NonlinearMedium:
     self._dispStepSign = np.exp(1j * self._dispersionSign * self._dz)
 
 
-  def setPump(self, pulseType=0, chirp=0, customPump=None):
+  def setPump(self, pulseType=0, chirpLength=0, customPump=None):
     # initial time domain envelopes (pick Gaussian, Hyperbolic Secant or custom, Sinc)
     if customPump is not None:
       if customPump.size != self._nFreqs:
         raise ValueError("Custom pump array length does not match number of frequency/time bins")
-      self._env = customPump * np.exp(-0.5j * chirp * self.tau**2)
+      self._env = customPump
     else:
       if pulseType == 1:
-        self._env = 1 / np.cosh(self.tau) * np.exp(-0.5j * chirp * self.tau**2)
+        self._env = 1 / np.cosh(self.tau)
       elif pulseType == 2:
-        self._env = np.sin(self.tau) / self.tau * np.exp(-0.5j * chirp * self.tau**2)
+        self._env = np.sin(self.tau) / self.tau
         self._env[np.isnan(self._env)] = 1
       else:
-        self._env = np.exp(-0.5 * self.tau**2 * (1 + 1j * chirp))
+        self._env = np.exp(-0.5 * self.tau**2)
+
+    if chirpLength != 0:
+      self._env = ifft(fft(self._env) * np.exp(0.5j * self._beta2 * chirpLength * self.omega**2))
 
 
   def runPumpSimulation(s):
