@@ -193,6 +193,13 @@ def calcRayleighWidth(length, wavelength, index):
   return np.sqrt(length * wavelength / (np.pi * index))
 
 
+def calcRayleighLength(width, wavelength, index):
+  """
+  Calculate the Rayleigh length (for a Gaussian beam) for a given width and wavelength in the medium.
+  """
+  return width**2 * np.pi * index / wavelength
+
+
 def basisTransforms(n):
   """
   Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the a basis
