@@ -1,6 +1,6 @@
 # NonlinearOptics
 
-Split step method library for simulation of nonlinear optical processes in Python.
+Split step method simulation library for nonlinear optical processes in Python and C++.
 Some analysis routines are also provided, which are useful for gaussian quantum optics.
 
 Currently the code supports a few chi(2) and chi(3) processes, 1 dimensional propagation, in the no pump depletion approximation.
@@ -19,7 +19,7 @@ Perhaps the most useful feature provided is calculating an equation's Green's fu
 
 Also in this repository are a collection of Jupyter notebooks that test for correct behavior and reproduce the results of some relevant theory/computation papers.
 These are found in the `tests/` directory, and may also serve as useful examples.
-They are saved with [Jupytext]{https://jupytext.readthedocs.io/en/latest/}.
+They are saved with [Jupytext](https://jupytext.readthedocs.io/en/latest/).
 
 The `NonlinearHelper` module provides functions for analysis routines, for example:
 - calculating covariance matrices and related quantities,
