@@ -22,8 +22,8 @@ inline constexpr std::complex<double> operator"" _I(long double c) {return std::
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                                    double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
-  setLengths(relativeLength, nlLength, dispLength, zPrecision);
+                                   double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) {
+  setLengths(relativeLength, nlLength, dispLength, zPrecision, rayleighLength);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   if (customPump.size() != 0)
@@ -33,7 +33,8 @@ _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, doubl
 }
 
 
-void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision) {
+void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision,
+                                  double rayleighLength) {
   // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = L_ds / L_nl
   // The length z is given in units of dispersion length (of pump)
   // The time is given in units of initial width (of pump)
@@ -68,6 +69,8 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
 
   // helper values
   _nlStep = 1._I * _Nsquared * _dz;
+
+  _rayleighLength = rayleighLength;
 }
 
 
@@ -246,9 +249,9 @@ inline Array2Dcd _NonlinearMedium::fftshift2(const Array2Dcd& input) {
 
 Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
            double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-           double beta3, double chirp, double tMax, uint tPrecision, uint zPrecision) :
+           double beta3, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
     _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump, pulseType,
-                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
+                     0, 0, beta3, beta3, 0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
 {}
 
 
@@ -267,6 +270,12 @@ void Chi3::runPumpSimulation() {
 
   pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
   IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
+
+  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    pumpFreq.colwise() *= relativeStrength.array();
+    pumpTime.colwise() *= relativeStrength.array();
+  }
 }
 
 
@@ -309,10 +318,10 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
              const Eigen::Ref<const Arraycd>& customPump, int pulseType,
              double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-             double chirp, double tMax, uint tPrecision, uint zPrecision,
+             double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
              const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium::_NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
-                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision)
+                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
 {
   setPoling(poling);
 }
@@ -327,6 +336,12 @@ void _Chi2::runPumpSimulation() {
   for (uint i = 1; i < _nZSteps; i++) {
     pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
     IFFT(pumpTime.row(i), pumpFreq.row(i))
+  }
+
+  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    pumpFreq.colwise() *= relativeStrength.array();
+    pumpTime.colwise() *= relativeStrength.array();
   }
 }
 
@@ -408,10 +423,10 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double diffBeta0, double diffBeta0o, double chirp, double tMax, uint tPrecision, uint zPrecision,
-                 const Eigen::Ref<const Arrayd>& poling)
+                 double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
+                 double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling)
 {
-  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
+  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision, rayleighLength);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
   if (customPump.size() != 0)
@@ -423,8 +438,8 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
 
 
 void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLengthOrig,
-                         double dispLength, uint zPrecision) {
-  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision);
+                         double dispLength, uint zPrecision, double rayleighLength) {
+  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision, rayleighLength);
 
   _NLo = nlLengthOrig;
 

@@ -21,7 +21,8 @@ public:
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
                    const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
                    double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-                   double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+                   double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+                   double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void setPump(int pulseType, double chirp=0);
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp=0);
@@ -38,7 +39,7 @@ public:
   const Arrayd& getFrequency() {return _omega;};
 
 protected:
-  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision=100);
+  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision, double rayleighLength);
   virtual void resetGrids(uint nFreqs, double tMax);
   void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
                      double beta3=0, double beta3s=0, double diffBeta0=0);
@@ -65,6 +66,7 @@ protected:
   double _beta3;  /// third order dispersion of the pump's frequency
   double _beta3s; /// third order dispersion of the signal's frequency
   double _diffBeta0; /// wave-vector mismatch of the simulated process
+  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
 
   Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
   Arraycd _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
@@ -89,7 +91,8 @@ class Chi3 : public _NonlinearMedium {
 public:
   Chi3(double relativeLength, double nlLength, double dispLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
-       double beta3=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100);
+       double beta3=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+       double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void runPumpSimulation() override;
   using _NonlinearMedium::runSignalSimulation;
@@ -105,7 +108,8 @@ public:
   _Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
         const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
         double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-        double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
+        double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+        double tMax=10, uint tPrecision=512, uint zPrecision=100,
         const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void runPumpSimulation() override;
@@ -128,14 +132,14 @@ protected:
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
-
 class Chi2SFG : public _Chi2 {
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double diffBeta0o=0, double chirp=0, double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
@@ -150,7 +154,8 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setDispersion;
 
 protected:
-  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision=100);
+  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision,
+                  double rayleighLength);
   void resetGrids(uint nFreqs, double tMax) override;
   void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
                      double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
