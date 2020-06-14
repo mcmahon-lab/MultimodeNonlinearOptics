@@ -131,6 +131,57 @@ def downSampledCov(Z, perBin):
   return newZ @ newZ.T
 
 
+def downSampledCov(Z, measurements, omega, freqCutoff, nModeClasses=1):
+  """
+  Downsample a covariance matrix.
+  For reducing the covariance matrix to the number of detectors, if these are less than the simulation window size.
+  If the covariance matrix is made up of unrelated modes (ie different frequency bands),
+  all with the same number of internal modes, these can be treated separately by setting nModeClasses.
+  """
+  freqCut = np.abs(fftshift(omega)) < freqCutoff
+  nBinsCut = np.sum(freqCut)
+  start = np.argmax(freqCut)
+
+  sampling = np.round(np.linspace(start, start+nBinsCut-1, measurements)).astype(np.int)
+
+  nt = Z.shape[0] // 2 // nModeClasses
+  Zcut = np.empty((2 * nModeClasses * measurements, 2 * nModeClasses * nt), dtype=Z.dtype)
+
+  subset = np.concatenate([sampling + nt * i for i in range(nModeClasses)])
+  Zcut[:measurements*nModeClasses] = Z[subset]
+  Zcut[measurements*nModeClasses:] = Z[nt * nModeClasses + subset]
+
+  covCut = calcCovarianceMtx(Z, np.inf)
+
+  return covCut
+
+
+def downSampledCovABasis(C, S, measurements, omega, freqCutoff, nModeClasses=1):
+  """
+  Downsample a covariance matrix.
+  For reducing the covariance matrix to the number of detectors, if these are less than the simulation window size.
+  If the covariance matrix is made up of unrelated modes (ie different frequency bands),
+  all with the same number of internal modes, these can be treated separately by setting nModeClasses.
+  """
+  freqCut = np.abs(fftshift(omega)) < freqCutoff
+  nBinsCut = np.sum(freqCut)
+  start = np.argmax(freqCut)
+
+  sampling = np.round(np.linspace(start, start+nBinsCut-1, measurements)).astype(np.int)
+
+  nt = C.shape[0] // nModeClasses
+  Ccut = np.empty((nModeClasses * measurements, nModeClasses * nt), dtype=C.dtype)
+  Scut = np.empty((nModeClasses * measurements, nModeClasses * nt), dtype=S.dtype)
+
+  subset = np.concatenate([sampling + nt * i for i in range(nModeClasses)])
+  Ccut[:] = C[subset]
+  Scut[:] = S[subset]
+
+  aCovCut = calcCovarianceMtxABasis(Ccut, Scut)
+
+  return aCovCut
+
+
 def blochMessiahEigs(Z):
   """
   Obtain the Bloch-Messiah principal values (supermode uncertainties).
