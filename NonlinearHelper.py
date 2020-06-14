@@ -348,3 +348,22 @@ def fullEffectiveAdjacencyMatrix(cov):
   zero = np.zeros((n // 2, n // 2))
   return np.block([[zero, idnt[:n//2,:n//2]],
                    [idnt[:n//2,:n//2], zero]]) @ (np.eye(n) - inv(cov + np.eye(n) / 2))
+
+
+def covLumpLoss(cov, loss):
+  """
+  Add a lump loss to a covariance matrix.
+  This is equivalent to doubling the modes, applying a beam-splitter, then tracing out the new modes.
+  In Green function formalism:
+  Z' = [[t  ir] [[Z  0]
+        [ir  t]] [0 I/2]]
+  or = [[t  r]  [[Z  0]
+        [r -t]]  [0 I/2]]
+  Z' Z'^† = t^2 Z Z^† + r^2 I/2 = t^2 C + r^2 I/2
+  """
+  if not np.shape(loss):
+    return (1 - loss) * cov + (loss * 0.5) * np.identity(cov.shape[0])
+
+  else:
+    reflection = np.sqrt(1 - loss)
+    return np.outer(reflection, reflection) * cov + (loss * 0.5) * np.identity(cov.shape[0])
