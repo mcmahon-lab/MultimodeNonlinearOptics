@@ -274,7 +274,7 @@ def linearPoling(kMin, kMax, L, dL):
   Create a poling design that has linearly increasing phase matching, up to a given resolution
   This is done by defining an instantaneous (spatial frequency) that varies linearly in z
   """
-  z = np.linspace(dL / 2, L + dL / 2, round(L / dL))
+  z = np.linspace(dL / 2, L + dL / 2, int(round(L / dL)))
   polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
   polingDirection[polingDirection == 0.] = 1. # TODO improve how we correct for 0
 
