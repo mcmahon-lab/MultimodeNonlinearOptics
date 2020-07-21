@@ -328,6 +328,17 @@ def incoherentPowerGreens(Z):
   return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
 
 
+def photonCov(V):
+  """
+  Calculate the photon number covariance from a Gaussian covariance matrix.
+  Note: only for zero mean states, non-zero mean states require additional terms.
+  Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
+  See "Mode structure and photon number correlations in squeezed quantum pulses".
+  """
+  N = Z.shape[0] // 2
+  return 0.5 * (V[:N, :N]**2 + V[N:, N:]**2 + V[:N, N:]**2 + V[N:, :N]**2 - 0.5 * np.eye(N))
+
+
 def parametricFluorescence(modes, diag):
   """
   Given decomposition of a transmission matrix in the complex frequency domain,
