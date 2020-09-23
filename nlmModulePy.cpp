@@ -53,6 +53,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
            &Chi3::computeGreensFunction, py::return_value_policy::move,
            "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
+  Chi3.def("batchSignalSimulation",
+           &Chi3::batchSignalSimulation, py::return_value_policy::move,
+           "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
   Chi3.def_property_readonly("pumpFreq", &Chi3::getPumpFreq, py::return_value_policy::reference);
   Chi3.def_property_readonly("pumpTime", &Chi3::getPumpTime, py::return_value_policy::reference);
   Chi3.def_property_readonly("signalFreq", &Chi3::getSignalFreq, py::return_value_policy::reference);
@@ -89,6 +93,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2PDC.def("computeGreensFunction",
               &Chi2PDC::computeGreensFunction, py::return_value_policy::move,
               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
+  Chi2PDC.def("batchSignalSimulation",
+              &Chi2PDC::batchSignalSimulation, py::return_value_policy::move,
+              "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi2PDC.def_property_readonly("pumpFreq", &Chi2PDC::getPumpFreq, py::return_value_policy::reference);
   Chi2PDC.def_property_readonly("pumpTime", &Chi2PDC::getPumpTime, py::return_value_policy::reference);
@@ -133,6 +141,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               &Chi2SFG::computeTotalGreen, py::return_value_policy::move,
               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
+  Chi2SFG.def("batchSignalSimulation",
+              &Chi2SFG::batchSignalSimulation, py::return_value_policy::move,
+              "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
   Chi2SFG.def_property_readonly("pumpFreq", &Chi2SFG::getPumpFreq, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("pumpTime", &Chi2SFG::getPumpTime, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("signalFreq", &Chi2SFG::getSignalFreq, py::return_value_policy::reference);
@@ -160,6 +172,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Cascade.def("computeGreensFunction",
               &Cascade::computeGreensFunction, py::return_value_policy::move,
               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
+  Cascade.def("batchSignalSimulation",
+              &Cascade::batchSignalSimulation, py::return_value_policy::move,
+              "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Cascade.def("addMedium", &Cascade::addMedium,
               "medium"_a);

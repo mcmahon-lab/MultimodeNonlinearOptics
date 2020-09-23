@@ -30,6 +30,7 @@ public:
   virtual void runPumpSimulation() = 0;
   virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
   virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
+  Array2Dcd batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
 
   const Array2Dcd& getPumpFreq()   {return pumpFreq;};
   const Array2Dcd& getPumpTime()   {return pumpTime;};

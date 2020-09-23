@@ -237,6 +237,56 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
+Array2Dcd _NonlinearMedium::batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs,
+                                                  bool inTimeDomain, bool runPump, uint nThreads) {
+
+  auto nInputs = inputProfs.rows();
+  auto inCols  = inputProfs.cols();
+  // TODO For SFG accepts single or double input but returns only one, need to generalize or expand
+  if (inCols % _nFreqs != 0 || inCols / _nFreqs == 0 || inCols / _nFreqs > 2)
+    throw std::invalid_argument("Signals not of correct length!");
+
+  if (nThreads > nInputs)
+    throw std::invalid_argument("Too many threads requested!");
+
+  if (runPump) runPumpSimulation();
+
+  // Signal outputs -- Note: hopefully large enough to avoid dirtying cache?
+  Array2Dcd outSignals(nInputs, _nFreqs);
+
+  // run n-1 separate threads, run part on this process
+  std::vector<std::thread> threads;
+  threads.reserve(nThreads - 1);
+
+  // Each thread needs a separate computation grid to avoid interfering with other threads
+  std::vector<Array2Dcd> grids(2 * (nThreads - 1));
+
+  // Calculate all signal propagations
+  auto calcBatch = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                   (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+    if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
+    if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
+    auto& grid = inTimeDomain ? gridTime : gridFreq;
+
+    for (uint i = start; i < stop; i++) {
+      runSignalSimulation(inputProfs.row(i), inTimeDomain, gridFreq, gridTime);
+      outSignals.row(i) = grid.bottomRows<1>();
+    }
+  };
+
+  for (uint i = 1; i < nThreads; i++) {
+    threads.emplace_back(calcBatch, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
+                         (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
+  }
+  calcBatch(signalFreq, signalTime, 0, nInputs / nThreads);
+  for (auto& thread : threads) {
+    if (thread.joinable()) thread.join();
+  }
+
+  return outSignals;
+}
+
+
 inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
   Arrayd out(input.rows(), input.cols());
   auto half = input.cols() / 2;
