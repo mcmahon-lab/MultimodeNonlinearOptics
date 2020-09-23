@@ -35,18 +35,22 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
       "beta3"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
 
-  Chi3.def("setPump", (void (Chi3::*)(int, double))&Chi3::setPump,
+  Chi3.def("setPump",
+          (void (Chi3::*)(int, double))&Chi3::setPump,
            "pulseType"_a, "chirp"_a = 0);
 
-  Chi3.def("setPump", (void (Chi3::*)(const Eigen::Ref<const Arraycd>&, double))&Chi3::setPump,
+  Chi3.def("setPump",
+           (void (Chi3::*)(const Eigen::Ref<const Arraycd>&, double))&Chi3::setPump,
            "customPump"_a, "chirp"_a = 0);
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation);
 
-  Chi3.def("runSignalSimulation", (void (Chi3::*)(Eigen::Ref<const Arraycd>, bool))&Chi3::runSignalSimulation,
+  Chi3.def("runSignalSimulation",
+           (void (Chi3::*)(Eigen::Ref<const Arraycd>, bool))&Chi3::runSignalSimulation,
            "inputProf"_a, "inTimeDomain"_a = true);
 
-  Chi3.def("computeGreensFunction", &Chi3::computeGreensFunction, py::return_value_policy::move,
+  Chi3.def("computeGreensFunction",
+           &Chi3::computeGreensFunction, py::return_value_policy::move,
            "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
 
   Chi3.def_property_readonly("pumpFreq", &Chi3::getPumpFreq, py::return_value_policy::reference);
@@ -68,15 +72,18 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
       "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
-  Chi2PDC.def("setPump", (void (Chi2PDC::*)(int, double))&Chi2PDC::setPump,
+  Chi2PDC.def("setPump",
+              (void (Chi2PDC::*)(int, double))&Chi2PDC::setPump,
               "pulseType"_a, "chirp"_a = 0);
 
-  Chi2PDC.def("setPump", (void (Chi2PDC::*)(const Eigen::Ref<const Arraycd>&, double))&Chi2PDC::setPump,
+  Chi2PDC.def("setPump",
+              (void (Chi2PDC::*)(const Eigen::Ref<const Arraycd>&, double))&Chi2PDC::setPump,
               "customPump"_a, "chirp"_a = 0);
 
   Chi2PDC.def("runPumpSimulation", &Chi2PDC::runPumpSimulation);
 
-  Chi2PDC.def("runSignalSimulation", (void (Chi2PDC::*)(Eigen::Ref<const Arraycd>, bool))&Chi2PDC::runSignalSimulation,
+  Chi2PDC.def("runSignalSimulation",
+              (void (Chi2PDC::*)(Eigen::Ref<const Arraycd>, bool))&Chi2PDC::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2PDC.def("computeGreensFunction",
@@ -104,15 +111,18 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
       "diffBeta0o"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
-  Chi2SFG.def("setPump", (void (Chi2SFG::*)(int, double))&Chi2SFG::setPump,
+  Chi2SFG.def("setPump",
+              (void (Chi2SFG::*)(int, double))&Chi2SFG::setPump,
               "pulseType"_a, "chirp"_a = 0);
 
-  Chi2SFG.def("setPump", (void (Chi2SFG::*)(const Eigen::Ref<const Arraycd>&, double))&Chi2SFG::setPump,
+  Chi2SFG.def("setPump",
+              (void (Chi2SFG::*)(const Eigen::Ref<const Arraycd>&, double))&Chi2SFG::setPump,
               "customPump"_a, "chirp"_a = 0);
 
   Chi2SFG.def("runPumpSimulation", &Chi2SFG::runPumpSimulation);
 
-  Chi2SFG.def("runSignalSimulation", (void (Chi2SFG::*)(Eigen::Ref<const Arraycd>, bool))&Chi2SFG::runSignalSimulation,
+  Chi2SFG.def("runSignalSimulation",
+              (void (Chi2SFG::*)(Eigen::Ref<const Arraycd>, bool))&Chi2SFG::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Chi2SFG.def("computeGreensFunction",
@@ -143,7 +153,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
 
-  Cascade.def("runSignalSimulation", (void (Cascade::*)(Eigen::Ref<const Arraycd>, bool))&Cascade::runSignalSimulation,
+  Cascade.def("runSignalSimulation",
+              (void (Cascade::*)(Eigen::Ref<const Arraycd>, bool))&Cascade::runSignalSimulation,
               "inputProf"_a, "inTimeDomain"_a = true);
 
   Cascade.def("computeGreensFunction",

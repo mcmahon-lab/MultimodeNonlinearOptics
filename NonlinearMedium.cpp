@@ -194,7 +194,8 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   std::vector<Array2Dcd> grids(2 * (nThreads - 1));
 
   // Calculate Green's functions with real and imaginary impulse response
-  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                        (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
     if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
     if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
     auto& grid = inTimeDomain ? gridTime : gridFreq;
@@ -615,7 +616,8 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
 
   // Calculate Green's functions with real and imaginary impulse response
   // Signal frequency comes first in the matrix, original frequency second
-  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                        (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
 
     const bool usingMemberGrids = (start == 0);
     if (!usingMemberGrids) {
