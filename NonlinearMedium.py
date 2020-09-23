@@ -206,7 +206,7 @@ class _NonlinearMedium:
     :return: Green's functions C, S
     """
     if nThreads > s._nFreqs:
-      raise ValueError("Too many threads requested!");
+      raise ValueError("Too many threads requested!")
 
     if runPump: s.runPumpSimulation()
 
@@ -250,6 +250,51 @@ class _NonlinearMedium:
     greenS = greenS.T
 
     return fftshift(greenC), fftshift(greenS)
+
+
+  def batchSignalSimulation(s, inputProfs, inTimeDomain=False, runPump=True, nThreads=1):
+    """
+    Run multiple signal simulations.
+    :param inputProfs   Profiles of input pulses. Can be time or frequency domain.
+    :param inTimeDomain Specify if input is in frequency or frequency domain. True for time, false for frequency.
+    :param runPump      Whether to run pump simulation beforehand.
+    :return: Green's functions C, S
+    """
+    nInputs, inCols = inputProfs.shape
+    # TODO For SFG accepts single or double input but returns only one, need to generalize or expand
+    if inCols % _nFreqs != 0 or inCols / _nFreqs == 0 or inCols / _nFreqs > 2:
+      raise ValueError("Signals not of correct length!")
+
+    if nThreads > nInputs:
+      raise ValueError("Too many threads requested!")
+
+    if runPump: s.runPumpSimulation()
+
+    # Signal outputs
+    outSignals = np.empty((nInputs, s._nFreqs), dtype=np.complex128)
+
+    # Calculate Green's functions with real and imaginary impulse response
+    def calcBatch(usingMemberGrids, start, stop):
+
+      if usingMemberGrids:
+        gridFreq, gridTime = s.signalFreq, s.signalTime
+      else:
+        gridFreq, gridTime = np.empty_like(s.signalFreq), np.empty_like(s.signalTime)
+
+      grid = gridTime if inTimeDomain else gridFreq
+
+      for i in range(start, stop):
+        s._runSignalSimulation(inputProfs[i], inTimeDomain, gridFreq, gridTime)
+        outSignals[i, :] = grid[-1, :]
+
+    # run n-1 separate threads, run part on this process
+    threads = [th.Thread(target=calcBatch, args=(False, (i * nInputs) // nThreads, ((i + 1) * nInputs) // nThreads))
+               for i in range(1, nThreads)]
+    for thread in threads: thread.start()
+    calcGreensPart(True, 0, nInputs // nThreads)
+    for thread in threads: thread.join()
+
+    return outSignals
 
 
 class Chi3(_NonlinearMedium):
@@ -589,7 +634,7 @@ class Chi2SFG(_Chi2):
     :return: Green's functions C, S for the spectrum including both generated and original signals
     """
     if nThreads > s._nFreqs:
-      raise ValueError("Too many threads requested!");
+      raise ValueError("Too many threads requested!")
 
     if runPump: s.runPumpSimulation()
 
