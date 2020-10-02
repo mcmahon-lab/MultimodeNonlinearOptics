@@ -3,44 +3,12 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-
 #     http://www.apache.org/licenses/LICENSE-2.0
-
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Matrix decompositions
-=====================
-
-**Module name:** :mod:`strawberryfields.decompositions`
-
-.. currentmodule:: strawberryfields.decompositions
-
-This module implements common shared matrix decompositions that are used to perform gate decompositions.
-
-
-Functions
----------
-
-.. autosummary::
-   takagi
-   graph_embed
-   clements
-   clements_phase_end
-   triangular_decomposition
-   williamson
-   bloch_messiah
-   covmat_to_hamil
-   hamil_to_covmat
-
-
-Code details
-~~~~~~~~~~~~
-
-"""
 
 import numpy as np
 from scipy.linalg import block_diag, sqrtm, polar, schur
@@ -175,280 +143,16 @@ def graph_embed(A, max_mean_photon=1.0, make_traceless=True, tol=1e-6):
     if m != n:
         raise ValueError("The matrix is not square.")
 
-    if np.linalg.norm(A-np.transpose(A)) >= tol:
+    if np.linalg.norm(A - A.T) / n >= tol:
         raise ValueError("The matrix is not symmetric.")
 
     if make_traceless:
-        A = A - np.trace(A)*np.identity(n)/n
+        A = A - np.trace(A) * np.identity(n) / n
 
     s, U = takagi(A, tol=tol)
-    sc = np.sqrt(1.0+1.0/max_mean_photon)
-    vals = -np.arctanh(s/(s[0]*sc))
+    sc = np.sqrt(1.0 + 1.0 / max_mean_photon)
+    vals = -np.arctanh(s / (s[0] * sc))
     return vals, U
-
-
-def T(m, n, theta, phi, nmax):
-    r"""The Clements T matrix from Eq. 1 of the paper"""
-    mat = np.identity(nmax, dtype=np.complex128)
-    mat[m, m] = np.exp(1j*phi)*np.cos(theta)
-    mat[m, n] = -np.sin(theta)
-    mat[n, m] = np.exp(1j*phi)*np.sin(theta)
-    mat[n, n] = np.cos(theta)
-    return mat
-
-
-def Ti(m, n, theta, phi, nmax):
-    r"""The inverse Clements T matrix"""
-    return np.transpose(T(m, n, theta, -phi, nmax))
-
-
-def nullTi(m, n, U):
-    r"""Nullifies element m,n of U using Ti"""
-    (nmax, mmax) = U.shape
-
-    if nmax != mmax:
-        raise ValueError("U must be a square matrix")
-
-    if U[m, n+1] == 0:
-        thetar = np.pi/2
-        phir = 0
-    else:
-        r = U[m, n] / U[m, n+1]
-        thetar = np.arctan(np.abs(r))
-        phir = np.angle(r)
-
-    return [n, n+1, thetar, phir, nmax]
-
-
-def nullT(n, m, U):
-    r"""Nullifies element n,m of U using T"""
-    (nmax, mmax) = U.shape
-
-    if nmax != mmax:
-        raise ValueError("U must be a square matrix")
-
-    if U[n-1, m] == 0:
-        thetar = np.pi/2
-        phir = 0
-    else:
-        r = -U[n, m] / U[n-1, m]
-        thetar = np.arctan(np.abs(r))
-        phir = np.angle(r)
-
-    return [n-1, n, thetar, phir, nmax]
-
-
-def clements(V, tol=1e-11):
-    r"""Clements decomposition of a unitary matrix, with local
-    phase shifts applied between two interferometers.
-
-    See :ref:`clements` or :cite:`clements2016` for more details.
-
-    This function returns a circuit corresponding to an intermediate step in
-    Clements decomposition as described in Eq. 4 of the article. In this form,
-    the circuit comprises some T matrices (as in Eq. 1), then phases on all modes,
-    and more T matrices.
-
-    The procedure to construct these matrices is detailed in the supplementary
-    material of the article.
-
-    Args:
-        V (array[complex]): unitary matrix of size n_size
-        tol (float): the tolerance used when checking if the matrix is unitary:
-            :math:`|VV^\dagger-I| \leq` tol
-
-    Returns:
-        tuple[array]: tuple of the form ``(tilist,tlist,np.diag(localV))``
-            where:
-
-            * ``tilist``: list containing ``[n,m,theta,phi,n_size]`` of the Ti unitaries needed
-            * ``tlist``: list containing ``[n,m,theta,phi,n_size]`` of the T unitaries needed
-            * ``localV``: Diagonal unitary sitting sandwiched by Ti's and the T's
-    """
-    localV = V
-    (nsize, _) = localV.shape
-
-    diffn = np.linalg.norm(V @ V.conj().T - np.identity(nsize))
-    if diffn >= tol:
-        raise ValueError("The input matrix is not unitary")
-
-    tilist = []
-    tlist = []
-    for k, i in enumerate(range(nsize-2, -1, -1)):
-        if k % 2 == 0:
-            for j in reversed(range(nsize-1-i)):
-                tilist.append(nullTi(i+j+1, j, localV))
-                localV = localV @ Ti(*tilist[-1])
-        else:
-            for j in range(nsize-1-i):
-                tlist.append(nullT(i+j+1, j, localV))
-                localV = T(*tlist[-1]) @ localV
-
-    return tilist, tlist, np.diag(localV)
-
-
-def clements_phase_end(V, tol=1e-11):
-    r"""Clements decomposition of a unitary matrix.
-
-    See :cite:`clements2016` for more details.
-
-    Final step in the decomposition of a given discrete unitary matrix.
-    The output is of the form given in Eq. 5.
-
-    Args:
-        V (array[complex]): unitary matrix of size n_size
-        tol (float): the tolerance used when checking if the matrix is unitary:
-            :math:`|VV^\dagger-I| \leq` tol
-
-    Returns:
-        tuple[array]: returns a tuple of the form ``(tlist,np.diag(localV))``
-            where:
-
-            * ``tlist``: list containing ``[n,m,theta,phi,n_size]`` of the T unitaries needed
-            * ``localV``: Diagonal unitary matrix to be applied at the end of circuit
-    """
-    tilist, tlist, diags = clements(V, tol)
-    new_tlist, new_diags = tilist.copy(), diags.copy()
-
-    # Push each beamsplitter through the diagonal unitary
-    for i in reversed(tlist):
-        em, en = int(i[0]), int(i[1])
-        alpha, beta = np.angle(new_diags[em]), np.angle(new_diags[en])
-        theta, phi = i[2], i[3]
-
-        # The new parameters required for D',T' st. T^(-1)D = D'T'
-        new_theta = theta
-        new_phi = np.fmod((alpha - beta + np.pi), 2*np.pi)
-        new_alpha = beta - phi + np.pi
-        new_beta = beta
-
-        new_i = [i[0], i[1], new_theta, new_phi, i[4]]
-        new_diags[em], new_diags[en] = np.exp(1j*new_alpha), np.exp(1j*new_beta)
-
-        new_tlist = new_tlist + [new_i]
-
-    return (new_tlist, new_diags)
-
-
-def mach_zehnder(m, n, internal_phase, external_phase, nmax):
-    r"""A two-mode Mach-Zehnder interferometer section.
-
-    This section is constructed by an external phase shifter on the input mode
-    m, a symmetric beamsplitter combining modes m and n, an internal phase
-    shifter on mode m, and another symmetric beamsplitter combining modes m
-    and n.
-    """
-    Rexternal = np.identity(nmax, dtype=np.complex128)
-    Rexternal[m, m] = np.exp(1j * external_phase)
-    Rinternal = np.identity(nmax, dtype=np.complex128)
-    Rinternal[m, m] = np.exp(1j * internal_phase)
-    BS = np.identity(nmax, dtype=np.complex128)
-    BS[m, m] = 1.0 / np.sqrt(2)
-    BS[m, n] = 1.0j / np.sqrt(2)
-    BS[n, m] = 1.0j / np.sqrt(2)
-    BS[n, n] = 1.0 / np.sqrt(2)
-    return BS @ Rinternal @ BS @ Rexternal
-
-
-def rectangular_symmetric(V, tol=1e-11):
-    r"""Decomposition of a unitary into an array of symmetric beamsplitters.
-
-    This decomposition starts with the output from :func:`clements_phase_end`
-    and further decomposes each of the T unitaries into Mach-Zehnder
-    interferometers consisting of two phase-shifters and two symmetric (50:50)
-    beamsplitters.
-
-    The two beamsplitters in this decomposition of T are modeled by :class:`~.ops.BSgate`
-    with arguments :math:`(\pi/4, \pi/2)`, and the two phase-shifters (see :class:`~.ops.Rgate`)
-    act on the input mode with the lower index of the two. The phase imposed
-    by the first phaseshifter (before the first beamsplitter) is named
-    ``external_phase``, while we call the phase shift between the beamsplitters
-    ``internal_phase``.
-
-    The algorithm applied in this function makes use of the following identity:
-
-    .. code-block:: python
-
-        Rgate(alpha) | 1
-        Rgate(beta) | 2
-        Rgate(phi) | 1
-        BSgate(theta, 0) | 1, 2
-
-        equals
-
-        Rgate(phi+alpha-beta) | 1
-        BSgate(pi/4, pi/2) | 1, 2
-        Rgate(2*theta+pi) | 1, 2
-        BSgate(pi/4, pi/2) | 1, 2
-        Rgate(beta-theta+pi) | 1
-        Rgate(beta-theta) | 2
-
-    The phase-shifts by ``alpha`` and ``beta`` are thus pushed consecutively through
-    all the T unitaries of the interferometer and these unitaries are converted
-    into pairs of symmetric beamsplitters with two phase shifts. The phase
-    shifts at the end of the interferometer are added to the ones from the
-    diagonal unitary at the end of the interferometer obtained from :func:`~.clements_phase_end`.
-
-    Args:
-        V (array): unitary matrix of size n_size
-        tol (int): the number of decimal places to use when determining
-          whether the matrix is unitary
-
-    Returns:
-        tuple[array]: returns a tuple of the form ``(tlist,np.diag(localV))``
-            where:
-
-            * ``tlist``: list containing ``[n,m,internal_phase,external_phase,n_size]`` of the T unitaries needed
-            * ``localV``: Diagonal unitary matrix to be applied at the end of circuit
-    """
-    tlist, diags = clements_phase_end(V, tol)
-    new_tlist, new_diags = [], np.ones(len(diags), dtype=diags.dtype)
-    for i in tlist:
-        em, en = int(i[0]), int(i[1])
-        alpha, beta = np.angle(new_diags[em]), np.angle(new_diags[en])
-        theta, phi = i[2], i[3]
-        external_phase = np.fmod((phi + alpha - beta), 2 * np.pi)
-        internal_phase = np.fmod((np.pi + 2.0 * theta), 2 * np.pi)
-        new_alpha = beta - theta + np.pi
-        new_beta = 0*np.pi - theta + beta
-        new_i = [i[0], i[1], internal_phase, external_phase, i[4]]
-        new_diags[em], new_diags[en] = np.exp(1j*new_alpha), np.exp(1j*new_beta)
-        new_tlist = new_tlist + [new_i]
-    new_diags = diags * new_diags
-    return (new_tlist, new_diags)
-
-
-def triangular_decomposition(V, tol=1e-11):
-    r"""Triangular decomposition of a unitary matrix due to Reck et al.
-
-    See :cite:`reck1994` for more details and :cite:`clements2016` for details on notation.
-
-    Args:
-        V (array[complex]): unitary matrix of size ``n_size``
-        tol (float): the tolerance used when checking if the matrix is unitary:
-            :math:`|VV^\dagger-I| \leq` tol
-
-    Returns:
-        tuple[array]: returns a tuple of the form ``(tlist,np.diag(localV))``
-            where:
-
-            * ``tlist``: list containing ``[n,m,theta,phi,n_size]`` of the T unitaries needed
-            * ``localV``: Diagonal unitary applied at the beginning of circuit
-    """
-    localV = V
-    (nsize, _) = localV.shape
-
-    diffn = np.linalg.norm(V @ V.conj().T - np.identity(nsize))
-    if diffn >= tol:
-        raise ValueError("The input matrix is not unitary")
-
-    tlist = []
-    for i in range(nsize-2, -1, -1):
-        for j in range(i+1):
-            tlist.append(nullT(nsize-j-1, nsize-i-2, localV))
-            localV = T(*tlist[-1]) @ localV
-
-    return list(reversed(tlist)), np.diag(localV)
 
 
 def williamson(V, tol=1e-11):
@@ -489,9 +193,8 @@ def williamson(V, tol=1e-11):
     rotmat = changebasis(n)
     vals = np.linalg.eigvalsh(V)
 
-    for val in vals:
-        if val <= 0:
-            raise ValueError("Input matrix is not positive definite")
+    if np.any(vals <= 0):
+        raise ValueError("Input matrix is not positive definite")
 
     Mm12 = sqrtm(np.linalg.inv(V)).real
     r1 = Mm12 @ omega @ Mm12
@@ -625,79 +328,3 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
         v1 = np.eye(2 * n)
 
     return ut1.real, st1.real, v1.real
-
-
-def covmat_to_hamil(V, tol=1e-10):  # pragma: no cover
-    r"""Converts a covariance matrix to a Hamiltonian.
-
-    Given a covariance matrix V of a Gaussian state :math:`\rho` in the xp ordering,
-    finds a positive matrix :math:`H` such that
-
-    .. math:: \rho = \exp(-Q^T H Q/2)/Z
-
-    where :math:`Q = (x_1,\dots,x_n,p_1,\dots,p_n)` are the canonical
-    operators, and Z is the partition function.
-
-    For more details, see https://arxiv.org/abs/1507.01941
-
-    Args:
-        V (array): Gaussian covariance matrix
-        tol (int): the number of decimal places to use when determining if the matrix is symmetric
-
-    Returns:
-        array: positive definite Hamiltonian matrix
-    """
-    (n, m) = V.shape
-    if n != m:
-        raise ValueError("Input matrix must be square")
-    if np.linalg.norm(V-np.transpose(V)) >= tol:
-        raise ValueError("The input matrix is not symmetric")
-
-    n = n//2
-    omega = sympmat(n)
-
-    vals = np.linalg.eigvalsh(V)
-    for val in vals:
-        if val <= 0:
-            raise ValueError("Input matrix is not positive definite")
-
-    W = 1j*V @ omega
-    l, v = np.linalg.eig(W)
-    H = (1j * omega @ (v @ np.diag(np.arctanh(1.0/l.real)) @ np.linalg.inv(v))).real
-
-    return H
-
-
-def hamil_to_covmat(H, tol=1e-10):  # pragma: no cover
-    r"""Converts a Hamiltonian matrix to a covariance matrix.
-
-    Given a Hamiltonian matrix of a Gaussian state H, finds the equivalent covariance matrix
-    V in the xp ordering.
-
-    For more details, see https://arxiv.org/abs/1507.01941
-
-    Args:
-        H (array): positive definite Hamiltonian matrix
-        tol (int): the number of decimal places to use when determining if the Hamiltonian is symmetric
-
-    Returns:
-        array: Gaussian covariance matrix
-    """
-    (n, m) = H.shape
-    if n != m:
-        raise ValueError("Input matrix must be square")
-    if np.linalg.norm(H-np.transpose(H)) >= tol:
-        raise ValueError("The input matrix is not symmetric")
-
-    vals = np.linalg.eigvalsh(H)
-    for val in vals:
-        if val <= 0:
-            raise ValueError("Input matrix is not positive definite")
-
-    n = n//2
-    omega = sympmat(n)
-
-    Wi = 1j*omega @ H
-    l, v = np.linalg.eig(Wi)
-    V = (1j * (v @ np.diag(1.0/np.tanh(l.real)) @ np.linalg.inv(v)) @ omega).real
-    return V
