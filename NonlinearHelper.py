@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
-from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm, dft
+from numpy.fft import fft, ifft, fftshift, ifftshift, fft2, ifft2
+from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm
 
 
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
@@ -40,7 +40,7 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
 def calculateChi3NlLength(gamma, peakPower):
   """
   Return nonlinear length (meters).
-  gamma: nonlinear coefficient (W^-1 km^-1)
+  gamma: nonlinear coefficient (W^-1 km^-1); gamma = 2 pi n_2 / (lambda A_eff)
   peakPower: pulse peak power (W)
   """
   NL = 1000 / (peakPower * gamma)
@@ -49,8 +49,9 @@ def calculateChi3NlLength(gamma, peakPower):
 
 def calcQuadratureGreens(greenC, greenS):
   """
-  Convert the Green's (transmission) matrix to the x and p quadrature basis from the a basis
+  Convert the Green's matrix to the x and p quadrature basis from the a basis (bosonic)
   greenC and greenS are such that a_out = C a + S a^†.
+  Derived using x = a^† + a, p = i(a^† - a).
   """
   Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
                 [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
@@ -62,6 +63,7 @@ def calcCovarianceMtx(Z, tol=1e-4):
   """
   Calculate the covariance matrix in x/p quadrature basis from the transmission Green's matrix.
   Checks that the determinant of the covariance matrix is approximately unity.
+  Derived using x_i x_j = 1/2 {Z_ik x_k, Z_jk x_k}.
   """
   cov = Z @ Z.T
   determinant = det(cov)
@@ -71,8 +73,8 @@ def calcCovarianceMtx(Z, tol=1e-4):
 
 def calcCovarianceMtxABasis(greenC, greenS):
   """
-  Calculate the covariance matrix in a basis from the transmission Green's matrices.
-  Checks that the determinant of the covariance matrix is approximately unity.
+  Calculate the covariance matrix in a basis (bosonic) from the transmission Green's matrices.
+  Derived using a_i a_j = 1/2 {Z_ik a_k, Z_jk a_k}.
   """
   Z = np.block([[greenC, greenS],
                 [greenS.conj(),  greenC.conj()]]) * np.sqrt(1 / 2)
@@ -91,7 +93,8 @@ def normalizedCov(Cov):
 
 def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   """
-  Compute the squeezing observed combining the covariance matrix and a local oscillator with a given profile.
+  Compute the squeezing observed combining the covariance matrix and a local oscillator
+  with a given profile.
   """
   if inTimeDomain:
     freqDomain = fftshift(fft(pumpProf))
@@ -116,20 +119,57 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   return variances
 
 
-def downSampledCov(Z, perBin):
+def downSampledCov(Z, measurements, omega, freqCutoff, nModeClasses=1):
   """
-  Downsample a covariance matrix by grouping modes together.
-  assert N // 2 % perBin == 0
+  Downsample a covariance matrix.
+  For reducing the covariance matrix to the number of detectors, if these are fewer
+  than the simulation window size.
+  If the covariance matrix is made up of unrelated modes (ie different frequency bands),
+  with the same number of internal modes, these can be treated separately by setting nModeClasses.
   """
-  N = Z.shape[0]
-  assert N // 2 % perBin == 0
+  freqCut = np.abs(fftshift(omega)) < freqCutoff
+  nBinsCut = np.sum(freqCut)
+  start = np.argmax(freqCut)
 
-  newZ = np.zeros((N // perBin, N))
+  sampling = np.round(np.linspace(start, start+nBinsCut-1, measurements)).astype(np.int)
 
-  for i in range(N // perBin):
-    newZ[:, i] = np.sum(Z[:, i].flatten().reshape(-1, perBin), axis=1) / np.sqrt(perBin)
+  nt = Z.shape[0] // 2 // nModeClasses
+  Zcut = np.empty((2 * nModeClasses * measurements, 2 * nModeClasses * nt), dtype=Z.dtype)
 
-  return newZ @ newZ.T
+  subset = np.concatenate([sampling + nt * i for i in range(nModeClasses)])
+  Zcut[:measurements*nModeClasses] = Z[subset]
+  Zcut[measurements*nModeClasses:] = Z[nt * nModeClasses + subset]
+
+  covCut = calcCovarianceMtx(Z, np.inf)
+
+  return covCut
+
+
+def downSampledCovABasis(C, S, measurements, omega, freqCutoff, nModeClasses=1):
+  """
+  Downsample a covariance matrix.
+  For reducing the covariance matrix to the number of detectors, if these are fewer
+  than the simulation window size.
+  If the covariance matrix is made up of unrelated modes (ie different frequency bands),
+  with the same number of internal modes, these can be treated separately by setting nModeClasses.
+  """
+  freqCut = np.abs(fftshift(omega)) < freqCutoff
+  nBinsCut = np.sum(freqCut)
+  start = np.argmax(freqCut)
+
+  sampling = np.round(np.linspace(start, start+nBinsCut-1, measurements)).astype(np.int)
+
+  nt = C.shape[0] // nModeClasses
+  Ccut = np.empty((nModeClasses * measurements, nModeClasses * nt), dtype=C.dtype)
+  Scut = np.empty((nModeClasses * measurements, nModeClasses * nt), dtype=S.dtype)
+
+  subset = np.concatenate([sampling + nt * i for i in range(nModeClasses)])
+  Ccut[:] = C[subset]
+  Scut[:] = S[subset]
+
+  aCovCut = calcCovarianceMtxABasis(Ccut, Scut)
+
+  return aCovCut
 
 
 def blochMessiahEigs(Z):
@@ -165,35 +205,48 @@ def blochMessiahVecs(Z):
   return sortedDiagonal, sortedLeftVecs, sortedRightVecs
 
 
-def convertGreenFreqToTime(greenC, greenS):
+def ftGreens(greenC, greenS, toTime=True):
   """
   Convert Green's matrix from frequency to time domain
   """
-  # TODO might need some transposition steps doesn't seem 100% correct
-  nFreqs = greenC.shape[0]
-  dftMat = np.conj(dft(nFreqs))
-  gCtime = ifftshift(ifft2(fftshift(greenC)) * nFreqs)
-  gStime = ifftshift(dftMat.T @ fftshift(greenS) @ dftMat / nFreqs)
-  return gCtime, gStime
+  nt = greenS.shape[0]
+  if toTime:
+    convertedC = fftshift(fft(ifft(ifftshift(greenC), axis=0), axis=1))
+    convertedS = fftshift(ifft2(ifftshift(greenS))) * nt
+  else:
+    convertedC = fftshift(ifft(fft(ifftshift(greenC), axis=0), axis=1))
+    convertedS = fftshift(fft2(ifftshift(greenS))) / nt
+
+  return convertedC, convertedS
 
 
 def calcChirp(z):
   """
   Compute chirp coefficient C in exp(-0.5 C T^2). Variable z is in units of dispersion length.
   """
-  return (0.5 * z) / (1 + 0.25 * z**2)
+  return z / (1 + z**2)
 
 
 def calcRayleighWidth(length, wavelength, index):
   """
-  Calculate the Rayleigh width (ie radius, for a Gaussian beam) for a given length and wavelength in the medium.
+  Calculate the Rayleigh width (ie radius, for a Gaussian beam) in some medium for
+  a given length and wavelength.
   """
   return np.sqrt(length * wavelength / (np.pi * index))
 
 
+def calcRayleighLength(width, wavelength, index):
+  """
+  Calculate the Rayleigh length (for a Gaussian beam) in some medium for a given
+  width and wavelength.
+  """
+  return width**2 * np.pi * index / wavelength
+
+
 def basisTransforms(n):
   """
-  Return the two matrices to transform from the a basis to the xp basis, and from the xp basis to the a basis
+  Return the two matrices to transform from the a basis (bosonic) to the xp basis (quadrature),
+  and back from the xp basis to the a basis.
   """
   toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]]) / np.sqrt(2)
   frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) / np.sqrt(2)
@@ -202,7 +255,7 @@ def basisTransforms(n):
 
 def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   """
-  Combine successive a basis C and S Green's matrices.
+  Combine successive a basis (bosonic) C and S Green's matrices.
   """
   Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
   Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
@@ -212,9 +265,9 @@ def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
 def linearPoling(kMin, kMax, L, dL):
   """
   Create a poling design that has linearly increasing phase matching, up to a given resolution
-  This is done by defining an instantaneous (spatial frequency) that varies linearly in z
+  This is done by defining an instantaneous (spatial) frequency that varies linearly in z
   """
-  z = np.linspace(dL / 2, L + dL / 2, round(L / dL))
+  z = np.linspace(dL / 2, L + dL / 2, int(round(L / dL)))
   polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
   polingDirection[polingDirection == 0.] = 1. # TODO improve how we correct for 0
 
@@ -236,8 +289,15 @@ def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
             + sign1 * disp(beta1b, beta2b, beta3b, omega) \
             + sign2 * disp(beta1c, beta2c, beta3c, omega)
 
-  maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
-  mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  if isinstance(domega, (float, int)):
+    maxdk = np.max(np.abs(mismatch[np.abs(omega) < domega]))
+    mindk = np.min(np.abs(mismatch[np.abs(omega) < domega]))
+  elif isinstance(domega, (tuple, list, np.ndarray)):
+    maxdk = np.max(np.abs(mismatch[np.logical_and(-domega[0] < omega, omega < domega[1])]))
+    mindk = np.min(np.abs(mismatch[np.logical_and(-domega[0] < omega, omega < domega[1])]))
+  else:
+    raise ValueError("unrecognized type for domega")
+
   return mindk, maxdk
 
 
@@ -245,14 +305,28 @@ def incoherentPowerGreens(Z):
   """
   Convert a Green's matrix in the quadrature basis into one for incoherent light.
   Note: output is a linear transformation for power.
+  Derived by parametrizing x = cos θ, p = sin θ and averaging over all
+  x_j^2 + p_j^2 = (Z_ji^xx cos θ + Z_ji^xp sin θ)^2 + (Z_ji^px cos θ + Z_ji^pp sin θ)^2
   """
   N = Z.shape[0] // 2
   return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
 
 
+def photonCov(V):
+  """
+  Calculate the photon number covariance from a Gaussian covariance matrix.
+  Note: only for zero mean displacement states, non-zero displacement requires additional terms.
+  Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
+  See "Mode structure and photon number correlations in squeezed quantum pulses".
+  """
+  N = Z.shape[0] // 2
+  return 0.5 * (V[:N, :N]**2 + V[N:, N:]**2 + V[:N, N:]**2 + V[N:, :N]**2 - 0.5 * np.eye(N))
+
+
 def parametricFluorescence(modes, diag):
   """
-  Given decomposition of a transmission matrix in the complex frequency domain, predict observed parametric fluorescence.
+  Given decomposition of a transmission matrix in the complex frequency domain,
+  predict observed parametric fluorescence.
   """
   incoherent = np.sum(np.abs(modes)**2 * np.sinh(np.log(diag[:, np.newaxis]))**2, axis=0)
   coherent   = np.abs(np.sum(modes * np.sinh(np.log(diag[:, np.newaxis])), axis=0))**2
@@ -261,8 +335,10 @@ def parametricFluorescence(modes, diag):
 
 def effectiveAdjacencyMatrix(modes, diag):
   """
-  Given decomposition of a transmission matrix in the complex frequency domain, find the effective GBS adjacency matrix.
-  The matrix is B = U tanh(r_j) U^T, and the sampling probability is proportional to |Haf(B_n)|^2 for submatrix B_n.
+  Given decomposition of a transmission matrix in the complex frequency domain,
+  find the effective GBS adjacency matrix.
+  The matrix is B = U tanh(r_j) U^T, and the sampling probability is proportional
+  to |Haf(B_n)|^2 for submatrix B_n.
   Expects a vector of exp(r_j).
   """
   return modes.T @ np.diag(np.tanh(np.abs(np.log(diag)))) @ modes
@@ -274,10 +350,30 @@ def fullEffectiveAdjacencyMatrix(cov):
   Note: returns a 2Mx2M matrix, if the covariance matrix is purely a result of squeezing,
   the 1st and 4th quadrants are populated (quadrants are complex conjugates).
   The 2nd and 3rd quadrants are due to thermal modes, or losses (quadrants are transpositions).
-  With only squeezing you can reduce to a MxM, Haf(*) -> |Haf(*)|^2 and you recover the form U tanh(r_j) U^T (as above).
+  With pure squeezing, one can reduce to a MxM matrix, Haf(*) -> |Haf(*)|^2,
+  and recover the form U tanh(r_j) U^T (as above).
   """
   n = cov.shape[0]
   idnt = np.identity(n)
   zero = np.zeros((n // 2, n // 2))
   return np.block([[zero, idnt[:n//2,:n//2]],
                    [idnt[:n//2,:n//2], zero]]) @ (np.eye(n) - inv(cov + np.eye(n) / 2))
+
+
+def covLumpLoss(cov, loss):
+  """
+  Add a lump loss to a covariance matrix.
+  This is equivalent to doubling the modes, applying a beam-splitter, and tracing out the new modes.
+  In Green function formalism:
+  Z' = [[t  ir] [[Z  0]
+        [ir  t]] [0 I/2]]
+  or = [[t  r]  [[Z  0]
+        [r -t]]  [0 I/2]]
+  Z' Z'^† = t^2 Z Z^† + r^2 I/2 = t^2 C + r^2 I/2
+  """
+  if not np.shape(loss):
+    return (1 - loss) * cov + (loss * 0.5) * np.identity(cov.shape[0])
+
+  else:
+    reflection = np.sqrt(1 - loss)
+    return np.outer(reflection, reflection) * cov + (loss * 0.5) * np.identity(cov.shape[0])

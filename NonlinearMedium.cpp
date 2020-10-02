@@ -22,8 +22,8 @@ inline constexpr std::complex<double> operator"" _I(long double c) {return std::
 _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, double dispLength,
                                    double beta2, double beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                                    double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                                   double chirp, double tMax, uint tPrecision, uint zPrecision) {
-  setLengths(relativeLength, nlLength, dispLength, zPrecision);
+                                   double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) {
+  setLengths(relativeLength, nlLength, dispLength, zPrecision, rayleighLength);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   if (customPump.size() != 0)
@@ -33,7 +33,8 @@ _NonlinearMedium::_NonlinearMedium(double relativeLength, double nlLength, doubl
 }
 
 
-void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision) {
+void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision,
+                                  double rayleighLength) {
   // Equation defined in terms of dispersion and nonlinear lengh ratio N^2 = L_ds / L_nl
   // The length z is given in units of dispersion length (of pump)
   // The time is given in units of initial width (of pump)
@@ -68,6 +69,8 @@ void _NonlinearMedium::setLengths(double relativeLength, double nlLength, double
 
   // helper values
   _nlStep = 1._I * _Nsquared * _dz;
+
+  _rayleighLength = rayleighLength;
 }
 
 
@@ -131,23 +134,35 @@ void _NonlinearMedium::setDispersion(double beta2, double beta2s, double beta1, 
 }
 
 
-void _NonlinearMedium::setPump(int pulseType, double chirp) {
+void _NonlinearMedium::setPump(int pulseType, double chirpLength) {
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   if (pulseType == 1)
-    _env = 1 / _tau.cosh() * (-0.5_I * chirp * _tau.square()).exp();
+    _env = (1 / _tau.cosh()).cast<std::complex<double>>();
   else if (pulseType == 2) {
-    _env = _tau.sin() / _tau * (-0.5_I * chirp * _tau.square()).exp();
+    _env = (_tau.sin() / _tau).cast<std::complex<double>>();
     _env(0) = 1;
   }
   else
-    _env = (-0.5 * _tau.square() * (1. + 1._I * chirp)).exp();
+    _env = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
+
+  if (chirpLength != 0) {
+    RowVectorcd fftTemp(_nFreqs);
+    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    IFFT(_env, fftTemp)
+  }
 }
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirp) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
-  _env = customPump * (-0.5_I * chirp * _tau.square()).exp();
+  _env = customPump;
+
+  if (chirpLength != 0) {
+    RowVectorcd fftTemp(_nFreqs);
+    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    IFFT(_env, fftTemp)
+  }
 }
 
 
@@ -179,7 +194,8 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   std::vector<Array2Dcd> grids(2 * (nThreads - 1));
 
   // Calculate Green's functions with real and imaginary impulse response
-  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                        (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
     if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
     if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
     auto& grid = inTimeDomain ? gridTime : gridFreq;
@@ -221,6 +237,56 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
+Array2Dcd _NonlinearMedium::batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs,
+                                                  bool inTimeDomain, bool runPump, uint nThreads) {
+
+  auto nInputs = inputProfs.rows();
+  auto inCols  = inputProfs.cols();
+  // TODO For SFG accepts single or double input but returns only one, need to generalize or expand
+  if (inCols % _nFreqs != 0 || inCols / _nFreqs == 0 || inCols / _nFreqs > 2)
+    throw std::invalid_argument("Signals not of correct length!");
+
+  if (nThreads > nInputs)
+    throw std::invalid_argument("Too many threads requested!");
+
+  if (runPump) runPumpSimulation();
+
+  // Signal outputs -- Note: hopefully large enough to avoid dirtying cache?
+  Array2Dcd outSignals(nInputs, _nFreqs);
+
+  // run n-1 separate threads, run part on this process
+  std::vector<std::thread> threads;
+  threads.reserve(nThreads - 1);
+
+  // Each thread needs a separate computation grid to avoid interfering with other threads
+  std::vector<Array2Dcd> grids(2 * (nThreads - 1));
+
+  // Calculate all signal propagations
+  auto calcBatch = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                   (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+    if (gridFreq.size() == 0) gridFreq.resize(_nZSteps, _nFreqs);
+    if (gridTime.size() == 0) gridTime.resize(_nZSteps, _nFreqs);
+    auto& grid = inTimeDomain ? gridTime : gridFreq;
+
+    for (uint i = start; i < stop; i++) {
+      runSignalSimulation(inputProfs.row(i), inTimeDomain, gridFreq, gridTime);
+      outSignals.row(i) = grid.bottomRows<1>();
+    }
+  };
+
+  for (uint i = 1; i < nThreads; i++) {
+    threads.emplace_back(calcBatch, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
+                         (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
+  }
+  calcBatch(signalFreq, signalTime, 0, nInputs / nThreads);
+  for (auto& thread : threads) {
+    if (thread.joinable()) thread.join();
+  }
+
+  return outSignals;
+}
+
+
 inline Arrayd _NonlinearMedium::fftshift(const Arrayd& input) {
   Arrayd out(input.rows(), input.cols());
   auto half = input.cols() / 2;
@@ -246,9 +312,9 @@ inline Array2Dcd _NonlinearMedium::fftshift2(const Array2Dcd& input) {
 
 Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
            double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-           double beta3, double chirp, double tMax, uint tPrecision, uint zPrecision) :
+           double beta3, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
     _NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2, customPump, pulseType,
-                     0, 0, beta3, beta3, 0, chirp, tMax, tPrecision, zPrecision)
+                     0, 0, beta3, beta3, 0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
 {}
 
 
@@ -267,6 +333,12 @@ void Chi3::runPumpSimulation() {
 
   pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
   IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
+
+  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    pumpFreq.colwise() *= relativeStrength.array();
+    pumpTime.colwise() *= relativeStrength.array();
+  }
 }
 
 
@@ -309,10 +381,10 @@ void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
              const Eigen::Ref<const Arraycd>& customPump, int pulseType,
              double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-             double chirp, double tMax, uint tPrecision, uint zPrecision,
+             double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
              const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium::_NonlinearMedium(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
-                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, tMax, tPrecision, zPrecision)
+                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
 {
   setPoling(poling);
 }
@@ -327,6 +399,12 @@ void _Chi2::runPumpSimulation() {
   for (uint i = 1; i < _nZSteps; i++) {
     pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
     IFFT(pumpTime.row(i), pumpFreq.row(i))
+  }
+
+  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    pumpFreq.colwise() *= relativeStrength.array();
+    pumpTime.colwise() *= relativeStrength.array();
   }
 }
 
@@ -408,10 +486,10 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double diffBeta0, double diffBeta0o, double chirp, double tMax, uint tPrecision, uint zPrecision,
-                 const Eigen::Ref<const Arrayd>& poling)
+                 double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
+                 double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling)
 {
-  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision);
+  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision, rayleighLength);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
   if (customPump.size() != 0)
@@ -423,8 +501,8 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
 
 
 void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLengthOrig,
-                         double dispLength, uint zPrecision) {
-  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision);
+                         double dispLength, uint zPrecision, double rayleighLength) {
+  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision, rayleighLength);
 
   _NLo = nlLengthOrig;
 
@@ -588,7 +666,8 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
 
   // Calculate Green's functions with real and imaginary impulse response
   // Signal frequency comes first in the matrix, original frequency second
-  auto calcGreensPart = [&, inTimeDomain](Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
+  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+                        (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
 
     const bool usingMemberGrids = (start == 0);
     if (!usingMemberGrids) {

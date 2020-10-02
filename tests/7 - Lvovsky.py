@@ -46,7 +46,7 @@ plt.rcParams['figure.figsize'] = [9, 6]
 
 # %%
 relDispLength = 3.25 # mm
-chirp = -calcChirp(1 / relDispLength)
+chirpLength = -0.5 / relDispLength
 nFreqs=512
 
 # %%
@@ -57,7 +57,7 @@ crys1 = Chi2PDC(relativeLength=1 / relDispLength,
                 beta2s=1 / 3,
                 beta1s=10,
                 pulseType=0,
-                chirp=chirp,
+                chirp=chirpLength,
                 tPrecision=nFreqs, zPrecision=200)
 
 # %%
@@ -68,7 +68,7 @@ crys2 = Chi2PDC(relativeLength=1 / relDispLength,
                 beta2s=1 / 3,
                 beta1s=10,
                 pulseType=0,
-                chirp=chirp,
+                chirp=chirpLength,
                 tPrecision=nFreqs, zPrecision=200)
 
 # %%
@@ -79,7 +79,7 @@ crys3 = Chi2PDC(relativeLength=1 / relDispLength,
                 beta2s=1 / 3,
                 beta1s=10,
                 pulseType=0,
-                chirp=chirp,
+                chirp=chirpLength,
                 tPrecision=nFreqs, zPrecision=200)
 
 # %%
