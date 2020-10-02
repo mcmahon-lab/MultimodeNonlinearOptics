@@ -258,7 +258,7 @@ class _NonlinearMedium:
     :param inputProfs   Profiles of input pulses. Can be time or frequency domain.
     :param inTimeDomain Specify if input is in frequency or frequency domain. True for time, false for frequency.
     :param runPump      Whether to run pump simulation beforehand.
-    :return: Green's functions C, S
+    :return: Signal profiles at the output of the medium
     """
     nInputs, inCols = inputProfs.shape
     # TODO For SFG accepts single or double input but returns only one, need to generalize or expand

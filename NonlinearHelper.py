@@ -119,22 +119,6 @@ def calcLOSqueezing(C, pumpProf, tol=1e-4, inTimeDomain=True):
   return variances
 
 
-def downSampledCov(Z, perBin):
-  """
-  Downsample a covariance matrix by grouping modes together.
-  assert N // 2 % perBin == 0
-  """
-  N = Z.shape[0]
-  assert N // 2 % perBin == 0
-
-  newZ = np.zeros((N // perBin, N))
-
-  for i in range(N // perBin):
-    newZ[:, i] = np.sum(Z[:, i].flatten().reshape(-1, perBin), axis=1) / np.sqrt(perBin)
-
-  return newZ @ newZ.T
-
-
 def downSampledCov(Z, measurements, omega, freqCutoff, nModeClasses=1):
   """
   Downsample a covariance matrix.
@@ -240,7 +224,7 @@ def calcChirp(z):
   """
   Compute chirp coefficient C in exp(-0.5 C T^2). Variable z is in units of dispersion length.
   """
-  return (0.5 * z) / (1 + 0.25 * z**2)
+  return z / (1 + z**2)
 
 
 def calcRayleighWidth(length, wavelength, index):
@@ -331,7 +315,7 @@ def incoherentPowerGreens(Z):
 def photonCov(V):
   """
   Calculate the photon number covariance from a Gaussian covariance matrix.
-  Note: only for zero mean states, non-zero mean states require additional terms.
+  Note: only for zero mean displacement states, non-zero displacement requires additional terms.
   Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
   See "Mode structure and photon number correlations in squeezed quantum pulses".
   """
