@@ -464,12 +464,14 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     const double currPolDir = _poling(i);
     const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-    const std::complex<double> mismatch = std::exp(1._I * _diffBeta0 * (i * _dz));
+    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
 
-    k1 = (prevPolDir * _nlStep * mismatch) * prevP   *  prev.conjugate();
-    k2 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k1).conjugate();
-    k3 = (intmPolDir * _nlStep * mismatch) * interpP * (prev + 0.5 * k2).conjugate();
-    k4 = (currPolDir * _nlStep * mismatch) * currP   * (prev + k3).conjugate();
+    k1 = (prevPolDir * _nlStep * prevMismatch) * prevP   *  prev.conjugate();
+    k2 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k1).conjugate();
+    k3 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k2).conjugate();
+    k4 = (currPolDir * _nlStep * currMismatch) * currP   * (prev + k3).conjugate();
 
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 

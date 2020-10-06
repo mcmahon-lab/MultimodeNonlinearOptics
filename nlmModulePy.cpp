@@ -13,7 +13,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   py::class_<_NonlinearMedium> NonlinearMediumBase(m, "_NonlinearMedium");
   py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3");
-  py::class_<_Chi2, _NonlinearMedium> _Chi2(m, "_Chi2");
   py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC");
   py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");

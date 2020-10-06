@@ -185,7 +185,7 @@ public:
   void addMedium(_NonlinearMedium& medium);
   void runPumpSimulation() override;
   void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true) override;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
+  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
 
   _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
