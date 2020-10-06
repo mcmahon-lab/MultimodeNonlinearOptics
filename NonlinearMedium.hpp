@@ -16,6 +16,7 @@ typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> 
 
 class _NonlinearMedium {
 friend class Cascade;
+friend class _NLM2ModeExtension;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   _NonlinearMedium(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
@@ -41,7 +42,7 @@ public:
 
 protected:
   void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision, double rayleighLength);
-  virtual void resetGrids(uint nFreqs, double tMax);
+  void resetGrids(uint nFreqs, double tMax);
   void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
                      double beta3=0, double beta3s=0, double diffBeta0=0);
   _NonlinearMedium() = default;
@@ -85,6 +86,37 @@ protected:
   Array2Dcd signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
+};
+
+
+class _NLM2ModeExtension {
+public:
+  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
+
+  const Array2Dcd& getOriginalFreq() {return originalFreq;};
+  const Array2Dcd& getOriginalTime() {return originalTime;};
+
+  _NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig, double beta2o, double beta1o, double beta3o);
+  _NLM2ModeExtension(const _NLM2ModeExtension&) = delete;
+
+protected:
+  _NonlinearMedium& m; // Store a reference of the actual _NonlinearMedium object, to access variables and methods
+
+  void setLengths(double nlLengthOrig);
+  void resetGrids();
+  void setDispersion(double beta2o, double beta1o, double beta3o);
+
+  double _beta2o; /// second order dispersion of the original signal's frequency
+  double _beta1o; /// group velocity difference for original signal relative to simulation window
+  double _beta3o; /// third order dispersion of the original signal's frequency
+  // double _NLo; /// like nlLength but with respect to the original signal
+  std::complex<double> _nlStepO; /// strength of nonlinear process over length dz; DOPA process of original signal
+
+  Arrayd _dispersionOrig; /// dispersion profile of original signal
+  Arraycd _dispStepOrig;  /// incremental phase due to dispersion over length dz for the signal
+
+  Array2Dcd originalFreq; /// grid for numerically solving PDE, representing original signal propagation in frequency domain
+  Array2Dcd originalTime; /// grid for numerically solving PDE, representing original signal propagation in time domain
 };
 
 
@@ -133,7 +165,8 @@ protected:
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
-class Chi2SFG : public _Chi2 {
+
+class Chi2SFG : public _Chi2, public _NLM2ModeExtension {
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o,
@@ -143,39 +176,13 @@ public:
           double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
   void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
 
-  const Array2Dcd& getOriginalFreq() {return originalFreq;};
-  const Array2Dcd& getOriginalTime() {return originalTime;};
-
-private: // Disable functions (note: still accessible from base class)
-  using _NonlinearMedium::setLengths;
-  using _NonlinearMedium::resetGrids;
-  using _NonlinearMedium::setDispersion;
-
 protected:
-  void setLengths(double relativeLength, double nlLength, double nlLengthOrig, double dispLength, uint zPrecision,
-                  double rayleighLength);
-  void resetGrids(uint nFreqs, double tMax) override;
-  void setDispersion(double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0,
-                     double beta3=0, double beta3s=0, double beta3o=0, double diffBeta0=0, double diffBeta0o=0);
-
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 
-  double _beta2o; /// second order dispersion of the original signal's frequency
-  double _beta1o; /// group velocity difference for original signal relative to simulation window
-  double _beta3o; /// third order dispersion of the original signal's frequency
   double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
-  double _NLo; /// like nlLength but with respect to the original signal
-  std::complex<double> _nlStepO; /// strength of nonlinear process over length dz; DOPA process of original signal
-
-  Arrayd _dispersionOrig; /// dispersion profile of original signal
-  Arraycd _dispStepOrig;  /// incremental phase due to dispersion over length dz for the signal
-
-  Array2Dcd originalFreq; /// grid for numerically solving PDE, representing original signal propagation in frequency domain
-  Array2Dcd originalTime; /// grid for numerically solving PDE, representing original signal propagation in time domain
 };
 
 

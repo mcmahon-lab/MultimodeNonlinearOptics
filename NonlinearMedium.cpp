@@ -310,6 +310,48 @@ inline Array2Dcd _NonlinearMedium::fftshift2(const Array2Dcd& input) {
 }
 
 
+void _NLM2ModeExtension::setLengths(double nlLengthOrig) {
+  // _NLo = nlLengthOrig;
+
+  if (m._noDispersion)
+    _nlStepO = 1._I * m._NL / nlLengthOrig * m._dz;
+  else if (m._noNonlinear)
+    _nlStepO = 0;
+  else
+    _nlStepO = 1._I * m._DS / nlLengthOrig * m._dz;
+}
+
+
+void _NLM2ModeExtension::resetGrids() {
+  originalFreq.resize(m._nZSteps, m._nFreqs);
+  originalTime.resize(m._nZSteps, m._nFreqs);
+}
+
+
+void _NLM2ModeExtension::setDispersion(double beta2o, double beta1o, double beta3o) {
+  _beta2o = beta2o;
+  _beta1o = beta1o;
+  _beta3o = beta3o;
+
+  if (m._noDispersion)
+    _dispersionOrig.setZero(m._nFreqs);
+  else
+    _dispersionOrig = m._omega * (beta1o + m._omega * (0.5 * beta2o + m._omega * beta3o / 6));
+
+  _dispStepOrig = (1._I * _dispersionOrig * m._dz).exp();
+}
+
+
+_NLM2ModeExtension::_NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig,
+                                       double beta2o, double beta1o, double beta3o) :
+  m(medium)
+{
+  setLengths(nlLengthOrig);
+  resetGrids();
+  setDispersion(beta2o, beta1o, beta3o);
+}
+
+
 Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
            double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
            double beta3, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
@@ -489,55 +531,13 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
-                 double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling)
+                 double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+  _Chi2::_Chi2(relativeLength, nlLength, dispLength, beta2, beta2s,
+               customPump, pulseType, beta1, beta1s, beta3, beta3s, diffBeta0,
+               chirp, rayleighLength, tMax, tPrecision, zPrecision, poling),
+  _NLM2ModeExtension::_NLM2ModeExtension((_NonlinearMedium&)*this, nlLengthOrig, beta2o, beta1o, beta3o)
 {
-  setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision, rayleighLength);
-  resetGrids(tPrecision, tMax);
-  setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o);
-  if (customPump.size() != 0)
-    setPump(customPump, chirp);
-  else
-    setPump(pulseType, chirp);
-  setPoling(poling);
-}
-
-
-void Chi2SFG::setLengths(double relativeLength, double nlLength, double nlLengthOrig,
-                         double dispLength, uint zPrecision, double rayleighLength) {
-  _NonlinearMedium::setLengths(relativeLength, nlLength, dispLength, zPrecision, rayleighLength);
-
-  _NLo = nlLengthOrig;
-
-  if (_noDispersion)
-    _nlStepO = 1._I * _NL / nlLengthOrig * _dz;
-  else if (_noNonlinear)
-    _nlStepO = 0;
-  else
-    _nlStepO = 1._I * _DS / nlLengthOrig * _dz;
-}
-
-
-void Chi2SFG::resetGrids(uint nFreqs, double tMax) {
-  _NonlinearMedium::resetGrids(nFreqs, tMax);
-  originalFreq.resize(_nZSteps, _nFreqs);
-  originalTime.resize(_nZSteps, _nFreqs);
-}
-
-
-void Chi2SFG::setDispersion(double beta2, double beta2s, double beta2o, double beta1, double beta1s, double beta1o,
-                            double beta3, double beta3s, double beta3o, double diffBeta0, double diffBeta0o) {
-  _NonlinearMedium::setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
-  _beta2o = beta2o;
-  _beta1o = beta1o;
-  _beta3o = beta3o;
   _diffBeta0o = diffBeta0o;
-
-  if (_noDispersion)
-    _dispersionOrig.setZero(_nFreqs);
-  else
-    _dispersionOrig = _omega * (beta1o + _omega * (0.5 * beta2o + _omega * beta3o / 6));
-
-  _dispStepOrig = (1._I * _dispersionOrig * _dz).exp();
 }
 
 
@@ -647,12 +647,13 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bool runPump, uint nThreads) {
+std::pair<Array2Dcd, Array2Dcd> _NLM2ModeExtension::computeTotalGreen(bool inTimeDomain, bool runPump, uint nThreads) {
+  auto _nFreqs = m._nFreqs;
 
   if (nThreads > 2 * _nFreqs)
     throw std::invalid_argument("Too many threads requested!");
 
-  if (runPump) runPumpSimulation();
+  if (runPump) m.runPumpSimulation();
 
   // Green function matrices -- Note: hopefully large enough to avoid dirtying cache?
   Array2Dcd greenC;
@@ -668,7 +669,7 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
 
   // Calculate Green's functions with real and imaginary impulse response
   // Signal frequency comes first in the matrix, original frequency second
-  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
+  auto calcGreensPart = [&, inTimeDomain, _nZSteps=m._nZSteps, _nFreqs=_nFreqs]
                         (Array2Dcd& gridFreq, Array2Dcd& gridTime, uint start, uint stop) {
 
     const bool usingMemberGrids = (start == 0);
@@ -678,15 +679,15 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
     }
     const auto& outputOriginal = usingMemberGrids? (inTimeDomain? originalTime.bottomRows<1>() : originalFreq.bottomRows<1>()) :
                                                    (inTimeDomain? gridTime.row(_nZSteps-1)     : gridFreq.row(_nZSteps-1));
-    const auto& outputSignal   = usingMemberGrids? (inTimeDomain? signalTime.bottomRows<1>() : signalFreq.bottomRows<1>()) :
-                                                   (inTimeDomain? gridTime.bottomRows<1>()   : gridFreq.bottomRows<1>());
+    const auto& outputSignal   = usingMemberGrids? (inTimeDomain? m.signalTime.bottomRows<1>() : m.signalFreq.bottomRows<1>()) :
+                                                   (inTimeDomain? gridTime.bottomRows<1>()     : gridFreq.bottomRows<1>());
 
     Arraycd impulse;
     impulse.setZero(2 * _nFreqs);
 
     for (uint i = start; i < stop; i++) {
       impulse(i) = 1;
-      runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
+      m.runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
 
       greenC.row(i).head(_nFreqs) += 0.5 * outputSignal;
       greenC.row(i).tail(_nFreqs) += 0.5 * outputOriginal;
@@ -694,7 +695,7 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
       greenS.row(i).tail(_nFreqs) += 0.5 * outputOriginal;
 
       impulse(i) = 1._I;
-      runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
+      m.runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime);
 
       greenC.row(i).head(_nFreqs) -= (0.5_I) * outputSignal.bottomRows<1>();
       greenC.row(i).tail(_nFreqs) -= (0.5_I) * outputOriginal.bottomRows<1>();
@@ -709,7 +710,7 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
     threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
                          (i * 2 * _nFreqs) / nThreads, ((i + 1) * 2 * _nFreqs) / nThreads);
   }
-  calcGreensPart(signalFreq, signalTime, 0, (2 * _nFreqs) / nThreads);
+  calcGreensPart(m.signalFreq, m.signalTime, 0, (2 * _nFreqs) / nThreads);
   for (auto& thread : threads)
     if (thread.joinable()) thread.join();
 
@@ -717,17 +718,17 @@ std::pair<Array2Dcd, Array2Dcd> Chi2SFG::computeTotalGreen(bool inTimeDomain, bo
   greenS.transposeInPlace();
 
   // Need to fftshift each frequency block
-  greenC.topLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenC.topLeftCorner(_nFreqs, _nFreqs));
-  greenS.topLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenS.topLeftCorner(_nFreqs, _nFreqs));
+  greenC.topLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.topLeftCorner(_nFreqs, _nFreqs));
+  greenS.topLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topLeftCorner(_nFreqs, _nFreqs));
 
-  greenC.topRightCorner(_nFreqs, _nFreqs) = fftshift2(greenC.topRightCorner(_nFreqs, _nFreqs));
-  greenS.topRightCorner(_nFreqs, _nFreqs) = fftshift2(greenS.topRightCorner(_nFreqs, _nFreqs));
+  greenC.topRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.topRightCorner(_nFreqs, _nFreqs));
+  greenS.topRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topRightCorner(_nFreqs, _nFreqs));
 
-  greenC.bottomLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenC.bottomLeftCorner(_nFreqs, _nFreqs));
-  greenS.bottomLeftCorner(_nFreqs, _nFreqs) = fftshift2(greenS.bottomLeftCorner(_nFreqs, _nFreqs));
+  greenC.bottomLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.bottomLeftCorner(_nFreqs, _nFreqs));
+  greenS.bottomLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.bottomLeftCorner(_nFreqs, _nFreqs));
 
-  greenC.bottomRightCorner(_nFreqs, _nFreqs) = fftshift2(greenC.bottomRightCorner(_nFreqs, _nFreqs));
-  greenS.bottomRightCorner(_nFreqs, _nFreqs) = fftshift2(greenS.bottomRightCorner(_nFreqs, _nFreqs));
+  greenC.bottomRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.bottomRightCorner(_nFreqs, _nFreqs));
+  greenS.bottomRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.bottomRightCorner(_nFreqs, _nFreqs));
 
   return std::make_pair(std::move(greenC), std::move(greenS));
 }
