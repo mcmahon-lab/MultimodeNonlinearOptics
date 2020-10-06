@@ -228,9 +228,9 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   }
 
   greenC.transposeInPlace();
-  greenS.transposeInPlace();
-
   greenC = fftshift2(greenC);
+
+  greenS.transposeInPlace();
   greenS = fftshift2(greenS);
 
   return std::make_pair(std::move(greenC), std::move(greenS));
@@ -838,20 +838,17 @@ std::pair<Array2Dcd, Array2Dcd> _NLM2ModeExtension::computeTotalGreen(bool inTim
   for (auto& thread : threads)
     if (thread.joinable()) thread.join();
 
+  // Transpose, then need to fftshift each frequency block
   greenC.transposeInPlace();
-  greenS.transposeInPlace();
-
-  // Need to fftshift each frequency block
   greenC.topLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.topLeftCorner(_nFreqs, _nFreqs));
-  greenS.topLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topLeftCorner(_nFreqs, _nFreqs));
-
   greenC.topRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.topRightCorner(_nFreqs, _nFreqs));
-  greenS.topRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topRightCorner(_nFreqs, _nFreqs));
-
   greenC.bottomLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.bottomLeftCorner(_nFreqs, _nFreqs));
-  greenS.bottomLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.bottomLeftCorner(_nFreqs, _nFreqs));
-
   greenC.bottomRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenC.bottomRightCorner(_nFreqs, _nFreqs));
+
+  greenS.transposeInPlace();
+  greenS.topLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topLeftCorner(_nFreqs, _nFreqs));
+  greenS.topRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.topRightCorner(_nFreqs, _nFreqs));
+  greenS.bottomLeftCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.bottomLeftCorner(_nFreqs, _nFreqs));
   greenS.bottomRightCorner(_nFreqs, _nFreqs) = m.fftshift2(greenS.bottomRightCorner(_nFreqs, _nFreqs));
 
   return std::make_pair(std::move(greenC), std::move(greenS));
