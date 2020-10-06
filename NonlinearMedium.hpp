@@ -186,6 +186,27 @@ protected:
 };
 
 
+class Chi2PDCII : public _Chi2, public _NLM2ModeExtension {
+public:
+  Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
+            double beta2, double beta2s, double beta2o,
+            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+            double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+            double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100,
+            const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+
+  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
+
+protected:
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
+
+  std::complex<double> _nlStepI; /// strength of type I nonlinear process over length dz; DOPA process of original signal
+  double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
+};
+
+
 class Cascade : public _NonlinearMedium {
 public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);

@@ -15,6 +15,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3");
   py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC");
   py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG");
+  py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
 
@@ -153,6 +154,55 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2SFG.def_property_readonly("omega", &Chi2SFG::getFrequency, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("tau", &Chi2SFG::getTime, py::return_value_policy::reference);
   Chi2SFG.def_property_readonly("poling", &Chi2SFG::getPoling, py::return_value_policy::reference);
+
+
+/*
+ * Chi2PDCII
+ */
+
+  Chi2PDCII.def(
+      py::init<double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
+               double, double, double, double, double, double, double, double, double, double, double, uint, uint,
+               Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "nlLengthI"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
+      "diffBeta0o"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+
+  Chi2PDCII.def("setPump",
+               (void (Chi2PDCII::*)(int, double))&Chi2PDCII::setPump,
+              " pulseType"_a, "chirp"_a = 0);
+
+  Chi2PDCII.def("setPump",
+               (void (Chi2PDCII::*)(const Eigen::Ref<const Arraycd>&, double))&Chi2PDCII::setPump,
+               "customPump"_a, "chirp"_a = 0);
+
+  Chi2PDCII.def("runPumpSimulation", &Chi2PDCII::runPumpSimulation);
+
+  Chi2PDCII.def("runSignalSimulation",
+               (void (Chi2PDCII::*)(Eigen::Ref<const Arraycd>, bool))&Chi2PDCII::runSignalSimulation,
+               "inputProf"_a, "inTimeDomain"_a = true);
+
+  Chi2PDCII.def("computeGreensFunction",
+               &Chi2PDCII::computeGreensFunction, py::return_value_policy::move,
+               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
+  Chi2PDCII.def("computeTotalGreen",
+               &Chi2PDCII::computeTotalGreen, py::return_value_policy::move,
+               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
+  Chi2PDCII.def("batchSignalSimulation",
+               &Chi2PDCII::batchSignalSimulation, py::return_value_policy::move,
+              " inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1);
+
+  Chi2PDCII.def_property_readonly("pumpFreq", &Chi2PDCII::getPumpFreq, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("pumpTime", &Chi2PDCII::getPumpTime, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("signalFreq", &Chi2PDCII::getSignalFreq, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("signalTime", &Chi2PDCII::getSignalTime, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("originalFreq", &Chi2PDCII::getOriginalFreq, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("originalTime", &Chi2PDCII::getOriginalTime, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("omega", &Chi2PDCII::getFrequency, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("tau", &Chi2PDCII::getTime, py::return_value_policy::reference);
+  Chi2PDCII.def_property_readonly("poling", &Chi2PDCII::getPoling, py::return_value_policy::reference);
 
 
 /*

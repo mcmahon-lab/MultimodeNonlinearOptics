@@ -647,6 +647,130 @@ void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 }
 
 
+Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
+                     double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                     double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
+                     double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
+                     double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+  _Chi2::_Chi2(relativeLength, nlLength, dispLength, beta2, beta2s,
+               customPump, pulseType, beta1, beta1s, beta3, beta3s, diffBeta0,
+               chirp, rayleighLength, tMax, tPrecision, zPrecision, poling),
+  _NLM2ModeExtension::_NLM2ModeExtension((_NonlinearMedium&)*this, nlLengthOrig, beta2o, beta1o, beta3o)
+{
+  _diffBeta0o = diffBeta0o;
+
+  if (_noDispersion)
+    _nlStepI = 1._I * _NL / nlLengthI * _dz;
+  else if (_noNonlinear)
+    _nlStepI = 0;
+  else
+    _nlStepI = 1._I * _DS / nlLengthI * _dz;
+}
+
+
+void Chi2PDCII::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+  if (inputProf.size() != _nFreqs && inputProf.size() != 2 * _nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
+}
+
+
+void Chi2PDCII::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                                    Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
+  // Hack: If we are using grids that are the member variables of the class, then proceed normally.
+  // However if called from computeGreensFunction we need a workaround to use only one grid.
+  const bool usingMemberGrids = (&signalFreq == &this->signalFreq);
+  const uint O = usingMemberGrids? 0 : _nZSteps; // offset
+  Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
+  Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalTime;
+  if (!usingMemberGrids) {
+    signalFreq.resize(2 * _nZSteps, _nFreqs);
+    signalTime.resize(2 * _nZSteps, _nFreqs);
+  }
+
+  // Takes as input the signal in the first frequency and outputs in the second frequency
+  if (inputProf.size() == _nFreqs) {
+    if (inTimeDomain)
+      FFTtimes(originalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionOrig).exp())
+    else
+      originalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionOrig).exp();
+    IFFT(originalTime.row(0), originalFreq.row(0))
+
+    signalFreq.row(O) = 0;
+    signalTime.row(O) = 0;
+  }
+  // input array spanning both frequencies, ordered as signal then original
+  else if (inputProf.size() == 2 * _nFreqs) {
+    if (inTimeDomain) {
+      const Arraycd& inputSignal = inputProf.head(_nFreqs);
+      FFTtimes(signalFreq.row(O), inputSignal, ((0.5_I * _dz) * _dispersionSign).exp())
+      const Arraycd& inputOriginal = inputProf.tail(_nFreqs);
+      FFTtimes(originalFreq.row(0), inputOriginal, ((0.5_I * _dz) * _dispersionOrig).exp())
+    }
+    else {
+      signalFreq.row(O)   = inputProf.head(_nFreqs) * ((0.5_I * _dz) * _dispersionSign).exp();
+      originalFreq.row(0) = inputProf.tail(_nFreqs) * ((0.5_I * _dz) * _dispersionOrig).exp();
+    }
+    IFFT(signalTime.row(O),   signalFreq.row(O))
+    IFFT(originalTime.row(0), originalFreq.row(0))
+  }
+  else {
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  }
+
+  Arraycd interpP(_nFreqs);
+  Arraycd k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), tempOrig(_nFreqs);
+  Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempSign(_nFreqs);
+  for (uint i = 1; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the non-linear propagation
+    const auto& prevS = signalTime.row(O+i-1);
+    const auto& prevO = originalTime.row(i-1);
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
+
+    interpP = 0.5 * (prevP + currP);
+
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
+    const std::complex<double> prevMismatcho = std::exp(1._I * _diffBeta0o * ((i- 1) * _dz));
+    const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
+    const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
+
+    k1 =  prevPolDir * ((_nlStepO * prevMismatch) * prevP   *  prevS.conjugate()             + (_nlStepI * prevMismatcho) * prevP   *  prevO.conjugate());
+    l1 = (prevPolDir *   _nlStep  * prevMismatch) * prevP   *  prevO.conjugate();
+    k2 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l1).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k1).conjugate());
+    l2 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k1).conjugate();
+    k3 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l2).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k2).conjugate());
+    l3 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k2).conjugate();
+    k4 =  currPolDir * ((_nlStepO * currMismatch) * currP   * (prevS + l3).conjugate()       + (_nlStepI * currMismatcho) * currP   * (prevO + k3).conjugate());
+    l4 = (currPolDir *   _nlStep  * currMismatch) * currP   * (prevO + k3).conjugate();
+
+    tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
+
+    // Dispersion step
+    FFTtimes(signalFreq.row(O+i), tempSign, _dispStepSign)
+    IFFT(signalTime.row(O+i), signalFreq.row(O+i))
+
+    FFTtimes(originalFreq.row(i), tempOrig, _dispStepOrig)
+    IFFT(originalTime.row(i), originalFreq.row(i))
+  }
+
+  signalFreq.row(O+_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
+  IFFT(signalTime.row(O+_nZSteps-1), signalFreq.row(O+_nZSteps-1))
+
+  originalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionOrig).exp();
+  IFFT(originalTime.row(_nZSteps-1), originalFreq.row(_nZSteps-1))
+}
+
+
 std::pair<Array2Dcd, Array2Dcd> _NLM2ModeExtension::computeTotalGreen(bool inTimeDomain, bool runPump, uint nThreads) {
   auto _nFreqs = m._nFreqs;
 
