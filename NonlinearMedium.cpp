@@ -352,6 +352,13 @@ _NLM2ModeExtension::_NLM2ModeExtension(_NonlinearMedium& medium, double nlLength
 }
 
 
+void _NLM2ModeExtension::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+  if (inputProf.size() != m._nFreqs && inputProf.size() != 2 * m._nFreqs)
+    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
+  m.runSignalSimulation(inputProf, inTimeDomain, m.signalFreq, m.signalTime);
+}
+
+
 Chi3::Chi3(double relativeLength, double nlLength, double dispLength,
            double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
            double beta3, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
@@ -541,13 +548,6 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
 }
 
 
-void Chi2SFG::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
-  if (inputProf.size() != _nFreqs && inputProf.size() != 2 * _nFreqs)
-    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
-  runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
-}
-
-
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
   RowVectorcd fftTemp(_nFreqs);
@@ -665,13 +665,6 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig
     _nlStepI = 0;
   else
     _nlStepI = 1._I * _DS / nlLengthI * _dz;
-}
-
-
-void Chi2PDCII::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
-  if (inputProf.size() != _nFreqs && inputProf.size() != 2 * _nFreqs)
-    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
-  runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 

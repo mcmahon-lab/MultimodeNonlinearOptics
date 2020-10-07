@@ -99,6 +99,8 @@ public:
   _NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig, double beta2o, double beta1o, double beta3o);
   _NLM2ModeExtension(const _NLM2ModeExtension&) = delete;
 
+  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain);
+
 protected:
   _NonlinearMedium& m; // Store a reference of the actual _NonlinearMedium object, to access variables and methods
 
@@ -176,7 +178,7 @@ public:
           double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
+  using _NLM2ModeExtension::runSignalSimulation;
 
 protected:
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
@@ -196,7 +198,7 @@ public:
             double tMax=10, uint tPrecision=512, uint zPrecision=100,
             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) override;
+  using _NLM2ModeExtension::runSignalSimulation;
 
 protected:
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
