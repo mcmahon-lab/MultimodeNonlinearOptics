@@ -166,6 +166,25 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 }
 
 
+void _NonlinearMedium::runPumpSimulation() {
+  RowVectorcd fftTemp(_nFreqs);
+
+  FFT(pumpFreq.row(0), _env)
+  pumpTime.row(0) = _env;
+
+  for (uint i = 1; i < _nZSteps; i++) {
+    pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
+    IFFT(pumpTime.row(i), pumpFreq.row(i))
+  }
+
+  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    pumpFreq.colwise() *= relativeStrength.array();
+    pumpTime.colwise() *= relativeStrength.array();
+  }
+}
+
+
 void _NonlinearMedium::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
   if (inputProf.size() != _nFreqs)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
@@ -436,25 +455,6 @@ _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double b
                                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
 {
   setPoling(poling);
-}
-
-
-void _Chi2::runPumpSimulation() {
-  RowVectorcd fftTemp(_nFreqs);
-
-  FFT(pumpFreq.row(0), _env)
-  pumpTime.row(0) = _env;
-
-  for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
-    IFFT(pumpTime.row(i), pumpFreq.row(i))
-  }
-
-  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
-    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
-    pumpFreq.colwise() *= relativeStrength.array();
-    pumpTime.colwise() *= relativeStrength.array();
-  }
 }
 
 

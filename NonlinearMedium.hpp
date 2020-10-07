@@ -28,7 +28,7 @@ public:
   void setPump(int pulseType, double chirpLength=0);
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
 
-  virtual void runPumpSimulation() = 0;
+  virtual void runPumpSimulation();
   virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
   virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
   Array2Dcd batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
@@ -147,7 +147,6 @@ public:
         double tMax=10, uint tPrecision=512, uint zPrecision=100,
         const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  void runPumpSimulation() override;
   const Arrayd& getPoling() {return _poling;};
 
 protected:
