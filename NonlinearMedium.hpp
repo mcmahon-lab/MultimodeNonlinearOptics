@@ -29,9 +29,9 @@ public:
   virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
 
   virtual void runPumpSimulation();
-  virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
+  virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true);
   virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
-  virtual Array2Dcd batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
+  virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
 
   const Array2Dcd& getPumpFreq()   {return pumpFreq;};
   const Array2Dcd& getPumpTime()   {return pumpTime;};
@@ -99,7 +99,7 @@ public:
   _NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig, double beta2o, double beta1o, double beta3o);
   _NLM2ModeExtension(const _NLM2ModeExtension&) = delete;
 
-  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain);
+  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain);
 
 protected:
   _NonlinearMedium& m; // Store a reference of the actual _NonlinearMedium object, to access variables and methods
@@ -215,9 +215,9 @@ public:
   void setPump(int pulseType, double chirpLength=0) override;
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0) override;
   void runPumpSimulation() override;
-  void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true) override;
+  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true) override;
   std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
-  Array2Dcd batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
+  Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
 
   _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}

@@ -185,7 +185,7 @@ void _NonlinearMedium::runPumpSimulation() {
 }
 
 
-void _NonlinearMedium::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain) {
   if (inputProf.size() != _nFreqs)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
   runSignalSimulation(inputProf, inTimeDomain, signalFreq, signalTime);
@@ -256,7 +256,7 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
 }
 
 
-Array2Dcd _NonlinearMedium::batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs,
+Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs,
                                                   bool inTimeDomain, bool runPump, uint nThreads) {
 
   auto nInputs = inputProfs.rows();
@@ -371,7 +371,7 @@ _NLM2ModeExtension::_NLM2ModeExtension(_NonlinearMedium& medium, double nlLength
 }
 
 
-void _NLM2ModeExtension::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+void _NLM2ModeExtension::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain) {
   if (inputProf.size() != m._nFreqs && inputProf.size() != 2 * m._nFreqs)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
   m.runSignalSimulation(inputProf, inTimeDomain, m.signalFreq, m.signalTime);
@@ -912,7 +912,7 @@ void Cascade::runPumpSimulation() {
 }
 
 
-void Cascade::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain) {
+void Cascade::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain) {
   if (inputProf.size() != _nFreqs)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
 
@@ -945,7 +945,7 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   return std::make_pair(std::move(greenC), std::move(greenS));
 }
 
-Array2Dcd Cascade::batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs,
+Array2Dcd Cascade::batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs,
                                          bool inTimeDomain, bool runPump, uint nThreads) {
   if (runPump) runPumpSimulation();
 
