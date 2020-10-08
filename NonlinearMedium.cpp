@@ -876,6 +876,26 @@ void Cascade::addMedium(_NonlinearMedium& medium) {
 }
 
 
+void Cascade::setPump(int pulseType, double chirpLength) {
+  if (sharedPump)
+    media[0].get().setPump(pulseType, chirpLength);
+  else {
+    for (auto& medium : media)
+      medium.get().setPump(pulseType, chirpLength);
+  }
+}
+
+
+void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength) {
+  if (sharedPump)
+    media[0].get().setPump(customPump, chirpLength);
+  else {
+    for (auto& medium : media)
+      medium.get().setPump(customPump, chirpLength);
+  }
+}
+
+
 void Cascade::runPumpSimulation() {
   if (not sharedPump) {
     for (auto& medium : media) {

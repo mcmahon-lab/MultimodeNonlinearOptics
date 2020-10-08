@@ -25,8 +25,8 @@ public:
                    double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
                    double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
-  void setPump(int pulseType, double chirpLength=0);
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
+  virtual void setPump(int pulseType, double chirpLength=0);
+  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true);
@@ -212,6 +212,8 @@ class Cascade : public _NonlinearMedium {
 public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
   void addMedium(_NonlinearMedium& medium);
+  void setPump(int pulseType, double chirpLength=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0) override;
   void runPumpSimulation() override;
   void runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTimeDomain=true) override;
   std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
@@ -228,8 +230,6 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::setLengths;
   using _NonlinearMedium::resetGrids;
   using _NonlinearMedium::setDispersion;
-  using _NonlinearMedium::setPump;
-  using _NonlinearMedium::setPump;
   using _NonlinearMedium::getPumpFreq;
   using _NonlinearMedium::getPumpTime;
   using _NonlinearMedium::getSignalFreq;
