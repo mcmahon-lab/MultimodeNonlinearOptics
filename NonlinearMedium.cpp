@@ -904,6 +904,9 @@ void Cascade::runSignalSimulation(Eigen::Ref<const Arraycd> inputProf, bool inTi
 
 
 std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads) {
+
+  if (runPump) runPumpSimulation();
+
   // Green function matrices
   Array2Dcd greenC;
   Array2Dcd greenS;
@@ -912,7 +915,7 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
 
   Array2Dcd tempC, tempS;
   for (auto& medium : media) {
-    auto CandS = medium.get().computeGreensFunction(inTimeDomain, runPump, nThreads);
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads);
     tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
     tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
     greenC.swap(tempC);
@@ -920,4 +923,17 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   }
 
   return std::make_pair(std::move(greenC), std::move(greenS));
+}
+
+Array2Dcd Cascade::batchSignalSimulation(Eigen::Ref<const Array2Dcd> inputProfs,
+                                         bool inTimeDomain, bool runPump, uint nThreads) {
+  if (runPump) runPumpSimulation();
+
+  Array2Dcd outSignals = media[0].get().batchSignalSimulation(inputProfs, inTimeDomain, false, nThreads);
+
+  for (uint i = 1; i < media.size(); i++) {
+    outSignals = media[i].get().batchSignalSimulation(outSignals, inTimeDomain, false, nThreads);
+  }
+
+  return outSignals;
 }
