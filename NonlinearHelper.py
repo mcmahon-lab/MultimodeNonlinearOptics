@@ -47,6 +47,16 @@ def calculateChi3NlLength(gamma, peakPower):
   return NL
 
 
+def findFrameOfReference(*ngs):
+  """
+  Calculate all the beta 1 (group wave number) values in a centered frame of reference, from the group indices n_g.
+  Returns values in ps / km
+  """
+  c = 299792458 # m / s
+  fom = 0.5 * (max(ngs) + min(ngs))
+  return [(ng - fom) / c * 1e15 for ng in ngs]
+
+
 def calcQuadratureGreens(greenC, greenS):
   """
   Convert the Green's matrix to the x and p quadrature basis from the a basis (bosonic)
