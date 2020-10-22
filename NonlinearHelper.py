@@ -87,7 +87,7 @@ def calcCovarianceMtxABasis(greenC, greenS):
   Derived using a_i a_j = 1/2 {Z_ik a_k, Z_jk a_k}.
   """
   Z = np.block([[greenC, greenS],
-                [greenS.conj(),  greenC.conj()]]) * np.sqrt(1 / 2)
+                [greenS.conj(), greenC.conj()]]) * np.sqrt(1 / 2)
   cov = Z @ Z.T.conj()
   return cov
 
@@ -217,7 +217,9 @@ def blochMessiahVecs(Z):
 
 def ftGreens(greenC, greenS, toTime=True):
   """
-  Convert Green's matrix from frequency to time domain
+  Convert bosonic Green's matrices to and from the frequency and time domain.
+  Derivation:
+  Fa = F(Ca + Sa*) = (F C F^-1)(F a) + (F S F)(F^-1 a*) = (F C F^-1)(F a) + (F S F)(F a)*, since F^-1 = F*
   """
   nt = greenS.shape[0]
   if toTime:
@@ -329,7 +331,7 @@ def photonCov(V):
   Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
   See "Mode structure and photon number correlations in squeezed quantum pulses".
   """
-  N = Z.shape[0] // 2
+  N = V.shape[0] // 2
   return 0.5 * (V[:N, :N]**2 + V[N:, N:]**2 + V[:N, N:]**2 + V[N:, :N]**2 - 0.5 * np.eye(N))
 
 
