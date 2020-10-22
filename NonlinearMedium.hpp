@@ -167,6 +167,16 @@ protected:
 };
 
 
+class Chi2SHG : public _Chi2 {
+public:
+  using _Chi2::_Chi2;
+  using _NonlinearMedium::runSignalSimulation;
+protected:
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
+};
+
+
 class Chi2SFG : public _Chi2, public _NLM2ModeExtension {
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,

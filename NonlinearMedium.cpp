@@ -534,6 +534,48 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 }
 
 
+void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
+  if (inTimeDomain)
+    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
+  else
+    signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
+  IFFT(signalTime.row(0), signalFreq.row(0))
+
+  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
+  for (uint i = 1; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the non-linear propagation
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
+    interpP = 0.5 * (prevP + currP);
+
+    const double prevPolDir = _poling(i-1);
+    const double currPolDir = _poling(i);
+    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
+
+    k1 = (prevPolDir * _nlStep * prevMismatch) * prevP.square();
+    k2 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();
+    k3 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();
+    k4 = (currPolDir * _nlStep * currMismatch) * currP.square();
+
+    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+
+    // Dispersion step
+    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
+    IFFT(signalTime.row(i), signalFreq.row(i))
+  }
+
+  signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
+  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
+}
+
+
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
                  double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
