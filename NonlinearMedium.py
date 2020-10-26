@@ -402,7 +402,7 @@ class _NLM2ModeExtension:
     """
     if inputProf.shape != (self.m._nFreqs,) and inputProf.shape != (2 * self.m._nFreqs,):
       raise ValueError("inputProf array size does not match number of frequency/time bins")
-    self.m.runSignalSimulation(inputProf, inTimeDomain, self.m.signalFreq, self.m.signalTime)
+    self.m._runSignalSimulation(inputProf, inTimeDomain, self.m.signalFreq, self.m.signalTime)
 
 
   def computeTotalGreen(s, inTimeDomain=False, runPump=True, nThreads=1):
@@ -519,9 +519,6 @@ class Chi3(_NonlinearMedium):
 
   def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
 
-    if inputProf.size != s._nFreqs:
-      raise ValueError("inputProf array size does not match number of frequency/time bins")
-
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
     signalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
@@ -595,9 +592,6 @@ class Chi2PDC(_Chi2):
   or quantum field in a chi(2) medium.
   """
   def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
-
-    if inputProf.size != s._nFreqs:
-      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
