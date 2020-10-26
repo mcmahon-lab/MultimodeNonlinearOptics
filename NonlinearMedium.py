@@ -626,6 +626,45 @@ class Chi2PDC(_Chi2):
 
 
 @inherit_docstrings()
+class Chi2SHG(_Chi2):
+  """
+  Class for numerically simulating the process of second harmonic generation in the pump undepleted approximation in a chi(2) medium.
+  """
+  def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
+
+    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+
+    signalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
+    signalTime[0, :] = ifft(signalFreq[0, :])
+
+    for i in range(1, s._nZSteps):
+      # Do a Runge-Kutta step for the non-linear propagation
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
+
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
+
+      prevMismatch = np.exp(1j * s._diffBeta0 * ((i- 1) * s._dz))
+      intmMismatch = np.exp(1j * s._diffBeta0 * ((i-.5) * s._dz))
+      currMismatch = np.exp(1j * s._diffBeta0 * ( i     * s._dz))
+
+      k1 = (prevPolDir * s._nlStep * prevMismatch) * s.pumpTime[i-1]**2
+      k2 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp**2
+      k3 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp**2
+      k4 = (currPolDir * s._nlStep * currMismatch) * s.pumpTime[i]**2
+
+      temp = signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+
+      # Dispersion step
+      signalFreq[i, :] = fft(temp) * s._dispStepSign
+      signalTime[i, :] = ifft(signalFreq[i, :])
+
+    signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    signalTime[-1, :] = ifft(signalFreq[-1, :])
+
+
+@inherit_docstrings()
 class Chi2SFG(_NLM2ModeExtension, _Chi2):
   """
   Class for numerically simulating the evolution of a sum frequency generation process of a pump and two signals
