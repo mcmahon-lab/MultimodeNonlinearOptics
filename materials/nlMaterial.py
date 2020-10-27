@@ -1,7 +1,10 @@
 try:
-  from symengine import symbols, diff, Lambdify as lambdify, pi
+  from symengine import symbols, diff, pi, Lambdify
+  def lambdify(*funcArgs):
+    f = Lambdify(*funcArgs)
+    return lambda *callArgs : float(f(*callArgs))
 except:
-  from sympy import symbols, diff, lambdify, pi
+  from sympy import symbols, diff, pi, lambdify
 
 l0 = symbols("l0")
 T = symbols("T")
