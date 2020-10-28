@@ -538,6 +538,11 @@ void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
   RowVectorcd fftTemp(_nFreqs);
 
+#ifdef DEPLETESHG
+  // NOTE: DEPLETESHG not thread safe due to use of single pumpTime and pumpFreq arrays
+  FFTtimes(pumpFreq.row(0), _env, ((0.5_I * _dz) * _dispersionPump).exp())
+  IFFT(pumpTime.row(0), pumpFreq.row(0))
+#endif
   if (inTimeDomain)
     FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
   else
@@ -545,11 +550,18 @@ void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
   IFFT(signalTime.row(0), signalFreq.row(0))
 
   Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
+#ifdef DEPLETESHG
+  Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempPump(_nFreqs);
+#endif
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
     const auto& prevP = pumpTime.row(i-1);
+#ifdef DEPLETESHG
+    const auto& prevS = signalTime.row(i-1);
+#else
     const auto& currP = pumpTime.row(i);
     interpP = 0.5 * (prevP + currP);
+#endif
 
     const double prevPolDir = _poling(i-1);
     const double currPolDir = _poling(i);
@@ -560,19 +572,37 @@ void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
     const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
 
     k1 = (prevPolDir * _nlStep * prevMismatch) * prevP.square();
+#ifdef DEPLETESHG
+    // TODO _nlStep -> _nlStepP
+    l1 = (prevPolDir * _nlStep / prevMismatch) * prevS * prevP.conjugate();
+    k2 = (intmPolDir * _nlStep * intmMismatch) * (prevP + 0.5 * l1).square();
+    l2 = (intmPolDir * _nlStep / intmMismatch) * (prevS + 0.5 * k1) * (prevP + 0.5 * l1).conjugate();
+    k3 = (intmPolDir * _nlStep * intmMismatch) * (prevP + 0.5 * l2).square();
+    l3 = (intmPolDir * _nlStep / intmMismatch) * (prevS + 0.5 * k2) * (prevP + 0.5 * l2).conjugate();
+    k4 = (currPolDir * _nlStep * currMismatch) * (prevP + l3).square();
+    l4 = (currPolDir * _nlStep / currMismatch) * (prevS + k3) * (prevP + l3).conjugate();
+#else
     k2 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();
     k3 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();
     k4 = (currPolDir * _nlStep * currMismatch) * currP.square();
-
+#endif
     temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-
-    // Dispersion step
     FFTtimes(signalFreq.row(i), temp, _dispStepSign)
     IFFT(signalTime.row(i), signalFreq.row(i))
+
+#ifdef DEPLETESHG
+    tempPump = pumpTime.row(i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
+    FFTtimes(pumpFreq.row(i), tempPump, _dispStepPump)
+    IFFT(pumpTime.row(i), pumpFreq.row(i))
+#endif
   }
 
   signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
   IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
+#ifdef DEPLETESHG
+  pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
+  IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
+#endif
 }
 
 
