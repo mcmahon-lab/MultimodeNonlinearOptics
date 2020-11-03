@@ -4,26 +4,28 @@ try:
 except:
   from sympy import sqrt as ssqrt, Piecewise
 
-### KTP
-# Konig and Wong 2004
-# Fradkin et al 1999
-# Fan et al 1987
-# Emanueli and Arie 2003
-# d33 = 16.9
-# d32 = 4.4
-# d31 = 2.5
-# (Px)   ( 0   0   0    0   d31  0) (Ex^2)
-# (Py) ~ ( 0   0   0   d32   0   0) (Ey^2)
-# (Pz)   (d31 d32 d33   0    0   0) (Ez^2)
-#                                  (2Ey Ez)
-#                                  (2Ez Ex)
-#                                  (2Ex Ey)
+info = """KTP
+Konig and Wong 2004
+Fradkin et al 1999
+Fan et al 1987
+Emanueli and Arie 2003
+d33 = 16.9
+d32 = 4.4
+d31 = 2.5
+(Px)   ( 0   0   0   0  d31 0) (Ex^2)
+(Py) ~ ( 0   0   0  d32  0  0) (Ey^2)
+(Pz)   (d31 d32 d33  0   0  0) (Ez^2)
+                               (2Ey Ez)
+                               (2Ez Ex)
+                               (2Ex Ey)"""
 
 @nlMaterial
 class KTPz:
   """
   KTP z-axis
   """
+  info = info
+
   a = 2.12725
   b = 1.18431
   c = 5.14852e-2
@@ -54,6 +56,8 @@ class KTPy:
   """
   KTP y-axis
   """
+  info = info
+
   # for ~1600 nm
   a = 2.09930
   b = 0.922683

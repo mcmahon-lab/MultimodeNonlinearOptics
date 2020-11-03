@@ -4,23 +4,25 @@ try:
 except:
   from sympy import sqrt as ssqrt
 
-# MgO Doped LN
-# Gayer et al 2008
-# d33 = 25.3
-# d31 = 4.85
-# d22 = 2.59
-# (Px)   (  0   0   0    0   d31 -d22) (Ex^2)
-# (Py) ~ (-d22 d22  0   d31   0    0 ) (Ey^2)
-# (Pz)   (-d31 d31 d33   0    0    0 ) (Ez^2)
-#                                     (2Ey Ez)
-#                                     (2Ez Ex)
-#                                     (2Ex Ey)
+info = """MgO Doped LN
+Gayer et al 2008
+d33 = 25.3
+d31 = 4.85
+d22 = 2.59
+(Px)   (  0   0   0   0  d31 -d22) (Ex^2)
+(Py) ~ (-d22 d22  0  d31  0    0 ) (Ey^2)
+(Pz)   (-d31 d31 d33  0   0    0 ) (Ez^2)
+                                  (2Ey Ez)
+                                  (2Ez Ex)
+                                  (2Ex Ey)"""
 
 @nlMaterial
 class MgOLNe:
   """
   MgO-doped Lithium Niobate extraordinary axis.
   """
+  info = info
+
   a1 = 5.756
   a2 = 0.0983
   a3 = 0.2020
@@ -44,6 +46,8 @@ class MgOLNo:
   """
   MgO-doped Lithium Niobate ordinary axis.
   """
+  info = info
+
   a1 = 5.653
   a2 = 0.1185
   a3 = 0.2091
