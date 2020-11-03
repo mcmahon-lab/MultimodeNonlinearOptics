@@ -6,8 +6,9 @@
 #include <utility>
 
 
-// Eigen 1D arrays are defined with X rows, 1 column, which is annoying when operating on 2D arrays.
-// Also must specify row-major order for 2D
+// Eigen default 1D Array is defined with X rows, 1 column, which does not work with row-major order 2D arrays.
+// Thus define custom double and complex double 1D arrays. Also define the row-major order 2D double and complex arrays.
+// Row vector defined for compatibility with EigenFFT.
 typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayd;
 typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycd;
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcd;
