@@ -99,7 +99,7 @@ public:
   _NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig, double beta2o, double beta1o, double beta3o);
   _NLM2ModeExtension(const _NLM2ModeExtension&) = delete;
 
-  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain);
+  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true);
 
 protected:
   _NonlinearMedium& m; // Store a reference of the actual _NonlinearMedium object, to access variables and methods
