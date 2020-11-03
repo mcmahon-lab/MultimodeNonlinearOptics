@@ -170,9 +170,20 @@ protected:
 
 class Chi2SHG : public _Chi2 {
 public:
-  using _Chi2::_Chi2;
   using _NonlinearMedium::runSignalSimulation;
+#ifdef DEPLETESHG
+  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double dispLength, double beta2, double beta2s,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+          double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
+          double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 protected:
+  std::complex<double> _nlstepP;
+#else
+  using _Chi2::_Chi2;
+protected:
+#endif
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };

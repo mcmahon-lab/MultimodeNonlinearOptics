@@ -534,6 +534,25 @@ void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 }
 
 
+#ifdef DEPLETESHG
+Chi2SHG::Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double dispLength, double beta2, double beta2s,
+                 const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                 double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
+                 double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                 const Eigen::Ref<const Arrayd>& poling) :
+    _Chi2::_Chi2(relativeLength, nlLength, dispLength, beta2, beta2s, customPump, pulseType,
+                 beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision, poling)
+{
+  if (_noDispersion)
+    _nlstepP = 1._I * _NL / nlLengthP * _dz;
+  else if (_noNonlinear)
+    _nlstepP = 0;
+  else
+    _nlstepP = 1._I * _DS / nlLengthP * _dz;
+}
+#endif
+
+
 void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
   RowVectorcd fftTemp(_nFreqs);
@@ -573,14 +592,13 @@ void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 
     k1 = (prevPolDir * _nlStep * prevMismatch) * prevP.square();
 #ifdef DEPLETESHG
-    // TODO _nlStep -> _nlStepP
-    l1 = (prevPolDir * _nlStep / prevMismatch) * prevS * prevP.conjugate();
-    k2 = (intmPolDir * _nlStep * intmMismatch) * (prevP + 0.5 * l1).square();
-    l2 = (intmPolDir * _nlStep / intmMismatch) * (prevS + 0.5 * k1) * (prevP + 0.5 * l1).conjugate();
-    k3 = (intmPolDir * _nlStep * intmMismatch) * (prevP + 0.5 * l2).square();
-    l3 = (intmPolDir * _nlStep / intmMismatch) * (prevS + 0.5 * k2) * (prevP + 0.5 * l2).conjugate();
-    k4 = (currPolDir * _nlStep * currMismatch) * (prevP + l3).square();
-    l4 = (currPolDir * _nlStep / currMismatch) * (prevS + k3) * (prevP + l3).conjugate();
+    l1 = (prevPolDir * _nlstepP / prevMismatch) *  prevS * prevP.conjugate();
+    k2 = (intmPolDir * _nlStep  * intmMismatch) * (prevP + 0.5 * l1).square();
+    l2 = (intmPolDir * _nlstepP / intmMismatch) * (prevS + 0.5 * k1) * (prevP + 0.5 * l1).conjugate();
+    k3 = (intmPolDir * _nlStep  * intmMismatch) * (prevP + 0.5 * l2).square();
+    l3 = (intmPolDir * _nlstepP / intmMismatch) * (prevS + 0.5 * k2) * (prevP + 0.5 * l2).conjugate();
+    k4 = (currPolDir * _nlStep  * currMismatch) * (prevP + l3).square();
+    l4 = (currPolDir * _nlstepP / currMismatch) * (prevS + k3) * (prevP + l3).conjugate();
 #else
     k2 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();
     k3 = (intmPolDir * _nlStep * intmMismatch) * interpP.square();

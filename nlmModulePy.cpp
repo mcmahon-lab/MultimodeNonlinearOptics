@@ -113,11 +113,19 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SHG.def(
+#ifdef DEPLETESHG
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
+          double, double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthP"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
+      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
+      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+#else
       py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
           double, double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
       "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+#endif
 
 
 /*
