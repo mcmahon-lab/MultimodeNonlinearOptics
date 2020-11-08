@@ -2,6 +2,35 @@ import numpy as np
 from numpy.fft import fft, ifft, fftshift, ifftshift
 import threading as th
 
+from inspect import getmembers, isfunction
+
+def inherit_docstrings(skip=None):
+  if not isinstance(skip, (type(None), list, tuple, str)): raise TypeError("What function are you trying to skip?")
+  if skip and isinstance(skip, str): skip = [skip]
+
+  def wrapper(cls):
+    parents = [parent for parent in cls.__mro__[1:]]
+    redundantParent = [False] * len(parents)
+
+    for i in range(len(parents)):
+      for j in range(i+1, len(parents)):
+        if issubclass(parents[i], parents[j]):
+          redundantParent[j] = True
+
+    for name, func in getmembers(cls, isfunction):
+      if skip and name in skip: continue
+
+      docStrings = [func.__doc__] if func.__doc__ else []
+      for i, parent in enumerate(parents):
+        if redundantParent[i]: continue
+
+        if hasattr(parent, name) and func is not getattr(parent, name) and getattr(parent, name).__doc__:
+          docStrings.append(getattr(parent, name).__doc__)
+
+      func.__doc__ = "".join(docStrings[::-1])
+    return cls
+  return wrapper
+
 class _NonlinearMedium:
   """
   Base class for numerically simulating the evolution of a classical field in nonlinear media with a signal or quantum field.
@@ -178,7 +207,17 @@ class _NonlinearMedium:
     """
     Simulate propagation of pump field
     """
-    pass
+    s.pumpFreq[0, :] = fft(s._env)
+    s.pumpTime[0, :] = s._env
+
+    for i in range(1, s._nZSteps):
+      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
+      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
+
+    if s._rayleighLength != np.inf:
+      relativeStrength = 1 / np.sqrt(1 + (np.linspace(-0.5 * s._z, 0.5 * s._z, s._nZSteps) / s._rayleighLength)**2)
+      s.pumpFreq *= relativeStrength[:, np.newaxis]
+      s.pumpTime *= relativeStrength[:, np.newaxis]
 
 
   def runSignalSimulation(s, inputProf, inTimeDomain=True):
@@ -246,10 +285,10 @@ class _NonlinearMedium:
     calcGreensPart(True, 0, s._nFreqs // nThreads)
     for thread in threads: thread.join()
 
-    greenC = greenC.T
-    greenS = greenS.T
+    greenC = fftshift(greenC.T)
+    greenS = fftshift(greenS.T)
 
-    return fftshift(greenC), fftshift(greenS)
+    return greenC, greenS
 
 
   def batchSignalSimulation(s, inputProfs, inTimeDomain=False, runPump=True, nThreads=1):
@@ -262,7 +301,7 @@ class _NonlinearMedium:
     """
     nInputs, inCols = inputProfs.shape
     # TODO For SFG accepts single or double input but returns only one, need to generalize or expand
-    if inCols % _nFreqs != 0 or inCols / _nFreqs == 0 or inCols / _nFreqs > 2:
+    if inCols % s._nFreqs != 0 or inCols / s._nFreqs == 0 or inCols / s._nFreqs > 2:
       raise ValueError("Signals not of correct length!")
 
     if nThreads > nInputs:
@@ -291,12 +330,161 @@ class _NonlinearMedium:
     threads = [th.Thread(target=calcBatch, args=(False, (i * nInputs) // nThreads, ((i + 1) * nInputs) // nThreads))
                for i in range(1, nThreads)]
     for thread in threads: thread.start()
-    calcGreensPart(True, 0, nInputs // nThreads)
+    calcBatch(True, 0, nInputs // nThreads)
     for thread in threads: thread.join()
 
     return outSignals
 
 
+class _NLM2ModeExtension:
+  """
+  Extension class for extending _NonlinearMedium to allow simulation of processes involving two different modes.
+  """
+  def __init__(self, medium, nlLengthOrig, beta2o, beta1o, beta3o):
+    """
+    :param nlLengthOrig:   Like nlLength but with respect to the original signal.
+    :param beta2o:         Second order dispersion of the original signal's frequency
+    :param beta1o:         Group velocity difference for original signal relative to simulation window.
+    :param beta3o:         Original signal third order dispersion.
+    """
+    # Store a reference of the actual _NonlinearMedium object, to access variables and methods
+    self._checkInputs(medium, nlLengthOrig, beta2o, beta1o, beta3o)
+    self.m = medium
+    self.setLengths(nlLengthOrig)
+    self.resetGrids()
+    self.setDispersion(beta2o, beta1o, beta3o)
+
+
+  def _checkInputs(self, medium, nlLengthOrig, beta2o, beta1o, beta3o):
+
+    if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
+    if not isinstance(beta2o,  (int, float)): raise TypeError("beta2o")
+    if not isinstance(beta1o,  (int, float)): raise TypeError("beta1o")
+    if not isinstance(beta3o,  (int, float)): raise TypeError("beta3o")
+    if not issubclass(type(medium), _NonlinearMedium): raise TypeError("medium")
+
+
+  def setLengths(self, nlLengthOrig):
+    # self._NLo = nlLengthOrig
+    if self.m._noDispersion:
+      self._nlStepO = 1j * self.m._NL / nlLengthOrig * self.m._dz
+    elif self.m._noNonlinear:
+      self._nlStepO = 0
+    else:
+      self._nlStepO = 1j * self.m._DS / nlLengthOrig * self.m._dz
+
+
+  def resetGrids(self):
+    self.originalFreq = np.zeros((self.m._nZSteps, self.m._nFreqs), dtype=np.complex128)
+    self.originalTime = np.zeros((self.m._nZSteps, self.m._nFreqs), dtype=np.complex128)
+
+
+  def setDispersion(self, beta2o, beta1o, beta3o):
+    self._beta2o = beta2o
+    self._beta1o = beta1o
+    self._beta3o = beta3o
+
+    if self.m._noDispersion:
+      self._dispersionOrig.setZero(self.m._nFreqs)
+    else:
+      self._dispersionOrig = self.m.omega * (beta1o + self.m.omega * (0.5 * beta2o + self.m.omega * beta3o / 6))
+
+    self._dispStepOrig = np.exp(1j * self._dispersionOrig * self.m._dz)
+
+
+  def runSignalSimulation(self, inputProf, inTimeDomain=True):
+    """
+    Simulate propagation of signal field
+    :param inputProf: Profile of input pulse. Can be time or frequency domain.
+    Note: Frequency domain input is assumed to be "true" frequency with self.omega as its axis
+    (since FFT considers the center frequency as the first and last elements).
+    :param inTimeDomain: Specify if input is in frequency or frequency domain. True for time, false for frequency.
+    """
+    if inputProf.shape != (self.m._nFreqs,) and inputProf.shape != (2 * self.m._nFreqs,):
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
+    self.m._runSignalSimulation(inputProf, inTimeDomain, self.m.signalFreq, self.m.signalTime)
+
+
+  def computeTotalGreen(s, inTimeDomain=False, runPump=True, nThreads=1):
+    """
+    Solve a(L) = C a(0) + S [a(0)]^t for C and S for the combined system of the generated and original signals
+    :param inTimeDomain Compute the Green's function in time or frequency domain.
+    :param runPump      Whether to run pump simulation beforehand.
+    :return: Green's functions C, S for the spectrum including both generated and original signals
+    """
+    _nFreqs = s.m._nFreqs
+    _nZSteps = s.m._nZSteps
+
+    if nThreads > 2 * _nFreqs:
+      raise ValueError("Too many threads requested!")
+
+    if runPump: s.m.runPumpSimulation()
+
+    # Green function matrices
+    greenC = np.zeros((2 * _nFreqs, 2 * _nFreqs), dtype=np.complex128)
+    greenS = np.zeros((2 * _nFreqs, 2 * _nFreqs), dtype=np.complex128)
+
+    # Calculate Green's functions with real and imaginary impulse response
+    def calcGreensPart(usingMemberGrids, start, stop):
+
+      if usingMemberGrids:
+        gridFreq, gridTime = s.m.signalFreq, s.m.signalTime
+      else:
+        gridFreq = np.empty((2 * _nZSteps, _nFreqs), dtype=np.complex128)
+        gridTime = np.empty((2 * _nZSteps, _nFreqs), dtype=np.complex128)
+
+      if usingMemberGrids:
+        outputOriginal, outputSignal = (s.originalTime[-1], s.m.signalTime[-1]) if inTimeDomain \
+          else (s.originalFreq[-1], s.m.signalFreq[-1])
+      else:
+        outputOriginal, outputSignal = (gridTime[_nZSteps-1], gridTime[-1]) if inTimeDomain \
+          else (gridFreq[_nZSteps-1], gridFreq[-1])
+
+      impulse = np.zeros(2 * _nFreqs, dtype=np.complex128)
+
+      for i in range(start, stop):
+        impulse[i] = 1
+        s.m._runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime)
+
+        greenC[i, :_nFreqs] += outputSignal   * 0.5
+        greenC[i, _nFreqs:] += outputOriginal * 0.5
+        greenS[i, :_nFreqs] += outputSignal   * 0.5
+        greenS[i, _nFreqs:] += outputOriginal * 0.5
+
+        impulse[i] = 1j
+        s.m._runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime)
+
+        greenC[i, :_nFreqs] -= outputSignal   * 0.5j
+        greenC[i, _nFreqs:] -= outputOriginal * 0.5j
+        greenS[i, :_nFreqs] += outputSignal   * 0.5j
+        greenS[i, _nFreqs:] += outputOriginal * 0.5j
+
+        impulse[i] = 0
+
+    # run n-1 separate threads, run part on this process
+    threads = [th.Thread(target=calcGreensPart, args=(False, (2 * i * _nFreqs) // nThreads, ((i + 1) * 2 * _nFreqs) // nThreads))
+               for i in range(1, nThreads)]
+    for thread in threads: thread.start()
+    calcGreensPart(True, 0, (2 * _nFreqs) // nThreads)
+    for thread in threads: thread.join()
+
+    # Transpose, then need to fftshift each frequency block
+    greenC = greenC.T
+    greenC[_nFreqs:, _nFreqs:] = fftshift(greenC[_nFreqs:, _nFreqs:])
+    greenC[_nFreqs:, :_nFreqs] = fftshift(greenC[_nFreqs:, :_nFreqs])
+    greenC[:_nFreqs, _nFreqs:] = fftshift(greenC[:_nFreqs, _nFreqs:])
+    greenC[:_nFreqs, :_nFreqs] = fftshift(greenC[:_nFreqs, :_nFreqs])
+
+    greenS = greenS.T
+    greenS[_nFreqs:, _nFreqs:] = fftshift(greenS[_nFreqs:, _nFreqs:])
+    greenS[_nFreqs:, :_nFreqs] = fftshift(greenS[_nFreqs:, :_nFreqs])
+    greenS[:_nFreqs, _nFreqs:] = fftshift(greenS[:_nFreqs, _nFreqs:])
+    greenS[:_nFreqs, :_nFreqs] = fftshift(greenS[:_nFreqs, :_nFreqs])
+
+    return greenC, greenS
+
+
+@inherit_docstrings()
 class Chi3(_NonlinearMedium):
   """
   Class for numerically simulating the evolution of a pump and quantum field undergoing self
@@ -304,8 +492,6 @@ class Chi3(_NonlinearMedium):
   """
   def __init__(self, relativeLength, nlLength, dispLength, beta2, pulseType=0,
                beta3=0, chirp=0, rayleighLength=np.inf, tMax=10, tPrecision=512, zPrecision=100, customPump=None):
-    __doc__ = _NonlinearMedium.__init__.__doc__
-
     # same as base class except pump and signal dispersion must be identical, and no zero or first order dispersion
     super().__init__(relativeLength, nlLength, dispLength, beta2, beta2, pulseType,
                      0, 0, beta3, beta3, 0, chirp, rayleighLength, tMax, tPrecision, zPrecision,
@@ -313,7 +499,6 @@ class Chi3(_NonlinearMedium):
 
 
   def runPumpSimulation(s):
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
     s.pumpFreq[0, :] = fft(s._env) * np.exp(0.5j * s._dispersionPump * s._dz)
     s.pumpTime[0, :] = ifft(s.pumpFreq[0, :])
@@ -333,9 +518,6 @@ class Chi3(_NonlinearMedium):
 
 
   def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
-    __doc__ = _NonlinearMedium._runSignalSimulation.__doc__
-    if inputProf.size != s._nFreqs:
-      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -362,18 +544,17 @@ class Chi3(_NonlinearMedium):
     signalTime[-1, :] = ifft(signalFreq[-1, :])
 
 
+@inherit_docstrings()
 class _Chi2(_NonlinearMedium):
   """
   Base class for numerically simulating the evolution of a classical field in a chi(2) medium with a signal or quantum field.
   """
-
   def __init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType=0,
                beta1=0, beta1s=0, beta3=0, beta3s=0, diffBeta0=0, chirp=0, rayleighLength=np.inf, tMax=10,
                tPrecision=512, zPrecision=100, customPump=None, poling=None):
-    __doc__ = str(_NonlinearMedium.__init__.__doc__) + """
+    """
     :param poling:         Poling profile to simulate, specifying relative domain lengths.
     """
-
     super().__init__(relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision,
                      customPump)
@@ -404,31 +585,13 @@ class _Chi2(_NonlinearMedium):
         prevInd = int(currInd) + 1
 
 
-  def runPumpSimulation(s):
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
-
-    s.pumpFreq[0, :] = fft(s._env)
-    s.pumpTime[0, :] = s._env
-
-    for i in range(1, s._nZSteps):
-      s.pumpFreq[i, :] = s.pumpFreq[0, :] * np.exp(1j * i * s._dispersionPump * s._dz)
-      s.pumpTime[i, :] = ifft(s.pumpFreq[i, :])
-
-    if s._rayleighLength != np.inf:
-      relativeStrength = 1 / np.sqrt(1 + (np.linspace(-0.5 * s._z, 0.5 * s._z, s._nZSteps) / s._rayleighLength)**2)
-      s.pumpFreq *= relativeStrength[:, np.newaxis]
-      s.pumpTime *= relativeStrength[:, np.newaxis]
-
-
+@inherit_docstrings()
 class Chi2PDC(_Chi2):
   """
   Class for numerically simulating the evolution of a parametric down-conversion or DOPA process of a pump and signal
   or quantum field in a chi(2) medium.
   """
   def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
-    __doc__ = _Chi2._runSignalSimulation.__doc__
-    if inputProf.size != s._nFreqs:
-      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
     inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
 
@@ -443,12 +606,14 @@ class Chi2PDC(_Chi2):
       currPolDir = s.poling[i]
       intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
-      mismatch = np.exp(1j * s._diffBeta0 * i * s._dz)
+      prevMismatch = np.exp(1j * s._diffBeta0 * ((i- 1) * s._dz))
+      intmMismatch = np.exp(1j * s._diffBeta0 * ((i-.5) * s._dz))
+      currMismatch = np.exp(1j * s._diffBeta0 * ( i     * s._dz))
 
-      k1 = (prevPolDir * s._nlStep * mismatch) * s.pumpTime[i-1] * np.conj(signalTime[i-1])
-      k2 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(signalTime[i-1] + 0.5 * k1)
-      k3 = (intmPolDir * s._nlStep * mismatch) * pumpTimeInterp  * np.conj(signalTime[i-1] + 0.5 * k2)
-      k4 = (currPolDir * s._nlStep * mismatch) * s.pumpTime[i]   * np.conj(signalTime[i-1] + k3)
+      k1 = (prevPolDir * s._nlStep * prevMismatch) * s.pumpTime[i-1] * np.conj(signalTime[i-1])
+      k2 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp  * np.conj(signalTime[i-1] + 0.5 * k1)
+      k3 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp  * np.conj(signalTime[i-1] + 0.5 * k2)
+      k4 = (currPolDir * s._nlStep * currMismatch) * s.pumpTime[i]   * np.conj(signalTime[i-1] + k3)
 
       temp = signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
@@ -460,7 +625,47 @@ class Chi2PDC(_Chi2):
     signalTime[-1, :] = ifft(signalFreq[-1, :])
 
 
-class Chi2SFG(_Chi2):
+@inherit_docstrings()
+class Chi2SHG(_Chi2):
+  """
+  Class for numerically simulating the process of second harmonic generation in the pump undepleted approximation in a chi(2) medium.
+  """
+  def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
+
+    inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+
+    signalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionSign * s._dz)
+    signalTime[0, :] = ifft(signalFreq[0, :])
+
+    for i in range(1, s._nZSteps):
+      # Do a Runge-Kutta step for the non-linear propagation
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
+
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
+
+      prevMismatch = np.exp(1j * s._diffBeta0 * ((i- 1) * s._dz))
+      intmMismatch = np.exp(1j * s._diffBeta0 * ((i-.5) * s._dz))
+      currMismatch = np.exp(1j * s._diffBeta0 * ( i     * s._dz))
+
+      k1 = (prevPolDir * s._nlStep * prevMismatch) * s.pumpTime[i-1]**2
+      k2 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp**2
+      k3 = (intmPolDir * s._nlStep * intmMismatch) * pumpTimeInterp**2
+      k4 = (currPolDir * s._nlStep * currMismatch) * s.pumpTime[i]**2
+
+      temp = signalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+
+      # Dispersion step
+      signalFreq[i, :] = fft(temp) * s._dispStepSign
+      signalTime[i, :] = ifft(signalFreq[i, :])
+
+    signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    signalTime[-1, :] = ifft(signalFreq[-1, :])
+
+
+@inherit_docstrings()
+class Chi2SFG(_NLM2ModeExtension, _Chi2):
   """
   Class for numerically simulating the evolution of a sum frequency generation process of a pump and two signals
   or quantum fields in a chi(2) medium.
@@ -468,81 +673,20 @@ class Chi2SFG(_Chi2):
   def __init__(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType=0,
                beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
                rayleighLength=np.inf, tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
-    __doc__ = str(_Chi2.__init__.__doc__) + \
     """
-    :param nlLengthOrig:   Like nlLength but with respect to the original signal.
-    :param beta1o:         Group velocity difference for original signal relative to simulation window.
-    :param beta3o:         Original signal third order dispersion.
     :param diffBeta0o:     Wave-vector mismatch of PDC process with the original signal and pump.
     """
-    self._checkInput(relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                     beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, rayleighLength, tMax,
-                     tPrecision, zPrecision, customPump)
+    _Chi2.__init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                   beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax,
+                   tPrecision, zPrecision, customPump, poling)
 
-    self._setLengths(relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision, rayleighLength)
-    self._resetGrids(tPrecision, tMax)
-    self._setDispersion(beta2, beta2s, beta2o, beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o)
-    self.setPump(pulseType, chirp, customPump)
-    self._setPoling(poling)
+    _NLM2ModeExtension.__init__(self, self, nlLengthOrig, beta2o, beta1o, beta3o)
 
-
-  def _checkInput(self, relativeLength, nlLength, nlLengthOrig, dispLength, beta2, beta2s, beta2o, pulseType,
-                  beta1, beta1s, beta1o, beta3, beta3s, beta3o, diffBeta0, diffBeta0o, chirp, rayleighLength, tMax,
-                  tPrecision, zPrecision, customPump):
-
-    _Chi2._checkInput(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
-                      beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision,
-                      customPump)
-    if not isinstance(beta2o, (int, float)): raise TypeError("beta2o")
-    if not isinstance(beta1o, (int, float)): raise TypeError("beta1o")
-    if not isinstance(beta3o, (int, float)): raise TypeError("beta3o")
     if not isinstance(diffBeta0o, (int, float)): raise TypeError("diffBeta0o")
-    if not isinstance(nlLengthOrig, (int, float)): raise TypeError("nlLengthOrig")
-
-
-  def _setLengths(self, relativeLength, nlLength, nlLengthOrig, dispLength, zPrecision, rayleighLength):
-    _Chi2._setLengths(self, relativeLength, nlLength, dispLength, zPrecision, rayleighLength)
-    self._NLo = nlLengthOrig
-
-    if self._noDispersion:
-      self._nlStepO = 1j * self._NL / nlLengthOrig * self._dz
-    elif self._noNonlinear:
-      self._nlStepO = 0
-    else:
-      self._nlStepO = 1j * self._DS / nlLengthOrig * self._dz
-
-
-  def _resetGrids(self, nFreqs=None, tMax=None):
-    _Chi2._resetGrids(self, nFreqs, tMax)
-    self.originalFreq = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex128)
-    self.originalTime = np.zeros((self._nZSteps, self._nFreqs), dtype=np.complex128)
-
-
-  def _setDispersion(self, beta2, beta2s, beta2o, beta1=0, beta1s=0, beta1o=0,
-                    beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0):
-    _Chi2._setDispersion(self, beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0)
-    self._beta2o = beta2o
-    self._beta1o = beta1o
-    self._beta3o = beta3o
     self._diffBeta0o = diffBeta0o
-
-    if self._noDispersion:
-      self._dispersionOrig = 0
-    else:
-      self._dispersionOrig = 0.5 * beta2o * self.omega**2 + beta1o * self.omega + 1/6 * beta3o * self.omega**3
-
-    self._dispStepOrig = np.exp(1j * self._dispersionOrig * self._dz)
-
-
-  def runSignalSimulation(s, inputProf, inTimeDomain=True):
-    __doc__ = _Chi2.runSignalSimulation.__doc__
-    if inputProf.shape != (s._nFreqs,) and inputProf.shape != (2 * s._nFreqs,):
-      raise ValueError("inputProf array size does not match number of frequency/time bins")
-    s._runSignalSimulation(inputProf, inTimeDomain, s.signalFreq, s.signalTime)
 
 
   def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
-    __doc__ = _Chi2.runSignalSimulation.__doc__
 
     # Hack: If we are using grids that are the member variables of the class, then proceed normally.
     # However if called from computeGreensFunction we need a workaround to use only one grid.
@@ -626,85 +770,118 @@ class Chi2SFG(_Chi2):
     originalTime[-1, :] = ifft(originalFreq[-1, :])
 
 
-  def computeTotalGreen(s, inTimeDomain=False, runPump=True, nThreads=1):
+@inherit_docstrings()
+class Chi2PDCII(_NLM2ModeExtension, _Chi2):
+  """
+  Class for numerically simulating the evolution of a Type II process of a pump and two signals
+  or quantum fields of opposite polarization in a chi(2) medium.
+  """
+  def __init__(self, relativeLength, nlLength, nlLengthOrig, nlLengthI, dispLength, beta2, beta2s, beta2o, pulseType=0,
+               beta1=0, beta1s=0, beta1o=0, beta3=0, beta3s=0, beta3o=0, diffBeta0=0, diffBeta0o=0, chirp=0,
+               rayleighLength=np.inf, tMax=10, tPrecision=512, zPrecision=100, customPump=None, poling=None):
     """
-    Solve a(L) = C a(0) + S [a(0)]^t for C and S for the combined system of the generated and original signals
-    :param inTimeDomain Compute the Green's function in time or frequency domain.
-    :param runPump      Whether to run pump simulation beforehand.
-    :return: Green's functions C, S for the spectrum including both generated and original signals
+    :param diffBeta0o:     Wave-vector mismatch of PDC process with the original signal and pump.
+    :param nlLengthI:      Strength of type I nonlinear process over length dz; DOPA process of original signal
     """
-    if nThreads > s._nFreqs:
-      raise ValueError("Too many threads requested!")
+    _Chi2.__init__(self, relativeLength, nlLength, dispLength, beta2, beta2s, pulseType,
+                   beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax,
+                   tPrecision, zPrecision, customPump, poling)
 
-    if runPump: s.runPumpSimulation()
+    _NLM2ModeExtension.__init__(self, self, nlLengthOrig, beta2o, beta1o, beta3o)
 
-    # Green function matrices
-    greenC = np.zeros((2 * s._nFreqs, 2 * s._nFreqs), dtype=np.complex128)
-    greenS = np.zeros((2 * s._nFreqs, 2 * s._nFreqs), dtype=np.complex128)
+    if not isinstance(diffBeta0o, (int, float)): raise TypeError("diffBeta0o")
+    if not isinstance(nlLengthI,  (int, float)): raise TypeError("nlLengthI")
 
-    # Calculate Green's functions with real and imaginary impulse response
-    def calcGreensPart(usingMemberGrids, start, stop):
+    self._diffBeta0o = diffBeta0o
 
-      if usingMemberGrids:
-        gridFreq, gridTime = s.signalFreq, s.signalTime
+    if self._noDispersion:
+      self._nlStepI = 1j * self._NL / nlLengthI * self._dz
+    elif self._noNonlinear:
+      self._nlStepI = 0
+    else:
+      self._nlStepI = 1j * self._DS / nlLengthI * self._dz
+
+
+  def _runSignalSimulation(s, inputProf, inTimeDomain, signalFreq, signalTime):
+
+    # Hack: If we are using grids that are the member variables of the class, then proceed normally.
+    # However if called from computeGreensFunction we need a workaround to use only one grid.
+    usingMemberGrids = (signalFreq is s.signalFreq)
+    O = 0 if usingMemberGrids else s._nZSteps # offset
+    if not usingMemberGrids:
+      if signalFreq.shape != (2 * s._nZSteps, s._nFreqs): signalFreq.resize((2 * s._nZSteps, s._nFreqs), refcheck=False)
+      if signalTime.shape != (2 * s._nZSteps, s._nFreqs): signalTime.resize((2 * s._nZSteps, s._nFreqs), refcheck=False)
+    originalFreq = s.originalFreq if usingMemberGrids else signalFreq[:s._nZSteps, :]
+    originalTime = s.originalTime if usingMemberGrids else signalTime[:s._nZSteps, :]
+
+    if inputProf.size == s._nFreqs:
+      # Takes as input the signal in the first frequency and outputs in the second frequency
+      inputProfFreq = (fft(inputProf) if inTimeDomain else inputProf)
+
+      originalFreq[0, :] = inputProfFreq * np.exp(0.5j * s._dispersionOrig * s._dz)
+      originalTime[0, :] = ifft(originalFreq[0, :])
+
+      signalFreq[O, :] = 0
+      signalTime[O, :] = 0
+
+    elif inputProf.size == 2 * s._nFreqs:
+      # input array spanning both frequencies, ordered as signal then original
+      if inTimeDomain:
+        signalFreq[O, :]   = fft(inputProf[:s._nFreqs]) * np.exp(0.5j * s._dispersionSign * s._dz)
+        originalFreq[0, :] = fft(inputProf[s._nFreqs:]) * np.exp(0.5j * s._dispersionOrig * s._dz)
+
       else:
-        gridFreq = np.empty((2 * s._nZSteps, s._nFreqs), dtype=np.complex128)
-        gridTime = np.empty((2 * s._nZSteps, s._nFreqs), dtype=np.complex128)
+        signalFreq[O, :]   = inputProf[:s._nFreqs] * np.exp(0.5j * s._dispersionSign * s._dz)
+        originalFreq[0, :] = inputProf[s._nFreqs:] * np.exp(0.5j * s._dispersionOrig * s._dz)
 
-      if usingMemberGrids:
-        outputOriginal, outputSignal = (s.originalTime[-1], s.signalTime[-1]) if inTimeDomain \
-                                  else (s.originalFreq[-1], s.signalFreq[-1])
-      else:
-        outputOriginal, outputSignal = (gridTime[s._nZSteps-1], gridTime[-1]) if inTimeDomain \
-                                  else (gridFreq[s._nZSteps-1], gridFreq[-1])
+      signalTime[O, :]   = ifft(signalFreq[O, :])
+      originalTime[0, :] = ifft(originalFreq[0, :])
 
-      impulse = np.zeros(2 * s._nFreqs, dtype=np.complex128)
+    else:
+      raise ValueError("inputProf array size does not match number of frequency/time bins")
 
-      for i in range(start, stop):
-        impulse[i] = 1
-        s._runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime)
+    for i in range(1, s._nZSteps):
+      # Do a Runge-Kutta step for the non-linear propagation
+      pumpTimeInterp = 0.5 * (s.pumpTime[i-1] + s.pumpTime[i])
 
-        greenC[i, :s._nFreqs] += outputSignal   * 0.5
-        greenC[i, s._nFreqs:] += outputOriginal * 0.5
-        greenS[i, :s._nFreqs] += outputSignal   * 0.5
-        greenS[i, s._nFreqs:] += outputOriginal * 0.5
+      prevPolDir = s.poling[i-1]
+      currPolDir = s.poling[i]
+      intmPolDir = 0.5 * (prevPolDir + currPolDir)
 
-        impulse[i] = 1j
-        s._runSignalSimulation(impulse, inTimeDomain, gridFreq, gridTime)
+      prevMismatch = np.exp(1j * s._diffBeta0 * (i- 1) * s._dz)
+      intmMismatch = np.exp(1j * s._diffBeta0 * (i-.5) * s._dz)
+      currMismatch = np.exp(1j * s._diffBeta0 *  i     * s._dz)
+      prevMismatcho = np.exp(1j * s._diffBeta0o * (i- 1) * s._dz)
+      intmMismatcho = np.exp(1j * s._diffBeta0o * (i-.5) * s._dz)
+      currMismatcho = np.exp(1j * s._diffBeta0o *  i     * s._dz)
 
-        greenC[i, :s._nFreqs] -= outputSignal   * 0.5j
-        greenC[i, s._nFreqs:] -= outputOriginal * 0.5j
-        greenS[i, :s._nFreqs] += outputSignal   * 0.5j
-        greenS[i, s._nFreqs:] += outputOriginal * 0.5j
+      k1 =  prevPolDir * ((s._nlStepO * prevMismatch)  * s.pumpTime[i-1] * np.conj(signalTime[O+i-1])            + (s._nlStepI * prevMismatcho) * s.pumpTime[i-1] * np.conj(originalTime[i-1]))
+      l1 = (prevPolDir *   s._nlStep  *  prevMismatch) * s.pumpTime[i-1] * np.conj(originalTime[i-1])
+      k2 =  intmPolDir * ((s._nlStepO * intmMismatch)  * pumpTimeInterp  * np.conj(signalTime[O+i-1] + 0.5 * l1) + (s._nlStepI * intmMismatcho) * pumpTimeInterp  * np.conj(originalTime[i-1] + 0.5 * k1))
+      l2 = (intmPolDir *   s._nlStep  *  intmMismatch) * pumpTimeInterp  * np.conj(originalTime[i-1] + 0.5 * k1)
+      k3 =  intmPolDir * ((s._nlStepO * intmMismatch)  * pumpTimeInterp  * np.conj(signalTime[O+i-1] + 0.5 * l2) + (s._nlStepI * intmMismatcho) * pumpTimeInterp  * np.conj(originalTime[i-1] + 0.5 * k2))
+      l3 = (intmPolDir *   s._nlStep  *  intmMismatch) * pumpTimeInterp  * np.conj(originalTime[i-1] + 0.5 * k2)
+      k4 =  currPolDir * ((s._nlStepO * currMismatch)  * s.pumpTime[i]   * np.conj(signalTime[O+i-1] + l3)       + (s._nlStepI * currMismatcho) * s.pumpTime[i]   * np.conj(originalTime[i-1] + k3))
+      l4 = (currPolDir *   s._nlStep  *  currMismatch) * s.pumpTime[i]   * np.conj(originalTime[i-1] + k3)
 
-        impulse[i] = 0
+      tempOrig = originalTime[i-1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+      tempSign = signalTime[O+i-1] + (l1 + 2 * l2 + 2 * l3 + l4) / 6
 
-    # run n-1 separate threads, run part on this process
-    threads = [th.Thread(target=calcGreensPart, args=(False, (2 * i * s._nFreqs) // nThreads, ((i + 1) * 2 * s._nFreqs) // nThreads))
-               for i in range(1, nThreads)]
-    for thread in threads: thread.start()
-    calcGreensPart(True, 0, (2 * s._nFreqs) // nThreads)
-    for thread in threads: thread.join()
+      # Dispersion step
+      signalFreq[O+i, :] = fft(tempSign) * s._dispStepSign
+      signalTime[O+i, :] = ifft(signalFreq[O+i, :])
 
-    greenC = greenC.T
-    greenS = greenS.T
+      originalFreq[i, :] = fft(tempOrig) * s._dispStepOrig
+      originalTime[i, :] = ifft(originalFreq[i, :])
 
-    # Need to fftshift each frequency block
-    greenC[s._nFreqs:, s._nFreqs:] = fftshift(greenC[s._nFreqs:, s._nFreqs:])
-    greenS[s._nFreqs:, s._nFreqs:] = fftshift(greenS[s._nFreqs:, s._nFreqs:])
+    signalFreq[-1, :] *= np.exp(-0.5j * s._dispersionSign * s._dz)
+    signalTime[-1, :] = ifft(signalFreq[-1, :])
 
-    greenC[s._nFreqs:, :s._nFreqs] = fftshift(greenC[s._nFreqs:, :s._nFreqs])
-    greenS[s._nFreqs:, :s._nFreqs] = fftshift(greenS[s._nFreqs:, :s._nFreqs])
-
-    greenC[:s._nFreqs, s._nFreqs:] = fftshift(greenC[:s._nFreqs, s._nFreqs:])
-    greenS[:s._nFreqs, s._nFreqs:] = fftshift(greenS[:s._nFreqs, s._nFreqs:])
-
-    greenC[:s._nFreqs, :s._nFreqs] = fftshift(greenC[:s._nFreqs, :s._nFreqs])
-    greenS[:s._nFreqs, :s._nFreqs] = fftshift(greenS[:s._nFreqs, :s._nFreqs])
-
-    return greenC, greenS
+    originalFreq[-1, :] *= np.exp(-0.5j * s._dispersionOrig * s._dz)
+    originalTime[-1, :] = ifft(originalFreq[-1, :])
 
 
+@inherit_docstrings(skip="__init__")
 class Cascade(_NonlinearMedium):
   """
   Class that cascades multiple media together.
@@ -714,7 +891,6 @@ class Cascade(_NonlinearMedium):
     :param sharedPump: Is the pump shared across media or are they independently pumped.
     :param media:      Collection of nonlinear media objects.
     """
-
     if not isinstance(sharedPump, (bool, int)):
       raise TypeError("sharedPump must be boolean")
 
@@ -765,7 +941,6 @@ class Cascade(_NonlinearMedium):
 
 
   def runPumpSimulation(self):
-    __doc__ = _NonlinearMedium.runPumpSimulation.__doc__
 
     if not self.sharedPump:
       for medium in self.media:
@@ -779,7 +954,6 @@ class Cascade(_NonlinearMedium):
 
 
   def runSignalSimulation(self, inputProf, inTimeDomain=True):
-    __doc__ = _NonlinearMedium.runSignalSimulation.__doc__
 
     if inputProf.size != self._nFreqs:
       raise ValueError("inputProf array size does not match number of frequency/time bins")
@@ -789,7 +963,7 @@ class Cascade(_NonlinearMedium):
       self.media[i].runSignalSimulation(self.media[i-1].signalFreq[-1], inTimeDomain=False)
 
 
-  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision=100):
+  def _setLengths(self, relativeLength, nlLength, dispLength, zPrecision, rayleighLength):
     """Invalid"""
     pass
 
@@ -801,14 +975,20 @@ class Cascade(_NonlinearMedium):
     """Invalid"""
     pass
 
+
   def setPump(self, pulseType=0, chirp=0, customPump=None):
-    """Invalid"""
-    pass
+
+    if self.sharedPump:
+      self.media[0].setPump(pulseType, chirp, customPump)
+    else:
+      for medium in self.media:
+        medium.setPump(pulseType, chirp, customPump)
+
 
   def computeGreensFunction(s, inTimeDomain=False, runPump=True, nThreads=1):
-    __doc__ = _NonlinearMedium.computeGreensFunction.__doc__
-
     # TODO for large cascades or short media: option for directly feeding signals to avoid many matrix multiplications
+
+    if runPump: s.runPumpSimulation()
 
     # Green function matrices
     greenC = np.eye(s._nFreqs, dtype=np.complex128)
@@ -820,3 +1000,14 @@ class Cascade(_NonlinearMedium):
                        newC @ greenS + newS @ np.conj(greenC)
 
     return greenC, greenS
+
+  def batchSignalSimulation(self, inputProfs, inTimeDomain=False, runPump=True, nThreads=1):
+
+    if runPump: self.runPumpSimulation()
+
+    outSignals = self.media[0].batchSignalSimulation(inputProfs, inTimeDomain, False, nThreads)
+
+    for medium in self.media[1:]:
+      outSignals = medium.batchSignalSimulation(outSignals, inTimeDomain, False, nThreads)
+
+    return outSignals

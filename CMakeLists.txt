@@ -34,6 +34,11 @@ if (FFTW_FOUND)
   message("-- FFTW installation found!")
 endif()
 
+# Preprocessor variables:
+if (DEPLETESHG)
+  add_definitions(-DDEPLETESHG)
+endif()
+
 target_compile_options(nonlinearmedium PUBLIC ${COMPILE_FLAGS})
 
 # Create the output in the source directory
