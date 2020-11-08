@@ -454,12 +454,6 @@ void Chi3::DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
 }
 
 
-void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                               Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  signalSimulationTemplate<Chi3>(inputProf, inTimeDomain, signalFreq, signalTime);
-}
-
-
 _Chi2::_Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
              const Eigen::Ref<const Arraycd>& customPump, int pulseType,
              double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
@@ -519,12 +513,6 @@ void Chi2PDC::DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
   k2 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k1).conjugate();
   k3 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k2).conjugate();
   k4 = (currPolDir * _nlStep * currMismatch) * currP   * (prev + k3).conjugate();
-}
-
-
-void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  signalSimulationTemplate<Chi2PDC>(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 
@@ -659,12 +647,6 @@ void Chi2SFG::DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2,
 }
 
 
-void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  signalSimulationTemplate<Chi2SFG>(inputProf, inTimeDomain, signalFreq, signalTime);
-}
-
-
 Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
                      double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                      double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
@@ -707,12 +689,6 @@ void Chi2PDCII::DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l
   l3 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k2).conjugate();
   k4 =  currPolDir * ((_nlStepO * currMismatch) * currP   * (prevS + l3).conjugate()       + (_nlStepI * currMismatcho) * currP   * (prevO + k3).conjugate());
   l4 = (currPolDir *   _nlStep  * currMismatch) * currP   * (prevO + k3).conjugate();
-}
-
-
-void Chi2PDCII::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                                    Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  signalSimulationTemplate<Chi2PDCII>(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 

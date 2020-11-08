@@ -51,7 +51,7 @@ protected:
                                    Array2Dcd& signalFreq, Array2Dcd& signalTime) = 0;
 
   template<class T>
-  inline void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
+  void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
 
   inline Arrayd fftshift(const Arrayd& input);
   inline Array2Dcd fftshift2(const Array2Dcd& input);
@@ -92,6 +92,18 @@ protected:
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 
+// Repeated code for each NLM ODE class. This takes care of:
+// - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
+// - Overriding runSignalSimulation with the function created from the template
+#define NLM(T) \
+protected: \
+  friend _NonlinearMedium; \
+  inline void DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4, \
+                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP); \
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, \
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override \
+     { signalSimulationTemplate<T>(inputProf, inTimeDomain, signalFreq, signalTime); };
+
 
 class _NLM2ModeExtension {
 public:
@@ -113,7 +125,7 @@ protected:
   void setDispersion(double beta2o, double beta1o, double beta3o);
 
   template<class T>
-  inline void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
+  void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
 
   double _beta2o; /// second order dispersion of the original signal's frequency
   double _beta1o; /// group velocity difference for original signal relative to simulation window
@@ -128,8 +140,24 @@ protected:
   Array2Dcd originalTime; /// grid for numerically solving PDE, representing original signal propagation in time domain
 };
 
+// Repeated code for each NLM ODE class. This takes care of:
+// - Allowing _NLM2ModeExtension friend access to the protected DiffEq function, to use in signalSimulationTemplate
+// - Overriding runSignalSimulation with the function created from the template
+#define NLM2(T) \
+public: \
+  using _NLM2ModeExtension::runSignalSimulation; \
+protected: \
+  friend _NLM2ModeExtension; \
+  using _NLM2ModeExtension::signalSimulationTemplate; \
+  void DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4, \
+          const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP); \
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, \
+                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override \
+     { signalSimulationTemplate<T>(inputProf, inTimeDomain, signalFreq, signalTime); };
+
 
 class Chi3 : public _NonlinearMedium {
+  NLM(Chi3)
 public:
   Chi3(double relativeLength, double nlLength, double dispLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
@@ -137,14 +165,6 @@ public:
        double tMax=10, uint tPrecision=512, uint zPrecision=100);
 
   void runPumpSimulation() override;
-  using _NonlinearMedium::runSignalSimulation;
-
-protected:
-  friend _NonlinearMedium;
-  inline void DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
-                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
 
@@ -168,15 +188,9 @@ protected:
 
 
 class Chi2PDC : public _Chi2 {
+  NLM(Chi2PDC)
 public:
   using _Chi2::_Chi2;
-  using _NonlinearMedium::runSignalSimulation;
-protected:
-  friend _NonlinearMedium;
-  inline void DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
-                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
 
@@ -202,6 +216,7 @@ protected:
 
 
 class Chi2SFG : public _Chi2, public _NLM2ModeExtension {
+  NLM2(Chi2SFG)
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
           double beta2, double beta2s, double beta2o,
@@ -211,22 +226,13 @@ public:
           double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  using _NLM2ModeExtension::runSignalSimulation;
-
 protected:
-  friend _NLM2ModeExtension;
-  using _NLM2ModeExtension::signalSimulationTemplate;
-  inline void DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
-                     const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
-
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
-
   double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
 };
 
 
 class Chi2PDCII : public _Chi2, public _NLM2ModeExtension {
+  NLM2(Chi2PDCII)
 public:
   Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
             double beta2, double beta2s, double beta2o,
@@ -236,17 +242,7 @@ public:
             double tMax=10, uint tPrecision=512, uint zPrecision=100,
             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  using _NLM2ModeExtension::runSignalSimulation;
-
 protected:
-  friend _NLM2ModeExtension;
-  using _NLM2ModeExtension::signalSimulationTemplate;
-  inline void DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
-                     const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
-
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
-
   std::complex<double> _nlStepI; /// strength of type I nonlinear process over length dz; DOPA process of original signal
   double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
 };
