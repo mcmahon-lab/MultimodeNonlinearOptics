@@ -50,6 +50,9 @@ protected:
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                    Array2Dcd& signalFreq, Array2Dcd& signalTime) = 0;
 
+  template<class T>
+  inline void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
+
   inline Arrayd fftshift(const Arrayd& input);
   inline Array2Dcd fftshift2(const Array2Dcd& input);
 
@@ -109,6 +112,9 @@ protected:
   void resetGrids();
   void setDispersion(double beta2o, double beta1o, double beta3o);
 
+  template<class T>
+  inline void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, Array2Dcd& signalFreq, Array2Dcd& signalTime);
+
   double _beta2o; /// second order dispersion of the original signal's frequency
   double _beta1o; /// group velocity difference for original signal relative to simulation window
   double _beta3o; /// third order dispersion of the original signal's frequency
@@ -134,6 +140,9 @@ public:
   using _NonlinearMedium::runSignalSimulation;
 
 protected:
+  friend _NonlinearMedium;
+  inline void DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
+                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
@@ -163,6 +172,9 @@ public:
   using _Chi2::_Chi2;
   using _NonlinearMedium::runSignalSimulation;
 protected:
+  friend _NonlinearMedium;
+  inline void DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
+                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
@@ -202,6 +214,11 @@ public:
   using _NLM2ModeExtension::runSignalSimulation;
 
 protected:
+  friend _NLM2ModeExtension;
+  using _NLM2ModeExtension::signalSimulationTemplate;
+  inline void DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
+                     const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
+
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 
@@ -222,6 +239,11 @@ public:
   using _NLM2ModeExtension::runSignalSimulation;
 
 protected:
+  friend _NLM2ModeExtension;
+  using _NLM2ModeExtension::signalSimulationTemplate;
+  inline void DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
+                     const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP);
+
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                            Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 

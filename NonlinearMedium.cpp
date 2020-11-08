@@ -329,6 +329,41 @@ inline Array2Dcd _NonlinearMedium::fftshift2(const Array2Dcd& input) {
 }
 
 
+template<class T>
+void _NonlinearMedium::signalSimulationTemplate(const Arraycd &inputProf, bool inTimeDomain,
+                                                Array2Dcd &signalFreq, Array2Dcd &signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
+  if (inTimeDomain)
+    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
+  else
+    signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
+  IFFT(signalTime.row(0), signalFreq.row(0))
+
+  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
+  for (uint i = 1; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the non-linear propagation
+    const auto& prev  = signalTime.row(i-1);
+    const auto& prevP = pumpTime.row(i-1);
+    const auto& currP = pumpTime.row(i);
+
+    interpP = 0.5 * (prevP + currP);
+
+    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, prev, prevP, currP, interpP);
+
+    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+
+    // Dispersion step
+    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
+    IFFT(signalTime.row(i), signalFreq.row(i))
+  }
+
+  signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
+  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
+
+}
+
+
 void _NLM2ModeExtension::setLengths(double nlLengthOrig) {
   // _NLo = nlLengthOrig;
 
@@ -410,39 +445,18 @@ void Chi3::runPumpSimulation() {
 }
 
 
-void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                               Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  RowVectorcd fftTemp(_nFreqs);
-
-  if (inTimeDomain)
-    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
-  else
-    signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
-  IFFT(signalTime.row(0), signalFreq.row(0))
-
-  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prev  = signalTime.row(i-1);
-    const auto& prevP = pumpTime.row(i-1);
-    const auto& currP = pumpTime.row(i);
-
-    interpP = 0.5 * (prevP + currP);
-
+void Chi3::DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
+                  const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP) {
     k1 = _nlStep * (2 * prevP.abs2()   *  prev             + prevP.square()   *  prev.conjugate());
     k2 = _nlStep * (2 * interpP.abs2() * (prev + 0.5 * k1) + interpP.square() * (prev + 0.5 * k1).conjugate());
     k3 = _nlStep * (2 * interpP.abs2() * (prev + 0.5 * k2) + interpP.square() * (prev + 0.5 * k2).conjugate());
     k4 = _nlStep * (2 * currP.abs2()   * (prev + k3)       + currP.square()   * (prev + k3).conjugate());
+}
 
-    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
 
-    // Dispersion step
-    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
-    IFFT(signalTime.row(i), signalFreq.row(i))
-  }
-
-  signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
+void Chi3::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
+                               Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  signalSimulationTemplate<Chi3>(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 
@@ -491,46 +505,26 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 }
 
 
+void Chi2PDC::DiffEq(uint i, Arraycd& k1, Arraycd& k2, Arraycd& k3, Arraycd& k4,
+                     const Arraycd& prev, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP) {
+  const double prevPolDir = _poling(i-1);
+  const double currPolDir = _poling(i);
+  const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+  const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+  const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+  const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
+
+  k1 = (prevPolDir * _nlStep * prevMismatch) * prevP   *  prev.conjugate();
+  k2 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k1).conjugate();
+  k3 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k2).conjugate();
+  k4 = (currPolDir * _nlStep * currMismatch) * currP   * (prev + k3).conjugate();
+}
+
+
 void Chi2PDC::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  RowVectorcd fftTemp(_nFreqs);
-
-  if (inTimeDomain)
-    FFTtimes(signalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionSign).exp())
-  else
-    signalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign).exp();
-  IFFT(signalTime.row(0), signalFreq.row(0))
-
-  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prev =  signalTime.row(i-1);
-    const auto& prevP = pumpTime.row(i-1);
-    const auto& currP = pumpTime.row(i);
-    interpP = 0.5 * (prevP + currP);
-
-    const double prevPolDir = _poling(i-1);
-    const double currPolDir = _poling(i);
-    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
-
-    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
-    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
-    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
-
-    k1 = (prevPolDir * _nlStep * prevMismatch) * prevP   *  prev.conjugate();
-    k2 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k1).conjugate();
-    k3 = (intmPolDir * _nlStep * intmMismatch) * interpP * (prev + 0.5 * k2).conjugate();
-    k4 = (currPolDir * _nlStep * currMismatch) * currP   * (prev + k3).conjugate();
-
-    temp = signalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-
-    // Dispersion step
-    FFTtimes(signalFreq.row(i), temp, _dispStepSign)
-    IFFT(signalTime.row(i), signalFreq.row(i))
-  }
-
-  signalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  IFFT(signalTime.row(_nZSteps-1), signalFreq.row(_nZSteps-1))
+  signalSimulationTemplate<Chi2PDC>(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 
@@ -638,102 +632,36 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
 }
 
 
+void Chi2SFG::DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
+                     const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP) {
+  const double prevPolDir = _poling(i-1);
+  const double currPolDir = _poling(i);
+  const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+  const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+  const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+  const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
+  const std::complex<double> prevInvMsmch = 1. / prevMismatch;
+  const std::complex<double> intmInvMsmch = 1. / intmMismatch;
+  const std::complex<double> currInvMsmch = 1. / currMismatch;
+  const std::complex<double> prevMismatcho = std::exp(1._I * _diffBeta0o * ((i- 1) * _dz));
+  const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
+  const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
+
+  k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate()   *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
+  l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP               *  prevO;
+  k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
+  l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k1);
+  k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
+  l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k2);
+  k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate()   * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
+  l4 = (currPolDir * _nlStep   *  currMismatch) * currP               * (prevO + k3);
+}
+
+
 void Chi2SFG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) {
-  RowVectorcd fftTemp(_nFreqs);
-
-  // Hack: If we are using grids that are the member variables of the class, then proceed normally.
-  // However if called from computeGreensFunction we need a workaround to use only one grid.
-  const bool usingMemberGrids = (&signalFreq == &this->signalFreq);
-  const uint O = usingMemberGrids? 0 : _nZSteps; // offset
-  Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
-  Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalTime;
-  if (!usingMemberGrids) {
-    signalFreq.resize(2 * _nZSteps, _nFreqs);
-    signalTime.resize(2 * _nZSteps, _nFreqs);
-  }
-
-  // Takes as input the signal in the first frequency and outputs in the second frequency
-  if (inputProf.size() == _nFreqs) {
-    if (inTimeDomain)
-      FFTtimes(originalFreq.row(0), inputProf, ((0.5_I * _dz) * _dispersionOrig).exp())
-    else
-      originalFreq.row(0) = inputProf * ((0.5_I * _dz) * _dispersionOrig).exp();
-    IFFT(originalTime.row(0), originalFreq.row(0))
-
-    signalFreq.row(O) = 0;
-    signalTime.row(O) = 0;
-  }
-  // input array spanning both frequencies, ordered as signal then original
-  else if (inputProf.size() == 2 * _nFreqs) {
-    if (inTimeDomain) {
-      const Arraycd& inputSignal = inputProf.head(_nFreqs);
-      FFTtimes(signalFreq.row(O), inputSignal, ((0.5_I * _dz) * _dispersionSign).exp())
-      const Arraycd& inputOriginal = inputProf.tail(_nFreqs);
-      FFTtimes(originalFreq.row(0), inputOriginal, ((0.5_I * _dz) * _dispersionOrig).exp())
-    }
-    else {
-      signalFreq.row(O)   = inputProf.head(_nFreqs) * ((0.5_I * _dz) * _dispersionSign).exp();
-      originalFreq.row(0) = inputProf.tail(_nFreqs) * ((0.5_I * _dz) * _dispersionOrig).exp();
-    }
-    IFFT(signalTime.row(O),   signalFreq.row(O))
-    IFFT(originalTime.row(0), originalFreq.row(0))
-  }
-  else {
-    throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
-  }
-
-  Arraycd interpP(_nFreqs);
-  Arraycd k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), tempOrig(_nFreqs);
-  Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempSign(_nFreqs);
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prevS = signalTime.row(O+i-1);
-    const auto& prevO = originalTime.row(i-1);
-    const auto& prevP = pumpTime.row(i-1);
-    const auto& currP = pumpTime.row(i);
-
-    interpP = 0.5 * (prevP + currP);
-
-    const double prevPolDir = _poling(i-1);
-    const double currPolDir = _poling(i);
-    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
-
-    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
-    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
-    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
-    const std::complex<double> prevInvMsmch = 1. / prevMismatch;
-    const std::complex<double> intmInvMsmch = 1. / intmMismatch;
-    const std::complex<double> currInvMsmch = 1. / currMismatch;
-    const std::complex<double> prevMismatcho = std::exp(1._I * _diffBeta0o * ((i- 1) * _dz));
-    const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
-    const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
-
-    k1 = (prevPolDir * _nlStepO) * (prevInvMsmch  * prevP.conjugate()   *  prevS             + prevMismatcho * prevP   *  prevO.conjugate());
-    l1 = (prevPolDir * _nlStep   *  prevMismatch) * prevP               *  prevO;
-    k2 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l1) + intmMismatcho * interpP * (prevO + 0.5 * k1).conjugate());
-    l2 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k1);
-    k3 = (intmPolDir * _nlStepO) * (intmInvMsmch  * interpP.conjugate() * (prevS + 0.5 * l2) + intmMismatcho * interpP * (prevO + 0.5 * k2).conjugate());
-    l3 = (intmPolDir * _nlStep   *  intmMismatch) * interpP             * (prevO + 0.5 * k2);
-    k4 = (currPolDir * _nlStepO) * (currInvMsmch  * currP.conjugate()   * (prevS + l3)       + currMismatcho * currP   * (prevO + k3).conjugate());
-    l4 = (currPolDir * _nlStep   *  currMismatch) * currP               * (prevO + k3);
-
-    tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-    tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
-
-    // Dispersion step
-    FFTtimes(signalFreq.row(O+i), tempSign, _dispStepSign)
-    IFFT(signalTime.row(O+i), signalFreq.row(O+i))
-
-    FFTtimes(originalFreq.row(i), tempOrig, _dispStepOrig)
-    IFFT(originalTime.row(i), originalFreq.row(i))
-  }
-
-  signalFreq.row(O+_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign).exp();
-  IFFT(signalTime.row(O+_nZSteps-1), signalFreq.row(O+_nZSteps-1))
-
-  originalFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionOrig).exp();
-  IFFT(originalTime.row(_nZSteps-1), originalFreq.row(_nZSteps-1))
+  signalSimulationTemplate<Chi2SFG>(inputProf, inTimeDomain, signalFreq, signalTime);
 }
 
 
@@ -758,13 +686,52 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig
 }
 
 
+void Chi2PDCII::DiffEq(uint i, Arraycd& k1, Arraycd& l1, Arraycd& k2, Arraycd& l2, Arraycd& k3, Arraycd& l3, Arraycd& k4, Arraycd& l4,
+                       const Arraycd& prevS, const Arraycd& prevO, const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP) {
+  const double prevPolDir = _poling(i-1);
+  const double currPolDir = _poling(i);
+  const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+
+  const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
+  const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
+  const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
+  const std::complex<double> prevMismatcho = std::exp(1._I * _diffBeta0o * ((i- 1) * _dz));
+  const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
+  const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
+
+  k1 =  prevPolDir * ((_nlStepO * prevMismatch) * prevP   *  prevS.conjugate()             + (_nlStepI * prevMismatcho) * prevP   *  prevO.conjugate());
+  l1 = (prevPolDir *   _nlStep  * prevMismatch) * prevP   *  prevO.conjugate();
+  k2 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l1).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k1).conjugate());
+  l2 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k1).conjugate();
+  k3 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l2).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k2).conjugate());
+  l3 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k2).conjugate();
+  k4 =  currPolDir * ((_nlStepO * currMismatch) * currP   * (prevS + l3).conjugate()       + (_nlStepI * currMismatcho) * currP   * (prevO + k3).conjugate());
+  l4 = (currPolDir *   _nlStep  * currMismatch) * currP   * (prevO + k3).conjugate();
+}
+
+
 void Chi2PDCII::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
                                     Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  signalSimulationTemplate<Chi2PDCII>(inputProf, inTimeDomain, signalFreq, signalTime);
+}
+
+
+template<class T>
+void _NLM2ModeExtension::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain,
+                                                  Array2Dcd& signalFreq, Array2Dcd& signalTime) {
+  auto& _nZSteps = m._nZSteps;
+  auto& _nFreqs = m._nFreqs;
+  auto& _dz = m._dz;
+  auto& _dispersionSign = m._dispersionSign;
+  auto& _dispStepSign = m._dispStepSign;
+  auto& pumpTime = m.pumpTime;
+  auto& fftObj = m.fftObj;
+
   RowVectorcd fftTemp(_nFreqs);
 
   // Hack: If we are using grids that are the member variables of the class, then proceed normally.
   // However if called from computeGreensFunction we need a workaround to use only one grid.
-  const bool usingMemberGrids = (&signalFreq == &this->signalFreq);
+  const bool usingMemberGrids = (&signalFreq == &m.signalFreq);
   const uint O = usingMemberGrids? 0 : _nZSteps; // offset
   Array2Dcd& originalFreq = usingMemberGrids? this->originalFreq : signalFreq;
   Array2Dcd& originalTime = usingMemberGrids? this->originalTime : signalTime;
@@ -815,25 +782,7 @@ void Chi2PDCII::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
 
     interpP = 0.5 * (prevP + currP);
 
-    const double prevPolDir = _poling(i-1);
-    const double currPolDir = _poling(i);
-    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
-
-    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0 * ((i- 1) * _dz));
-    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0 * ((i-.5) * _dz));
-    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0 * ( i     * _dz));
-    const std::complex<double> prevMismatcho = std::exp(1._I * _diffBeta0o * ((i- 1) * _dz));
-    const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0o * ((i-.5) * _dz));
-    const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0o * ( i     * _dz));
-
-    k1 =  prevPolDir * ((_nlStepO * prevMismatch) * prevP   *  prevS.conjugate()             + (_nlStepI * prevMismatcho) * prevP   *  prevO.conjugate());
-    l1 = (prevPolDir *   _nlStep  * prevMismatch) * prevP   *  prevO.conjugate();
-    k2 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l1).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k1).conjugate());
-    l2 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k1).conjugate();
-    k3 =  intmPolDir * ((_nlStepO * intmMismatch) * interpP * (prevS + 0.5 * l2).conjugate() + (_nlStepI * intmMismatcho) * interpP * (prevO + 0.5 * k2).conjugate());
-    l3 = (intmPolDir *   _nlStep  * intmMismatch) * interpP * (prevO + 0.5 * k2).conjugate();
-    k4 =  currPolDir * ((_nlStepO * currMismatch) * currP   * (prevS + l3).conjugate()       + (_nlStepI * currMismatcho) * currP   * (prevO + k3).conjugate());
-    l4 = (currPolDir *   _nlStep  * currMismatch) * currP   * (prevO + k3).conjugate();
+    static_cast<T*>(this)->DiffEq(i, k1, l1, k2, l2, k3, l3, k4, l4, prevS, prevO, prevP, currP, interpP);
 
     tempOrig = originalTime.row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
     tempSign = signalTime.row(O+i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
