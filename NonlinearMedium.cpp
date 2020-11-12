@@ -429,10 +429,14 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
 
   if (inTimeDomain)
     for (uint m = 0; m < T::_nSignalModes; m++) {
-      if (m == inputMode)
-        FFTtimes(signalFreq[m].row(0), inputProf.segment(0, _nFreqs), ((0.5_I * _dz) * _dispersionSign[m]).exp())
-      else if (inputMode < 1 && m < inputChannels)
-        FFTtimes(signalFreq[m].row(0), inputProf.segment(m*_nFreqs, _nFreqs), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+      if (m == inputMode) {
+        signalFreq[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+      }
+      else if (inputMode < 1 && m < inputChannels) {
+        signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+      }
       else
         signalFreq[m].row(0) = 0;
     }
