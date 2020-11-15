@@ -16,6 +16,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<_Chi2, _NonlinearMedium> _Chi2Base(m, "_Chi2");
   py::class_<Chi2PDC, _Chi2> Chi2PDC(m, "Chi2PDC");
   py::class_<Chi2SHG, _Chi2> Chi2SHG(m, "Chi2SHG");
+  py::class_<Chi2SFGPDC, _Chi2> Chi2SFGPDC(m, "Chi2SFGPDC");
   py::class_<Chi2SFG, _Chi2> Chi2SFG(m, "Chi2SFG");
   py::class_<Chi2PDCII, _Chi2> Chi2PDCII(m, "Chi2PDCII");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
@@ -117,16 +118,28 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
 
 /*
- * Chi2SFG
+ * Chi2SFGPDC
  */
 
-  Chi2SFG.def(
+  Chi2SFGPDC.def(
       py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
                double, double, double, double, double, double, double, double, double, double, double, uint, uint,
                Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
       "diffBeta0o"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+
+/*
+ * Chi2SFG
+ */
+
+  Chi2SFG.def(
+      py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
+          double, double, double, double, double, double, double, double, double, double, uint, uint,
+          Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "dispLength"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
+      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
 
 /*

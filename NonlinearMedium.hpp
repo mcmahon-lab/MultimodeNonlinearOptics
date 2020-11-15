@@ -162,6 +162,19 @@ protected:
 };
 
 
+class Chi2SFGPDC : public _Chi2 {
+  NLM(Chi2SFGPDC, 2)
+public:
+  Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
+             double beta2, double beta2s, double beta2o,
+             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+             double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+             double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+             double tMax=10, uint tPrecision=512, uint zPrecision=100,
+             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+};
+
+
 class Chi2SFG : public _Chi2 {
   NLM(Chi2SFG, 2)
 public:
@@ -169,7 +182,7 @@ public:
           double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+          double diffBeta0=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
           double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
