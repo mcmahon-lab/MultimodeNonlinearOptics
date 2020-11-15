@@ -201,6 +201,20 @@ public:
 };
 
 
+class Chi2SFGII : public _Chi2 {
+  NLM(Chi2SFGII, 4)
+public:
+  Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY, double dispLength,
+            double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
+            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+            double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
+            double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0,
+            double diffBeta0z=0, double diffBeta0y=0, double diffBeta0s=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100,
+            const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+};
+
+
 class Cascade : public _NonlinearMedium {
 public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
