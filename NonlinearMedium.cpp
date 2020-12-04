@@ -424,7 +424,9 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
                                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) {
   RowVectorcd fftTemp(_nFreqs);
 
-  uint inputChannels = inputProf.size() / _nFreqs;
+  // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
+  uint nInputChannels = inputProf.size() / _nFreqs;
+  if (nInputChannels > 1) inputMode = 0;
   if (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
 
   if (inTimeDomain)
@@ -433,7 +435,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
         signalFreq[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
         FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
       }
-      else if (inputMode < 1 && m < inputChannels) {
+      else if (inputMode < 1 && m < nInputChannels) {
         signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
         FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
       }
@@ -444,15 +446,13 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     for (uint m = 0; m < T::_nSignalModes; m++) {
       if (m == inputMode)
         signalFreq[m].row(0) = inputProf.segment(0, _nFreqs) * ((0.5_I * _dz) * _dispersionSign[m]).exp();
-      else if (inputMode < 1 && m < inputChannels)
+      else if (inputMode < 1 && m < nInputChannels)
         signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs) * ((0.5_I * _dz) * _dispersionSign[m]).exp();
       else
         signalFreq[m].row(0) = 0;
     }
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    if (m == inputMode)
-      IFFT(signalTime[m].row(0), signalFreq[m].row(0))
-    else if (inputMode < 1 && m < inputChannels)
+    if (m == inputMode || m < nInputChannels)
       IFFT(signalTime[m].row(0), signalFreq[m].row(0))
     else
       signalTime[m].row(0) = 0;

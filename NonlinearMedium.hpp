@@ -54,8 +54,8 @@ protected:
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime);
 
-  inline Arrayd fftshift(const Arrayd& input);
-  inline Array2Dcd fftshift2(const Array2Dcd& input);
+  static inline Arrayd fftshift(const Arrayd& input);
+  static inline Array2Dcd fftshift2(const Array2Dcd& input);
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
   double _z;  /// length of medium
