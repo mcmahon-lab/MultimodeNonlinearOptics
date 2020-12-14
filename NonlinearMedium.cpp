@@ -546,6 +546,9 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
   if (poling.cols() <= 1)
     _poling.setOnes(_nZSteps);
   else {
+    if ((poling <= 0).any())
+      throw std::invalid_argument("Poling contains invalid domain length");
+
     Arrayd poleDomains(poling.cols());
     // cumulative sum
     poleDomains(0) = poling(0);
