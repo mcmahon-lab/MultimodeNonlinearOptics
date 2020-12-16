@@ -19,8 +19,8 @@ class _NonlinearMedium {
 friend class Cascade;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  virtual void setPump(int pulseType, double chirpLength=0);
-  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
+  virtual void setPump(int pulseType, double chirpLength=0, double delayLength=0);
+  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0);
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
@@ -40,7 +40,8 @@ protected:
   _NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
                    double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                    double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
-                   std::initializer_list<double> diffBeta0, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision);
+                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                   double chirp, double delay);
 
   void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
                   double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
@@ -66,6 +67,7 @@ protected:
   uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
   double _tMax;  /// positive and negative extent of the simulation window in time
   double _beta2;  /// second order dispersion of the pump's frequency
+  double _beta1;  /// relative group velocity of the pump
   std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
   double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
 
@@ -106,8 +108,8 @@ class Chi3 : public _NonlinearMedium {
 public:
   Chi3(double relativeLength, double nlLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
-       double beta3=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-       double tMax=10, uint tPrecision=512, uint zPrecision=100);
+       double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+       double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0);
 
   void runPumpSimulation() override;
 };
@@ -118,7 +120,7 @@ public:
   _Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
         double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
         double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
-        double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling);
+        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling);
 
   const Arrayd& getPoling() {return _poling;};
 
@@ -136,8 +138,8 @@ public:
   Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-          double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -152,9 +154,8 @@ public:
 #endif
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-          double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100,
-          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+          double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
 protected:
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
@@ -168,8 +169,8 @@ public:
   Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
              const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
              double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-             double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-             double tMax=10, uint tPrecision=512, uint zPrecision=100,
+             double diffBeta0=0, double diffBeta0o=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+             double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
              const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -180,8 +181,8 @@ public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double diffBeta0=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -193,8 +194,8 @@ public:
             double beta2, double beta2s, double beta2o,
             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
             double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-            double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100,
+            double diffBeta0=0, double diffBeta0o=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -207,8 +208,8 @@ public:
             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
             double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
             double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0,
-            double diffBeta0z=0, double diffBeta0y=0, double diffBeta0s=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100,
+            double diffBeta0z=0, double diffBeta0y=0, double diffBeta0s=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -218,8 +219,8 @@ public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
           const std::vector<std::map<uint, uint>>& connections);
   void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
-  void setPump(int pulseType, double chirpLength=0) override;
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0) override;
+  void setPump(int pulseType, double chirpLength=0, double delayLength=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0) override;
   void runPumpSimulation() override;
   void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0) override;
   std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1,

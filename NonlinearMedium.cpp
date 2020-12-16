@@ -22,16 +22,17 @@ inline constexpr std::complex<double> operator"" _I(long double c) {return std::
 _NonlinearMedium::_NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
                                    double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                                    double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
-                                   std::initializer_list<double> diffBeta0, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
+                                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                                   double chirp, double delay) :
   _nSignalModes(nSignalmodes)
 {
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   if (customPump.size() != 0)
-    setPump(customPump, chirp);
+    setPump(customPump, chirp, delay);
   else
-    setPump(pulseType, chirp);
+    setPump(pulseType, chirp, delay);
 }
 
 
@@ -117,6 +118,7 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
 
   // Pump group velocity dispersion
   _beta2  = beta2;
+  _beta1  = beta1;
 
   // signal phase mis-match
   _diffBeta0 = diffBeta0;
@@ -135,7 +137,7 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
 }
 
 
-void _NonlinearMedium::setPump(int pulseType, double chirpLength) {
+void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLength) {
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   if (pulseType == 1)
     _env = (1 / _tau.cosh()).cast<std::complex<double>>();
@@ -146,22 +148,22 @@ void _NonlinearMedium::setPump(int pulseType, double chirpLength) {
   else
     _env = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
 
-  if (chirpLength != 0) {
+  if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    FFTtimes(fftTemp, _env, (1._I * (_beta1 * delayLength + 0.5 * _beta2 * chirpLength * _omega) * _omega).exp())
     IFFT(_env, fftTemp)
   }
 }
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
   _env = customPump;
 
-  if (chirpLength != 0) {
+  if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env, (0.5_I * _beta2 * chirpLength * _omega.square()).exp())
+    FFTtimes(fftTemp, _env, (1._I * (_beta1 * delayLength + 0.5 * _beta2 * chirpLength * _omega) * _omega).exp())
     IFFT(_env, fftTemp)
   }
 }
@@ -481,11 +483,10 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
 }
 
 
-Chi3::Chi3(double relativeLength, double nlLength,
-           double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-           double beta3, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
+Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+           double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp) :
     _NonlinearMedium(_nSignalModes, relativeLength, {nlLength}, beta2, {beta2}, customPump, pulseType,
-                     0, {0}, beta3, {beta3}, {}, chirp, rayleighLength, tMax, tPrecision, zPrecision)
+                     0, {0}, beta3, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, chirp, 0)
 {}
 
 
@@ -526,10 +527,10 @@ void Chi3::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, st
 _Chi2::_Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
              double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
              double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
-             double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+             double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
              const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium::_NonlinearMedium(nSignalmodes, relativeLength, nlLength, beta2, beta2s, customPump, pulseType,
-                                     beta1, beta1s, beta3, beta3s, diffBeta0, chirp, rayleighLength, tMax, tPrecision, zPrecision)
+                                     beta1, beta1s, beta3, beta3s, diffBeta0, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay)
 {
   setPoling(poling);
 }
@@ -574,10 +575,10 @@ void _Chi2::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 Chi2PDC::Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
                  const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                 double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
                  const Eigen::Ref<const Arrayd>& poling) :
-    _Chi2(_nSignalModes, relativeLength, {nlLength}, beta2, {beta2s}, customPump, pulseType, beta1, {beta1s}, beta3,
-          {beta3s}, {diffBeta0}, chirp, rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+  _Chi2(_nSignalModes, relativeLength, {nlLength}, beta2, {beta2s}, customPump, pulseType, beta1, {beta1s}, beta3,
+        {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
 void Chi2PDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
@@ -606,7 +607,7 @@ Chi2SHG::Chi2SHG(double relativeLength, double nlLength, double beta2, double be
 #endif
                  const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                  double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                 double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
                  const Eigen::Ref<const Arrayd>& poling) :
 
 #ifdef DEPLETESHG
@@ -614,7 +615,7 @@ Chi2SHG::Chi2SHG(double relativeLength, double nlLength, double beta2, double be
 #else
     _Chi2::_Chi2(_nSignalModes, relativeLength, {nlLength}, beta2, {beta2s}, customPump, pulseType,
 #endif
-                 beta1, {beta1s}, beta3, {beta3s}, {diffBeta0}, chirp, rayleighLength, tMax, tPrecision, zPrecision, poling)
+                 beta1, {beta1s}, beta3, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling)
 {}
 
 
@@ -690,14 +691,13 @@ void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, u
 }
 
 
-Chi2SFGPDC::Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig,
-                       double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-                       double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                       double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
-                       double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+Chi2SFGPDC::Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
+                       const Eigen::Ref<const Arraycd>& customPump, int pulseType, double beta1, double beta1s, double beta1o,
+                       double beta3, double beta3s, double beta3o, double diffBeta0, double diffBeta0o, double rayleighLength,
+                       double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _Chi2::_Chi2(_nSignalModes, relativeLength, {nlLength, nlLengthOrig}, beta2, {beta2s, beta2o},
                customPump, pulseType, beta1, {beta1s, beta1o}, beta3, {beta3s, beta3o}, {diffBeta0, diffBeta0o},
-               chirp, rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+               rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
 void Chi2SFGPDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
@@ -730,14 +730,13 @@ void Chi2SFGPDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
 }
 
 
-Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig,
-                 double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-                 double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                 double diffBeta0, double chirp, double rayleighLength,
-                 double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
+                 const Eigen::Ref<const Arraycd>& customPump, int pulseType, double beta1, double beta1s, double beta1o,
+                 double beta3, double beta3s, double beta3o, double diffBeta0, double rayleighLength,
+                 double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
     _Chi2::_Chi2(_nSignalModes, relativeLength, {nlLength, nlLengthOrig}, beta2, {beta2s, beta2o},
                  customPump, pulseType, beta1, {beta1s, beta1o}, beta3, {beta3s, beta3o}, {diffBeta0},
-                 chirp, rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+                 rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
 void Chi2SFG::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
@@ -770,11 +769,11 @@ void Chi2SFG::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2,
 Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI,
                      double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                      double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
-                     double diffBeta0, double diffBeta0o, double chirp, double rayleighLength,
-                     double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+                     double diffBeta0, double diffBeta0o, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                     double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _Chi2::_Chi2(_nSignalModes, relativeLength, {nlLength, nlLengthOrig, nlLengthI}, beta2, {beta2s, beta2o},
                customPump, pulseType, beta1, {beta1s, beta1o}, beta3, {beta3s, beta3o}, {diffBeta0, diffBeta0o},
-               chirp, rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+               rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
 void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
@@ -810,12 +809,12 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengt
                      const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                      double beta1, double beta1sz, double beta1sy, double beta1oz, double beta1oy,
                      double beta3, double beta3sz, double beta3sy, double beta3oz, double beta3oy,
-                     double diffBeta0z, double diffBeta0y, double diffBeta0s, double chirp, double rayleighLength,
-                     double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+                     double diffBeta0z, double diffBeta0y, double diffBeta0s, double rayleighLength,
+                     double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _Chi2::_Chi2(_nSignalModes, relativeLength, {nlLengthSignZ, nlLengthSignY, nlLengthOrigZ, nlLengthOrigY},
                beta2, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, beta1, {beta1sz, beta1sy, beta1oz,  beta1oy},
                beta3, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0s},
-               chirp, rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+               rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
 void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
@@ -921,22 +920,22 @@ void Cascade::addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& co
 }
 
 
-void Cascade::setPump(int pulseType, double chirpLength) {
+void Cascade::setPump(int pulseType, double chirpLength, double delayLength) {
   if (sharedPump)
-    media[0].get().setPump(pulseType, chirpLength);
+    media[0].get().setPump(pulseType, chirpLength, delayLength);
   else {
     for (auto& medium : media)
-      medium.get().setPump(pulseType, chirpLength);
+      medium.get().setPump(pulseType, chirpLength, delayLength);
   }
 }
 
 
-void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength) {
+void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) {
   if (sharedPump)
-    media[0].get().setPump(customPump, chirpLength);
+    media[0].get().setPump(customPump, chirpLength, delayLength);
   else {
     for (auto& medium : media)
-      medium.get().setPump(customPump, chirpLength);
+      medium.get().setPump(customPump, chirpLength, delayLength);
   }
 }
 

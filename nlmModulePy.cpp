@@ -35,12 +35,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   _NLMBase.def("setPump",
-               py::overload_cast<int, double>(&_NonlinearMedium::setPump),
-               "pulseType"_a, "chirp"_a = 0);
+               py::overload_cast<int, double, double>(&_NonlinearMedium::setPump),
+               "pulseType"_a, "chirp"_a = 0, "delay"_a = 0);
 
   _NLMBase.def("setPump",
-               py::overload_cast<const Eigen::Ref<const Arraycd>&, double>(&_NonlinearMedium::setPump),
-               "customPump"_a, "chirp"_a = 0);
+               py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double>(&_NonlinearMedium::setPump),
+               "customPump"_a, "chirp"_a = 0, "delay"_a = 0);
 
   _NLMBase.def("runPumpSimulation", &_NonlinearMedium::runPumpSimulation);
 
@@ -72,9 +72,9 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi3.def(
-      py::init<double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double, double, uint, uint>(),
+      py::init<double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double, uint, uint, double>(),
       "relativeLength"_a, "nlLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta3"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+      "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0);
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation);
 
@@ -92,10 +92,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2PDC.def(
       py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
+               double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
-      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -104,17 +104,17 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SHG.def(
 #ifdef DEPLETESHG
-      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-          double, double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+               double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthP"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
-      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 #else
       py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-          double, double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
+          double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0,
-      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 #endif
 
 
@@ -123,24 +123,24 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SFGPDC.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, double, double, double, double, uint, uint,
-               Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
-      "diffBeta0o"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+          double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a, "customPump"_a = defArraycd,
+      "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0,
+      "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
+      "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 /*
  * Chi2SFG
  */
 
   Chi2SFG.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-          double, double, double, double, double, double, double, double, double, double, uint, uint,
-          Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+               double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
-      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
+      "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -148,12 +148,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2PDCII.def(
-      py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, double, double, double, double, uint, uint,
-               Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double,
+               double, double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "nlLengthI"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0,
-      "diffBeta0o"_a = 0, "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0,
+      "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -161,14 +161,15 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SFGII.def(
-      py::init<double, double, double, double, double, double, double, double, double, double,
-          Eigen::Ref<const Arraycd>&, int, double, double, double, double, double, double, double, double, double,
-          double, double, double, double, double, double, double, uint, uint, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&,
+               int, double, double, double, double, double, double, double, double, double, double, double, double,
+               double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthSignZ"_a, "nlLengthSignY"_a, "nlLengthOrigZ"_a, "nlLengthOrigY"_a,
-      "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0,
-      "beta3"_a = 0, "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0, "diffBeta0s"_a = 0,
-      "chirp"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
+      "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0,
+      "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0,
+      "diffBeta0s"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -179,12 +180,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               "sharePump"_a, "inputMedia"_a, "modeConnections"_a);
 
   Cascade.def("setPump",
-              py::overload_cast<int, double>(&Cascade::setPump),
-              "pulseType"_a, "chirp"_a = 0);
+              py::overload_cast<int, double, double>(&Cascade::setPump),
+              "pulseType"_a, "chirp"_a = 0, "delay"_a = 0);
 
   Cascade.def("setPump",
-              py::overload_cast<const Eigen::Ref<const Arraycd>&, double>(&Cascade::setPump),
-               "customPump"_a, "chirp"_a = 0);
+              py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double>(&Cascade::setPump),
+               "customPump"_a, "chirp"_a = 0, "delay"_a = 0);
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
 
