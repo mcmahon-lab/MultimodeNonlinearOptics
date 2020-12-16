@@ -198,7 +198,7 @@ void _NonlinearMedium::runPumpSimulation() {
 
 
 void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain, uint inputMode) {
-  if (inputProf.size() > _nSignalModes * _nFreqs || inputProf.size() % _nFreqs)
+  if (inputProf.size() % _nFreqs != 0 || inputProf.size() / _nFreqs == 0 || inputProf.size() / _nFreqs > _nSignalModes)
     throw std::invalid_argument("inputProf array size does not match number of frequency/time bins");
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
@@ -210,7 +210,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
 std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads,
                                                                         const std::vector<char>& useInput,
                                                                         const std::vector<char>& useOutput) {
-
+  // Determine which input and output modes to compute. If no input/output modes specified, computes all modes.
   uint nInputModes = 0, nOutputModes = 0;
   std::vector<uint> inputs, outputs;
   if (useInput.size() > _nSignalModes)
@@ -226,10 +226,6 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   }
   else
     nInputModes = _nSignalModes;
-  inputs.reserve(nInputModes);
-  for (uint m = 0; m < _nSignalModes; m++)
-    if (useInput.empty() || useInput[m])
-      inputs.emplace_back(m);
 
   if (!useOutput.empty()) {
     for (auto value : useOutput)
@@ -239,11 +235,15 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   }
   else
     nOutputModes = _nSignalModes;
+
+  inputs.reserve(nInputModes);
   outputs.reserve(nOutputModes);
-  for (uint m = 0; m < _nSignalModes; m++)
+  for (uint m = 0; m < _nSignalModes; m++) {
+    if (useInput.empty() || useInput[m])
+      inputs.emplace_back(m);
     if (useOutput.empty() || useOutput[m])
       outputs.emplace_back(m);
-
+  }
 
   if (nThreads > _nFreqs * nInputModes)
     throw std::invalid_argument("Too many threads requested!");
@@ -256,7 +256,7 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   greenC.setZero(nInputModes * _nFreqs, nOutputModes * _nFreqs);
   greenS.setZero(nInputModes * _nFreqs, nOutputModes * _nFreqs);
 
-  // run n-1 separate threads, run part on this process
+  // run n-1 separate threads
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
@@ -299,6 +299,7 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     }
   };
 
+  // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
     threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
                          (i * _nFreqs * nInputModes) / nThreads, ((i + 1) * _nFreqs * nInputModes) / nThreads);
@@ -308,6 +309,7 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
     if (thread.joinable()) thread.join();
   }
 
+  // Transpose and shift individual sub-blocks so that frequencies or times are contiguous
   greenC.transposeInPlace();
   for (uint im = 0; im < nOutputModes; im++)
     for (uint om = 0; om < nOutputModes; om++)
@@ -336,6 +338,7 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
 
+  // Determine which output modes to return. If none specified, returns all modes.
   uint nOutputModes = 0;
   std::vector<uint> outputs;
   if (!useOutput.empty()) {
@@ -356,7 +359,7 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
   // Signal outputs -- Note: hopefully large enough to avoid dirtying cache?
   Array2Dcd outSignals(nInputs, nOutputModes * _nFreqs);
 
-  // run n-1 separate threads, run part on this process
+  // run n-1 separate threads
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
@@ -383,6 +386,7 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
     }
   };
 
+  // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
     threads.emplace_back(calcBatch, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
                          (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
