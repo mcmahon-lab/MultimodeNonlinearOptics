@@ -43,12 +43,12 @@ protected:
                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                    double chirp, double delay);
 
-  void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
-                  double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
-                  double beta3, const std::vector<double>& beta3s);
-  void resetGrids(uint nFreqs, double tMax);
-  void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
-                     double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
+  inline void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
+                         double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                         double beta3, const std::vector<double>& beta3s);
+  inline void resetGrids(uint nFreqs, double tMax);
+  inline void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                            double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
   _NonlinearMedium() : _nSignalModes() {};
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                    std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) = 0;
@@ -66,14 +66,15 @@ protected:
   uint _nZSteps; /// number of length steps in simulating the PDE
   uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
   double _tMax;  /// positive and negative extent of the simulation window in time
-  double _beta2;  /// second order dispersion of the pump's frequency
+  double _beta2;  /// second order dispersion of the pump
   double _beta1;  /// relative group velocity of the pump
-  std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
-  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
 
+  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
   Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
-  std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
+
+  std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
   std::vector<std::complex<double>> _nlStep; /// strength of nonlinear process over length dz
+  std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
 
   Arrayd _tau;   /// array representing the time axis
   Arrayd _omega; /// array representing the frequency axis
