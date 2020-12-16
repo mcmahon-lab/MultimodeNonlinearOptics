@@ -37,12 +37,14 @@ public:
   const Arrayd& getFrequency() {return _omega;};
 
 protected:
-  _NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength, double dispLength, double beta2, std::initializer_list<double> beta2s,
-                   const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-                   double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
-                   double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision);
+  _NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
+                   double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                   double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
+                   std::initializer_list<double> diffBeta0, double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision);
 
-  void setLengths(double relativeLength, const std::vector<double>& nlLength, double dispLength, uint zPrecision, double rayleighLength);
+  void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
+                  double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                  double beta3, const std::vector<double>& beta3s);
   void resetGrids(uint nFreqs, double tMax);
   void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
                      double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
@@ -59,8 +61,6 @@ protected:
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
   double _z;  /// length of medium
-  bool _noDispersion; /// indicates system is dispersionless
-  bool _noNonlinear;  /// indicates system is linear
   double _dz;    /// length increment
   uint _nZSteps; /// number of length steps in simulating the PDE
   uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
@@ -104,7 +104,7 @@ protected: \
 class Chi3 : public _NonlinearMedium {
   NLM(Chi3, 1)
 public:
-  Chi3(double relativeLength, double nlLength, double dispLength, double beta2,
+  Chi3(double relativeLength, double nlLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
        double beta3=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
        double tMax=10, uint tPrecision=512, uint zPrecision=100);
@@ -115,7 +115,7 @@ public:
 
 class _Chi2 : public _NonlinearMedium {
 public:
-  _Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength, double dispLength,
+  _Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
         double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
         double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
         double chirp, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling);
@@ -133,7 +133,7 @@ protected:
 class Chi2PDC : public _Chi2 {
   NLM(Chi2PDC, 1)
 public:
-  Chi2PDC(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+  Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
           double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
@@ -146,9 +146,9 @@ class Chi2SHG : public _Chi2 {
 public:
   using _NonlinearMedium::runSignalSimulation;
 #ifdef DEPLETESHG
-  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double dispLength, double beta2, double beta2s,
+  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double beta2, double beta2s,
 #else
-  Chi2SHG(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
+  Chi2SHG(double relativeLength, double nlLength, double beta2, double beta2s,
 #endif
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
@@ -165,8 +165,7 @@ protected:
 class Chi2SFGPDC : public _Chi2 {
   NLM(Chi2SFGPDC, 2)
 public:
-  Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-             double beta2, double beta2s, double beta2o,
+  Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
              const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
              double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
              double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
@@ -178,8 +177,7 @@ public:
 class Chi2SFG : public _Chi2 {
   NLM(Chi2SFG, 2)
 public:
-  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-          double beta2, double beta2s, double beta2o,
+  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double diffBeta0=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
@@ -191,7 +189,7 @@ public:
 class Chi2PDCII : public _Chi2 {
   NLM(Chi2PDCII, 2)
 public:
-  Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
+  Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI,
             double beta2, double beta2s, double beta2o,
             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
             double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
@@ -204,7 +202,7 @@ public:
 class Chi2SFGII : public _Chi2 {
   NLM(Chi2SFGII, 4)
 public:
-  Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY, double dispLength,
+  Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY,
             double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
             double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
