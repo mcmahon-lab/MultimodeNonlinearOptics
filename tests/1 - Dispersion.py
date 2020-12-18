@@ -40,13 +40,12 @@ plt.rcParams['figure.figsize'] = [9, 6]
 # # Qualitative test
 
 # %% [markdown]
-# Test that the a positive $\beta_1$ moves a pulse backwards in time.
+# Test that a positive $\beta_1$ moves a pulse backwards in time.
 # Test that a positive (normal) group velocity chirps the pulse such that higher frequencies lag and lower frequencies lead.
 
 # %%
 fiber = Chi2PDC(relativeLength=5,
                 nlLength=np.inf,
-                dispLength=1,
                 beta2=1,
                 beta2s=-1,
                 pulseType=0,
@@ -107,7 +106,6 @@ plt.xlabel("Time");
 # %%
 fiber = Chi3(relativeLength=5,
              nlLength=np.inf,
-             dispLength=1,
              beta2=1,
              pulseType=0,
              tPrecision=2048, zPrecision=100, tMax=50)
@@ -146,7 +144,6 @@ plt.xlabel("Time");
 # %%
 fiber = Chi3(relativeLength=5,
              nlLength=np.inf,
-             dispLength=1,
              beta2=1,
              pulseType=0,
              tPrecision=2048, zPrecision=100, tMax=50)

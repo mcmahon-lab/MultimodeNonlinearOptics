@@ -50,7 +50,6 @@ plt.rcParams['figure.figsize'] = [9, 6]
 nFreqs = 512
 fiberS = Chi3(relativeLength=np.pi / 2,
               nlLength=1,
-              dispLength=1,
               beta2=-1,
               pulseType=1,
               tPrecision=nFreqs, zPrecision=100)

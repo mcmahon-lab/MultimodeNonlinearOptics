@@ -47,7 +47,6 @@ length = 0.05
 nFreqs = 512
 crys = Chi2PDC(relativeLength=length,
                nlLength=1,
-               dispLength=np.inf,
                beta2=0,
                beta2s=0,
                pulseType=0,

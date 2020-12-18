@@ -49,10 +49,9 @@ haus = np.zeros(len(phis))
 for i, phi in enumerate(phis):
     fiberH = Chi3(relativeLength=phi,
                   nlLength=1,
-                  dispLength=np.inf,
                   beta2=-1,
                   pulseType=0,
-                  tPrecision=512, zPrecision=100)
+                  tPrecision=512, zPrecision=200)
 
     greenC, greenS = fiberH.computeGreensFunction()
 

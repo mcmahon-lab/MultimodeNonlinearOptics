@@ -49,7 +49,6 @@ plt.rcParams['figure.figsize'] = [9, 6]
 nFreqs = 512
 fiberS = Chi3(relativeLength=np.pi / 2,
               nlLength=1,
-              dispLength=1,
               beta2=-1,
               pulseType=1,
               tPrecision=nFreqs, zPrecision=100)
@@ -131,7 +130,7 @@ normalizedC = normalizedCov(Cov)
 # %%
 fig = plt.figure()
 ax = fig.add_subplot(1, 2, 1)
-plt.imshow(NormalizedC)
+plt.imshow(normalizedC)
 plt.title("normalized Cov")
 plt.xlabel("$\omega$")
 plt.ylabel("$\omega$")
@@ -181,7 +180,7 @@ diagSqueezing = D.diagonal()
 plt.figure()
 plt.plot(20 * np.log10(diagSqueezing[nFreqs:]), "s-", markerfacecolor="none", label="squeezed variance")
 plt.plot(20 * np.log10(diagSqueezing[:nFreqs]), "s-", markerfacecolor="none", label="anti-squeezed variance")
-plt.plot(10 * np.log10(diagSqueezing[nFreqs:] * diagSqueezing[:nFreqs]), "s-", markerfacecolor="none", label="uncertainty product")
+plt.plot(10 * np.log10(diagSqueezing[nFreqs:] * diagSqueezing[:nFreqs]), label="uncertainty product")
 plt.xlabel("supermodes")
 plt.ylabel("Noise Reduction dB")
 plt.legend();
@@ -215,7 +214,7 @@ print("real eigenvalues: ", np.allclose(np.imag(eigenvalues),0))
 fig = plt.figure()
 plt.plot(20 * np.log10(sortedEig[-1:-nFreqs//2-1:-1]), "s-", markerfacecolor="none", label="squeezed variance")
 plt.plot(20 * np.log10(sortedEig[:nFreqs//2]), "s-", markerfacecolor="none", label="anti-squeezed variance")
-plt.plot(10 * np.log10(sortedEig[-1:-nFreqs//2-1:-1] * sortedEig[:nFreqs//2]), "s-", markerfacecolor="none", label="uncertainty product")
+plt.plot(10 * np.log10(sortedEig[-1:-nFreqs//2-1:-1] * sortedEig[:nFreqs//2]), label="uncertainty product")
 plt.xlabel("supermodes")
 plt.ylabel("Noise Reduction dB")
 plt.legend();

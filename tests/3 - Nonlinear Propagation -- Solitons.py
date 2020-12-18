@@ -46,7 +46,6 @@ plt.rcParams['figure.figsize'] = [9, 6]
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=1,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)
@@ -97,7 +96,6 @@ plt.legend();
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=0.25,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)
@@ -125,7 +123,6 @@ plt.xlabel("length");
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=1/9,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)

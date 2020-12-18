@@ -38,29 +38,48 @@ except:
 plt.rcParams['figure.figsize'] = [9, 6]
 
 # %%
-fiber = Chi3(relativeLength=5,
-             nlLength=np.inf,
-             dispLength=1,
-             beta2=1,
-             beta3=1,
-             pulseType=0,
-             tPrecision=2048, zPrecision=200, tMax=45)
+fiber1 = Chi3(relativeLength=5,
+              nlLength=np.inf,
+              beta2=1,
+              beta3=1,
+              pulseType=0,
+              tPrecision=2048, zPrecision=200, tMax=45)
 
-fiber.runPumpSimulation()
+fiber1.runPumpSimulation()
 
 # %%
 plt.figure()
-plt.imshow(np.abs(fftshift(fiber.pumpTime,axes=1)).T, aspect="auto",
-           extent=[0, 4 * np.pi, np.min(fiber.tau), np.max(fiber.tau)])
+plt.imshow(np.abs(fftshift(fiber1.pumpTime,axes=1)).T, aspect="auto",
+           extent=[0, 5, np.min(fiber1.tau), np.max(fiber1.tau)])
+plt.title("Pump Field Profile")
+plt.ylabel("time")
+plt.xlabel("length");
+
+# %%
+fiber2 = Chi3(relativeLength=5,
+              nlLength=np.inf,
+              beta2=0,
+              beta3=1,
+              pulseType=0,
+              tPrecision=2048, zPrecision=200, tMax=45)
+
+fiber2.runPumpSimulation()
+
+# %%
+plt.figure()
+plt.imshow(np.abs(fftshift(fiber2.pumpTime,axes=1)).T, aspect="auto",
+           extent=[0, 5, np.min(fiber2.tau), np.max(fiber2.tau)])
 plt.title("Pump Field Profile")
 plt.ylabel("time")
 plt.xlabel("length");
 
 # %%
 plt.figure()
-plt.plot(fiber.tau, np.abs(fiber.pumpTime[0])**2, label="Input")
-plt.plot(fiber.tau, np.abs(fiber.pumpTime[-1])**2, label="Output")
-plt.title("Pump Field Profile")
-plt.xlabel("time")
-plt.ylabel("field")
+plt.plot(fftshift(fiber1.tau), fftshift(np.abs(fiber1.pumpTime[0])**2), label=r"$z=0$")
+plt.plot(fftshift(fiber1.tau), fftshift(np.abs(fiber1.pumpTime[-1])**2), label=r"$L_D = L_D'$")
+plt.plot(fftshift(fiber2.tau), fftshift(np.abs(fiber2.pumpTime[-1])**2), label=r"$\beta_2 = 0$")
+plt.title("Pulse Profile")
+plt.xlabel("Time")
+plt.ylabel("Intensity")
+plt.xlim(-6, 12)
 plt.legend();
