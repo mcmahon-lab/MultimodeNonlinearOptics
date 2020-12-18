@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.0)
 
 project(nonlinearmedium)
 
@@ -11,6 +11,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
 # Eigen (might be located in various places)
 include_directories(/usr/include/eigen3 /usr/local/include/eigen3)
 
+# Hack: recent GCC has issues with our usage of EigenFFT
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+
 # FFTW (optional)
 find_package(FFTW QUIET)
 
@@ -22,10 +25,7 @@ pybind11_add_module(nonlinearmedium NonlinearMedium.cpp nlmModulePy.cpp)
 
 # Compile options for optimization
 set(COMPILE_FLAGS -Wall)
-if(CMAKE_BUILD_TYPE MATCHES Release) # Release mode default
-  set(COMPILE_FLAGS ${COMPILE_FLAGS} -O3 -DNDEBUG -march=native -fvisibility=hidden)
-#  string(REGEX REPLACE "-O3" "-O2" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}") # O2 instead of O3 hack
-endif()
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -fvisibility=hidden")
 
 # Use FFTW if found
 if (FFTW_FOUND)
