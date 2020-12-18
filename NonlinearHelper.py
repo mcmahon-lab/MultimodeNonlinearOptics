@@ -57,6 +57,18 @@ def findFrameOfReference(*ngs):
   return [(ng - fom) / c * 1e15 for ng in ngs]
 
 
+def normalizeDispersion(timeScale, dispLength, beta0=[], beta1=[], beta2=[], beta3=[]):
+  """
+  Return normalized dispersion values, ie in units of dispersion length. Any dispersion length is valid.
+  Assumes compatibility between units provided.
+  """
+  beta0N = [dispLength * b0 for b0 in beta0]                if isinstance(beta0, (list, tuple)) else dispLength * beta0
+  beta1N = [dispLength * b1 / timeScale for b1 in beta1]    if isinstance(beta1, (list, tuple)) else dispLength * beta1 / timeScale
+  beta2N = [dispLength * b2 / timeScale**2 for b2 in beta2] if isinstance(beta2, (list, tuple)) else dispLength * beta2 / timeScale**2
+  beta3N = [dispLength * b3 / timeScale**3 for b3 in beta3] if isinstance(beta3, (list, tuple)) else dispLength * beta3 / timeScale**3
+  return beta0N, beta1N, beta2N, beta3N
+
+
 def calcQuadratureGreens(greenC, greenS):
   """
   Convert the Green's matrix to the x and p quadrature basis from the a basis (bosonic)
@@ -311,6 +323,63 @@ def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
     raise ValueError("unrecognized type for domega")
 
   return mindk, maxdk
+
+
+def combinePoling(polingA, polingB, tol):
+  """
+  Combine poling structures by flipping the sign each time either structure flips (multiplying).
+  polingA and polingB must contain the lengths of each domain.
+  Note: to combine two structures you need to start with the sum and difference of spatial frequencies.
+  """
+  if abs(np.sum(polingA) - np.sum(polingB)) > tol:
+   raise ValueError("Patterns A and B different lengths")
+
+  combinedDomains = []
+  indexA = -1
+  indexB = -1
+  remainingA = 0
+  remainingB = 0
+
+  while indexA < polingA.size and indexB < polingB.size:
+    if abs(remainingA - remainingB) < tol:
+      cumulative = 0
+      while abs(remainingA - remainingB) < tol and (indexA < polingA.size-1 and indexB < polingB.size-1):
+        cumulative += remainingA
+        indexA += 1
+        indexB += 1
+        if polingA[indexA] > polingB[indexB]:
+          remainingA = polingA[indexA] - polingB[indexB]
+          cumulative += polingB[indexB]
+          indexB += 1
+          remainingB = polingB[indexB % polingB.size]
+        else:
+          remainingB = polingB[indexB] - polingA[indexA]
+          cumulative += polingA[indexA]
+          indexA += 1
+          remainingA = polingA[indexA % polingA.size]
+      combinedDomains.append(cumulative)
+
+    if remainingA > remainingB:
+      combinedDomains.append(remainingB)
+      remainingA -= remainingB
+      indexB += 1
+      remainingB = polingB[indexB % polingB.size]
+    else:
+      combinedDomains.append(remainingA)
+      remainingB -= remainingA
+      indexA += 1
+      remainingA = polingA[indexA % polingA.size]
+
+  combinedDomains.append(min(remainingA, remainingB))
+
+  if indexA < polingA.size-1:
+    for i in range(indexA, polingA.size):
+      combinedDomains.append(polingA[i])
+  elif indexB < polingB.size-1:
+    for i in range(indexB, polingB.size):
+      combinedDomains.append(polingB[i])
+
+  return np.array(combinedDomains)
 
 
 def incoherentPowerGreens(Z):
