@@ -24,18 +24,10 @@
 # %%
 import numpy as np
 import matplotlib.pyplot as plt
-import importlib
 
-from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
+from nonlinearmedium import Chi3
 
-try:
-    from nonlinearmedium import Chi3
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3
-    print("using Python implementation")
-
-from NonlinearHelper import *
+from NonlinearHelper import calcQuadratureGreens, calcCovarianceMtx, calcLOSqueezing
 
 # %%
 # %matplotlib notebook

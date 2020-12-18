@@ -24,14 +24,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-try:
-    from nonlinearmedium import Chi3
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3
-    print("using Python implementation")
+from nonlinearmedium import Chi3
 
-from NonlinearHelper import *
+from NonlinearHelper import calcQuadratureGreens, calcCovarianceMtx, calcLOSqueezing
 
 # %%
 # %matplotlib notebook

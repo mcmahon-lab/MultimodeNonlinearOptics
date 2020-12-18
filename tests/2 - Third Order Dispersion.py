@@ -24,14 +24,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from numpy.fft import fft, ifft, fftshift, ifftshift
+from numpy.fft import fftshift
 
-try:
-    from nonlinearmedium import Chi3, Chi2PDC
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3, Chi2PDC
-    print("using Python implementation")
+from nonlinearmedium import Chi3, Chi2PDC
 
 # %%
 # %matplotlib notebook

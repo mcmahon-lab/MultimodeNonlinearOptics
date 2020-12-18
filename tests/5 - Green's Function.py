@@ -25,18 +25,9 @@
 # %%
 import numpy as np
 
-from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
+from numpy.fft import fft, ifft, fftshift
 
-try:
-    from nonlinearmedium import Chi3
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3
-    print("using Python implementation")
-    
-from NonlinearHelper import *
-from decompositions import bloch_messiah
-from scipy.linalg import dft, det, sqrtm, inv, eig
+from nonlinearmedium import Chi3
 
 # %%
 # %matplotlib notebook
