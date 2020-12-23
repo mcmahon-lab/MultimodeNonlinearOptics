@@ -496,21 +496,17 @@ void Chi3::runPumpSimulation() {
   FFTtimes(pumpFreq.row(0), _env, ((0.5_I * _dz) * _dispersionPump).exp())
   IFFT(pumpTime.row(0), pumpFreq.row(0))
 
+  Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+
   Arraycd temp(_nFreqs);
   for (uint i = 1; i < _nZSteps; i++) {
-    temp = pumpTime.row(i-1) * (_nlStep[0] * pumpTime.row(i-1).abs2()).exp();
+    temp = pumpTime.row(i-1) * (_nlStep[0] * relativeStrength(i-1) * pumpTime.row(i-1).abs2()).exp();
     FFTtimes(pumpFreq.row(i), temp, _dispStepPump)
     IFFT(pumpTime.row(i), pumpFreq.row(i))
   }
 
   pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
   IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
-
-  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
-    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
-    pumpFreq.colwise() *= relativeStrength.array();
-    pumpTime.colwise() *= relativeStrength.array();
-  }
 }
 
 
