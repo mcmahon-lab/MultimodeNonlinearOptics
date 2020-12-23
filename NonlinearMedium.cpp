@@ -43,7 +43,13 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   // The total length z is given in units of dispersion length or nonlinear length, whichever is set to unit length
   // Therefore, one length scale must be kept fixed at 1. The time scale is given in units of initial width of pump.
 
-  _z = relativeLength;
+  bool negativeLength = false;
+
+  negativeLength |= (std::abs(relativeLength) <= 0 || std::abs(rayleighLength) <= 0);
+  for (double nl : nlLength)
+    negativeLength |= (nl <= 0);
+
+  if (negativeLength) throw std::invalid_argument("Non-positive length scale");
 
   bool allNonUnit = true;
 
@@ -57,10 +63,12 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 
   if (allNonUnit) throw std::invalid_argument("No unit length scale provided: please normalize variables");
 
+  _z = relativeLength;
+
   auto absComp = [](double a, double b) {return (std::abs(a) < std::abs(b));};
   double maxDispLength = 1 / std::abs(std::max({beta2, *std::max_element(beta2s.begin(), beta2s.end(), absComp),
-                                                   beta1, *std::max_element(beta1s.begin(), beta1s.end(), absComp),
-                                                   beta3, *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
+                                                beta1, *std::max_element(beta1s.begin(), beta1s.end(), absComp),
+                                                beta3, *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
 
   // space resolution
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., maxDispLength, rayleighLength,
