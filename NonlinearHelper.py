@@ -286,6 +286,14 @@ def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   return Ctotal, Stotal
 
 
+def periodicPoling(deltaBeta0, L):
+  polPeriod = 2 * np.pi / abs(deltaBeta0)
+  nDomains  = 2 * L / polPeriod
+  poling = np.ones(int(nDomains) + int(np.ceil(nDomains % 1)))
+  poling[-1] = nDomains % 1
+  return poling
+
+
 def linearPoling(kMin, kMax, L, dL):
   """
   Create a poling design that has linearly increasing phase matching, up to a given resolution
