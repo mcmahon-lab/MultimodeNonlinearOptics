@@ -23,14 +23,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from numpy.fft import fft, ifft, fftshift, ifftshift
+from numpy.fft import fftshift
 
-try:
-    from nonlinearmedium import Chi3
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3
-    print("using Python implementation")
+from nonlinearmedium import Chi3
 
 # %%
 # %matplotlib notebook
@@ -46,7 +41,6 @@ plt.rcParams['figure.figsize'] = [9, 6]
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=1,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)
@@ -73,8 +67,8 @@ plt.xlabel("length");
 
 # %%
 plt.figure()
-plt.plot(fftshift(fiber.tau), ifftshift(np.abs(fiber.pumpTime[0])), label="Initial")
-plt.plot(fftshift(fiber.tau), ifftshift(np.abs(fiber.pumpTime[-1])), label="Final")
+plt.plot(fftshift(fiber.tau), fftshift(np.abs(fiber.pumpTime[0])), label="Initial")
+plt.plot(fftshift(fiber.tau), fftshift(np.abs(fiber.pumpTime[-1])), label="Final")
 plt.title("Pulse Temporal Field Profile")
 plt.xlabel("time")
 plt.ylabel("field")
@@ -82,8 +76,8 @@ plt.legend();
 
 # %%
 plt.figure()
-plt.plot(fftshift(fiber.omega), ifftshift(np.abs(fiber.pumpFreq[0])), label="Initial")
-plt.plot(fftshift(fiber.omega), ifftshift(np.abs(fiber.pumpFreq[-1])), label="Final")
+plt.plot(fftshift(fiber.omega), fftshift(np.abs(fiber.pumpFreq[0])), label="Initial")
+plt.plot(fftshift(fiber.omega), fftshift(np.abs(fiber.pumpFreq[-1])), label="Final")
 plt.title("Pulse Spectral Field Profile")
 plt.xlabel("angular frequency")
 plt.ylabel("field")
@@ -97,7 +91,6 @@ plt.legend();
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=0.25,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)
@@ -125,7 +118,6 @@ plt.xlabel("length");
 # %%
 fiber = Chi3(relativeLength=4 * np.pi,
              nlLength=1/9,
-             dispLength=1,
              beta2=-1,
              pulseType=1,
              tPrecision=512, zPrecision=100)

@@ -25,18 +25,9 @@
 # %%
 import numpy as np
 
-from numpy.fft import fft, ifft, fftshift, ifftshift, ifft2
+from numpy.fft import fft, ifft, fftshift
 
-try:
-    from nonlinearmedium import Chi3
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi3
-    print("using Python implementation")
-    
-from NonlinearHelper import *
-from decompositions import bloch_messiah
-from scipy.linalg import dft, det, sqrtm, inv, eig
+from nonlinearmedium import Chi3
 
 # %%
 # %matplotlib notebook
@@ -50,7 +41,6 @@ plt.rcParams['figure.figsize'] = [9, 6]
 nFreqs = 512
 fiberS = Chi3(relativeLength=np.pi / 2,
               nlLength=1,
-              dispLength=1,
               beta2=-1,
               pulseType=1,
               tPrecision=nFreqs, zPrecision=100)

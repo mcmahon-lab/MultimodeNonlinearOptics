@@ -17,136 +17,111 @@ typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> 
 
 class _NonlinearMedium {
 friend class Cascade;
-friend class _NLM2ModeExtension;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  _NonlinearMedium(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
-                   const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
-                   double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-                   double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-                   double tMax=10, uint tPrecision=512, uint zPrecision=100);
-
-  virtual void setPump(int pulseType, double chirpLength=0);
-  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0);
+  virtual void setPump(int pulseType, double chirpLength=0, double delayLength=0);
+  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0);
 
   virtual void runPumpSimulation();
-  virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true);
-  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
-  virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
+  virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
+  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
+                                                                const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
+  virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
+                                          uint inputMode=0, const std::vector<char>& useOutput={});
 
-  const Array2Dcd& getPumpFreq()   {return pumpFreq;};
-  const Array2Dcd& getPumpTime()   {return pumpTime;};
-  const Array2Dcd& getSignalFreq() {return signalFreq;};
-  const Array2Dcd& getSignalTime() {return signalTime;};
+  const Array2Dcd& getPumpFreq() {return pumpFreq;};
+  const Array2Dcd& getPumpTime() {return pumpTime;};
+  const Array2Dcd& getSignalFreq(uint i=0) {return signalFreq.at(i);};
+  const Array2Dcd& getSignalTime(uint i=0) {return signalTime.at(i);};
   const Arrayd& getTime()      {return _tau;};
   const Arrayd& getFrequency() {return _omega;};
 
 protected:
-  void setLengths(double relativeLength, double nlLength, double dispLength, uint zPrecision, double rayleighLength);
-  void resetGrids(uint nFreqs, double tMax);
-  void setDispersion(double beta2, double beta2s, double beta1=0, double beta1s=0,
-                     double beta3=0, double beta3s=0, double diffBeta0=0);
-  _NonlinearMedium() = default;
-  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                                   Array2Dcd& signalFreq, Array2Dcd& signalTime) = 0;
+  _NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
+                   double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                   double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
+                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                   double chirp, double delay);
 
-  inline Arrayd fftshift(const Arrayd& input);
-  inline Array2Dcd fftshift2(const Array2Dcd& input);
+  inline void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
+                         double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                         double beta3, const std::vector<double>& beta3s);
+  inline void resetGrids(uint nFreqs, double tMax);
+  inline void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                            double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
+  _NonlinearMedium() : _nSignalModes() {};
+  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
+                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) = 0;
 
+  template<class T>
+  void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
+                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime);
+
+  static inline Arrayd fftshift(const Arrayd& input);
+  static inline Array2Dcd fftshift2(const Array2Dcd& input);
+
+  const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
   double _z;  /// length of medium
-  double _DS; /// dispersion length
-  double _NL; /// nonlinear length
-  bool _noDispersion; /// indicates system is dispersionless
-  bool _noNonlinear;  /// indicates system is linear
   double _dz;    /// length increment
   uint _nZSteps; /// number of length steps in simulating the PDE
   uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
   double _tMax;  /// positive and negative extent of the simulation window in time
-  double _beta2;  /// second order dispersion of the pump's frequency
-  double _beta2s; /// second order dispersion of the signal's frequency
-  double _beta1;  /// group velocity difference for pump relative to simulation window
-  double _beta1s; /// group velocity difference for signal relative to simulation window
-  double _beta3;  /// third order dispersion of the pump's frequency
-  double _beta3s; /// third order dispersion of the signal's frequency
-  double _diffBeta0; /// wave-vector mismatch of the simulated process
-  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
+  double _beta2;  /// second order dispersion of the pump
+  double _beta1;  /// relative group velocity of the pump
 
+  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
   Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
-  Arraycd _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
-  std::complex<double> _nlStep; /// strength of nonlinear process over length dz
+
+  std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
+  std::vector<std::complex<double>> _nlStep; /// strength of nonlinear process over length dz
+  std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
 
   Arrayd _tau;   /// array representing the time axis
   Arrayd _omega; /// array representing the frequency axis
   Arrayd _dispersionPump; /// dispersion profile of pump
-  Arrayd _dispersionSign; /// dispersion profile of signal
+  std::vector<Arrayd> _dispersionSign; /// dispersion profile of signal
   Arraycd _env; /// initial envelope of the pump
 
   Array2Dcd pumpFreq;   /// grid for numerically solving PDE, representing pump propagation in frequency domain
   Array2Dcd pumpTime;   /// grid for numerically solving PDE, representing pump propagation in time domain
-  Array2Dcd signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
-  Array2Dcd signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
+  std::vector<Array2Dcd> signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
+  std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 
-
-class _NLM2ModeExtension {
-public:
-  std::pair<Array2Dcd, Array2Dcd> computeTotalGreen(bool inTimeDomain=false, bool runPump=true, uint nThreads=1);
-
-  const Array2Dcd& getOriginalFreq() {return originalFreq;};
-  const Array2Dcd& getOriginalTime() {return originalTime;};
-
-  _NLM2ModeExtension(_NonlinearMedium& medium, double nlLengthOrig, double beta2o, double beta1o, double beta3o);
-  _NLM2ModeExtension(const _NLM2ModeExtension&) = delete;
-
-  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true);
-
-protected:
-  _NonlinearMedium& m; // Store a reference of the actual _NonlinearMedium object, to access variables and methods
-
-  void setLengths(double nlLengthOrig);
-  void resetGrids();
-  void setDispersion(double beta2o, double beta1o, double beta3o);
-
-  double _beta2o; /// second order dispersion of the original signal's frequency
-  double _beta1o; /// group velocity difference for original signal relative to simulation window
-  double _beta3o; /// third order dispersion of the original signal's frequency
-  // double _NLo; /// like nlLength but with respect to the original signal
-  std::complex<double> _nlStepO; /// strength of nonlinear process over length dz; DOPA process of original signal
-
-  Arrayd _dispersionOrig; /// dispersion profile of original signal
-  Arraycd _dispStepOrig;  /// incremental phase due to dispersion over length dz for the signal
-
-  Array2Dcd originalFreq; /// grid for numerically solving PDE, representing original signal propagation in frequency domain
-  Array2Dcd originalTime; /// grid for numerically solving PDE, representing original signal propagation in time domain
-};
+// Repeated code for each NLM ODE class. This takes care of:
+// - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
+// - Overriding runSignalSimulation with the function created from the template
+#define NLM(T, modes) \
+protected: \
+  friend _NonlinearMedium; \
+  constexpr static uint _nSignalModes = modes; \
+  inline void DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4, \
+                     const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP, const std::vector<Array2Dcd>& signal); \
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
+                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override \
+     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime); };
 
 
 class Chi3 : public _NonlinearMedium {
+  NLM(Chi3, 1)
 public:
-  Chi3(double relativeLength, double nlLength, double dispLength, double beta2,
+  Chi3(double relativeLength, double nlLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
-       double beta3=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-       double tMax=10, uint tPrecision=512, uint zPrecision=100);
+       double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+       double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0);
 
   void runPumpSimulation() override;
-  using _NonlinearMedium::runSignalSimulation;
-
-protected:
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
 };
 
 
 class _Chi2 : public _NonlinearMedium {
 public:
-  _Chi2(double relativeLength, double nlLength, double dispLength, double beta2, double beta2s,
-        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
-        double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-        double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-        double tMax=10, uint tPrecision=512, uint zPrecision=100,
-        const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+  _Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
+        double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+        double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
+        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling);
 
   const Arrayd& getPoling() {return _poling;};
 
@@ -159,12 +134,14 @@ protected:
 
 
 class Chi2PDC : public _Chi2 {
+  NLM(Chi2PDC, 1)
 public:
-  using _Chi2::_Chi2;
-  using _NonlinearMedium::runSignalSimulation;
-protected:
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
+  Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+          double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
+          double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
+          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
@@ -172,74 +149,85 @@ class Chi2SHG : public _Chi2 {
 public:
   using _NonlinearMedium::runSignalSimulation;
 #ifdef DEPLETESHG
-  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double dispLength, double beta2, double beta2s,
+  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double beta2, double beta2s,
+#else
+  Chi2SHG(double relativeLength, double nlLength, double beta2, double beta2s,
+#endif
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-          double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100,
-          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+          double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+
 protected:
-  std::complex<double> _nlstepP;
-#else
-  using _Chi2::_Chi2;
-protected:
-#endif
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
+  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
+                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override;
 };
 
 
-class Chi2SFG : public _Chi2, public _NLM2ModeExtension {
+class Chi2SFGPDC : public _Chi2 {
+  NLM(Chi2SFGPDC, 2)
 public:
-  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double dispLength,
-          double beta2, double beta2s, double beta2o,
+  Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
+             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+             double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
+             double diffBeta0=0, double diffBeta0o=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+             double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
+             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+};
+
+
+class Chi2SFG : public _Chi2 {
+  NLM(Chi2SFG, 2)
+public:
+  Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
           const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-          double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double diffBeta0=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
-
-  using _NLM2ModeExtension::runSignalSimulation;
-
-protected:
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
-
-  double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
 };
 
 
-class Chi2PDCII : public _Chi2, public _NLM2ModeExtension {
+class Chi2PDCII : public _Chi2 {
+  NLM(Chi2PDCII, 2)
 public:
-  Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI, double dispLength,
+  Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI,
             double beta2, double beta2s, double beta2o,
             const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
             double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
-            double diffBeta0=0, double diffBeta0o=0, double chirp=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100,
+            double diffBeta0=0, double diffBeta0o=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
             const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+};
 
-  using _NLM2ModeExtension::runSignalSimulation;
 
-protected:
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain,
-                           Array2Dcd& signalFreq, Array2Dcd& signalTime) override;
-
-  std::complex<double> _nlStepI; /// strength of type I nonlinear process over length dz; DOPA process of original signal
-  double _diffBeta0o; /// wave-vector mismatch of PDC process with the original signal and pump
+class Chi2SFGII : public _Chi2 {
+  NLM(Chi2SFGII, 4)
+public:
+  Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY,
+            double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
+            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+            double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
+            double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0,
+            double diffBeta0z=0, double diffBeta0y=0, double diffBeta0s=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
+            const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 class Cascade : public _NonlinearMedium {
 public:
-  Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia);
-  void addMedium(_NonlinearMedium& medium);
-  void setPump(int pulseType, double chirpLength=0) override;
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0) override;
+  Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
+          const std::vector<std::map<uint, uint>>& connections);
+  void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
+  void setPump(int pulseType, double chirpLength=0, double delayLength=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0) override;
   void runPumpSimulation() override;
-  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true) override;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
-  Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1) override;
+  void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0) override;
+  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
+                                                        const std::vector<char>& useInput={}, const std::vector<char>& useOutput={}) override;
+  Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true,
+                                  uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={}) override;
 
   _NonlinearMedium& getMedium(uint i) {return media.at(i).get();}
   const std::vector<std::reference_wrapper<_NonlinearMedium>>& getMedia() {return media;}
@@ -256,13 +244,13 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::getPumpTime;
   using _NonlinearMedium::getSignalFreq;
   using _NonlinearMedium::getSignalTime;
-  void runSignalSimulation(const Arraycd&, bool, Array2Dcd&, Array2Dcd&) override {};
+  void runSignalSimulation(const Arraycd&, bool, uint, std::vector<Array2Dcd>&, std::vector<Array2Dcd>&) override {};
 
 protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects
+  std::vector<std::map<uint, uint>> connections;
   bool sharedPump; /// is the pump shared across media or are they independently pumped
 };
 
 
 #endif //NONLINEARMEDIUM
-

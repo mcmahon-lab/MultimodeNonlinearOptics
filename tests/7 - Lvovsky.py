@@ -24,16 +24,11 @@
 
 # %%
 import numpy as np
-from numpy.fft import fft, ifft, fftshift, ifftshift
+from numpy.fft import fftshift
 
-try:
-    from nonlinearmedium import Chi2PDC
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi2PDC
-    print("using Python implementation")
+from nonlinearmedium import Chi2PDC
 
-from NonlinearHelper import *
+from NonlinearHelper import calcQuadratureGreens
 from decompositions import bloch_messiah
 
 # %%
@@ -52,7 +47,6 @@ nFreqs=512
 # %%
 crys1 = Chi2PDC(relativeLength=1 / relDispLength,
                 nlLength=10 / relDispLength,
-                dispLength=1,
                 beta2=1,
                 beta2s=1 / 3,
                 beta1s=10,
@@ -63,7 +57,6 @@ crys1 = Chi2PDC(relativeLength=1 / relDispLength,
 # %%
 crys2 = Chi2PDC(relativeLength=1 / relDispLength,
                 nlLength=1 / relDispLength,
-                dispLength=1,
                 beta2=1,
                 beta2s=1 / 3,
                 beta1s=10,
@@ -74,7 +67,6 @@ crys2 = Chi2PDC(relativeLength=1 / relDispLength,
 # %%
 crys3 = Chi2PDC(relativeLength=1 / relDispLength,
                 nlLength=0.1 / relDispLength,
-                dispLength=1,
                 beta2=1,
                 beta2s=1 / 3,
                 beta1s=10,

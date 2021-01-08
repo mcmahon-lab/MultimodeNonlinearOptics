@@ -23,16 +23,9 @@
 
 # %%
 import numpy as np
-from numpy.fft import fft, ifft, fftshift, ifftshift
+from numpy.fft import fftshift
 
-try:
-    from nonlinearmedium import Chi2PDC
-    print("using C++ implementation")
-except:
-    from NonlinearMedium import Chi2PDC
-    print("using Python implementation")
-
-from NonlinearHelper import *
+from nonlinearmedium import Chi2PDC
 
 # %%
 # %matplotlib notebook
@@ -47,7 +40,6 @@ length = 0.05
 nFreqs = 512
 crys = Chi2PDC(relativeLength=length,
                nlLength=1,
-               dispLength=np.inf,
                beta2=0,
                beta2s=0,
                pulseType=0,
