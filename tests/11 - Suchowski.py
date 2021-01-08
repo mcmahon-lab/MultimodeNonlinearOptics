@@ -122,7 +122,6 @@ relNlLength = NLf / DS
 relNlLength2 = NLo / DS
 
 afcParams = {"relativeLength": relLength,
-             "dispLength": 1,
              "beta2":  np.sign(beta2p),
              "beta2s": beta2fN,
              "beta2o": beta2sN,

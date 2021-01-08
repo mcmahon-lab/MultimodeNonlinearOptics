@@ -54,7 +54,6 @@ baseParams = {
     "relativeLength": 3,
     "nlLength": 1,
     "nlLengthOrig": 1,
-    "dispLength": np.inf,
     "beta2": 0,
     "beta2s": 0,
     "beta2o": 0,
