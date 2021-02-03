@@ -281,8 +281,8 @@ def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   """
   Combine successive a basis (bosonic) C and S Green's matrices.
   """
-  Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
-  Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
+  Ctotal = Csecond @ Cfirst + Ssecond @ np.conjugate(Sfirst)
+  Stotal = Csecond @ Sfirst + Ssecond @ np.conjugate(Cfirst)
   return Ctotal, Stotal
 
 
