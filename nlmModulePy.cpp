@@ -50,7 +50,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   _NLMBase.def("computeGreensFunction",
                &_NonlinearMedium::computeGreensFunction, py::return_value_policy::move,
-               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1,
+               "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
                "useInput"_a = defCharVec, "useOutput"_a = defCharVec);
 
   _NLMBase.def("batchSignalSimulation",
@@ -195,7 +195,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Cascade.def("computeGreensFunction",
               &Cascade::computeGreensFunction, py::return_value_policy::move,
-              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1,
+              "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
               "useInput"_a = defCharVec, "useOutput"_a = defCharVec);
 
   Cascade.def("batchSignalSimulation",

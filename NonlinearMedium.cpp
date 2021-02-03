@@ -206,9 +206,9 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads,
-                                                                        const std::vector<char>& useInput,
-                                                                        const std::vector<char>& useOutput) {
+std::pair<Array2Dcd, Array2Dcd>
+_NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
+                                        const std::vector<char>& useInput, const std::vector<char>& useOutput) {
   // Determine which input and output modes to compute. If no input/output modes specified, computes all modes.
   uint nInputModes = 0, nOutputModes = 0;
   std::vector<uint> inputs, outputs;
@@ -309,15 +309,20 @@ std::pair<Array2Dcd, Array2Dcd> _NonlinearMedium::computeGreensFunction(bool inT
   }
 
   // Transpose and shift individual sub-blocks so that frequencies or times are contiguous
+  // If normalizing mode amplitudes, appropriately scale the conversion sub-matrices (nonlinear lengths must be ordered correctly)
   greenC.transposeInPlace();
   for (uint im = 0; im < nOutputModes; im++)
     for (uint om = 0; om < nOutputModes; om++)
-      greenC.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs) = fftshift2(greenC.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs));
+      greenC.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs) = normalize && im != om ?
+          fftshift2(greenC.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs)) * sqrt(_nlStep[im] / _nlStep[om]):
+          fftshift2(greenC.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs));
 
   greenS.transposeInPlace();
   for (uint im = 0; im < nOutputModes; im++)
     for (uint om = 0; om < nOutputModes; om++)
-      greenS.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs) = fftshift2(greenS.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs));
+      greenS.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs) = normalize && im != om ?
+          fftshift2(greenS.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs)) * sqrt(_nlStep[im] / _nlStep[om]):
+          fftshift2(greenS.block(om * _nFreqs, im * _nFreqs, _nFreqs, _nFreqs));
 
   return std::make_pair(std::move(greenC), std::move(greenS));
 }
@@ -972,8 +977,9 @@ void Cascade::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bo
 }
 
 
-std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads,
-                                                               const std::vector<char>& useInput, const std::vector<char>& useOutput) {
+std::pair<Array2Dcd, Array2Dcd>
+Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
+                               const std::vector<char>& useInput, const std::vector<char>& useOutput) {
 
   if (runPump) runPumpSimulation();
 
@@ -986,7 +992,7 @@ std::pair<Array2Dcd, Array2Dcd> Cascade::computeGreensFunction(bool inTimeDomain
   Array2Dcd tempC, tempS;
   for (auto& medium : media) {
     // TODO useInput and useOutput need to be defined based on connections
-    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads);
+    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads, normalize);
     tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
     tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
     greenC.swap(tempC);
