@@ -66,7 +66,7 @@ def normalizeDispersion(timeScale, dispLength, beta0=[], beta1=[], beta2=[], bet
   beta1N = [dispLength * b1 / timeScale for b1 in beta1]    if isinstance(beta1, (list, tuple)) else dispLength * beta1 / timeScale
   beta2N = [dispLength * b2 / timeScale**2 for b2 in beta2] if isinstance(beta2, (list, tuple)) else dispLength * beta2 / timeScale**2
   beta3N = [dispLength * b3 / timeScale**3 for b3 in beta3] if isinstance(beta3, (list, tuple)) else dispLength * beta3 / timeScale**3
-  return beta0N, beta1N, beta2N, beta3N
+  return tuple(b for b in (beta0N, beta1N, beta2N, beta3N) if b)
 
 
 def calcQuadratureGreens(greenC, greenS):
