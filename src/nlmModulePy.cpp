@@ -3,6 +3,14 @@
 #include <pybind11/stl.h>
 
 #include "_NonlinearMedium.hpp"
+#include "Cascade.hpp"
+#include "Chi3.cpp"
+#include "Chi2PDC.cpp"
+#include "Chi2SFG.cpp"
+#include "Chi2SFGPDC.cpp"
+#include "Chi2SFGII.cpp"
+#include "Chi2PDCII.cpp"
+#include "Chi2SHG.cpp"
 
 // Pybind11 Python binding
 
