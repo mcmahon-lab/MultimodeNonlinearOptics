@@ -66,7 +66,7 @@ def normalizeDispersion(timeScale, dispLength, beta0=[], beta1=[], beta2=[], bet
   beta1N = [dispLength * b1 / timeScale for b1 in beta1]    if isinstance(beta1, (list, tuple)) else dispLength * beta1 / timeScale
   beta2N = [dispLength * b2 / timeScale**2 for b2 in beta2] if isinstance(beta2, (list, tuple)) else dispLength * beta2 / timeScale**2
   beta3N = [dispLength * b3 / timeScale**3 for b3 in beta3] if isinstance(beta3, (list, tuple)) else dispLength * beta3 / timeScale**3
-  return beta0N, beta1N, beta2N, beta3N
+  return tuple(b for b in (beta0N, beta1N, beta2N, beta3N) if b)
 
 
 def calcQuadratureGreens(greenC, greenS):
@@ -281,8 +281,8 @@ def combineGreens(Cfirst, Sfirst, Csecond, Ssecond):
   """
   Combine successive a basis (bosonic) C and S Green's matrices.
   """
-  Ctotal = Csecond @ Cfirst + Ssecond * np.conjugate(Sfirst)
-  Stotal = Csecond @ Sfirst + Ssecond * np.conjugate(Cfirst)
+  Ctotal = Csecond @ Cfirst + Ssecond @ np.conjugate(Sfirst)
+  Stotal = Csecond @ Sfirst + Ssecond @ np.conjugate(Cfirst)
   return Ctotal, Stotal
 
 
@@ -296,12 +296,33 @@ def periodicPoling(deltaBeta0, L):
 
 def linearPoling(kMin, kMax, L, dL):
   """
-  Create a poling design that has linearly increasing phase matching, up to a given resolution
-  This is done by defining an instantaneous (spatial) frequency that varies linearly in z
+  Create a poling design that has linearly varying phase matching, up to a given resolution.
+  This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
+  The variables define the curve such that k(z) = a z + b, k(0) = kMin and k(L) = kMax.
   """
-  z = np.linspace(dL / 2, L + dL / 2, int(round(L / dL)))
+  z = np.linspace(0, L, int(round(L / dL)))
   polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
-  polingDirection[polingDirection == 0.] = 1. # TODO improve how we correct for 0
+  polingDirection[polingDirection == 0.] = 1. # slight hack for the very unlikely case besides z=0
+
+  p = np.concatenate([[0.], polingDirection, [0.]])
+  polingProfile = np.diff(np.where(p[:-1] != p[1:]))
+  return polingProfile.flatten() * dL
+
+
+def detunePoling(kMin, kMax, k0, ka, L, dL):
+  """
+  Create a poling design that nonlinearly varies the phase matching, up to a given resolution, following an arctanh curve.
+  This is done by defining an instantaneous (spatial) frequency that varies as the arctanh of z.
+  The variables define the curve such that k(z) = k0 + ka arctanh(a (z - z0)), such that k(0) = kMin and k(L) = kMax.
+  Useful for rapidly tuning in and/or detuning out of a phase matching frequency, or for apodization.
+  """
+  z = np.linspace(0, L, int(round(L / dL)))
+  a = (np.tanh((kMax - k0) / ka) + np.tanh((k0 - kMin) / ka)) / L
+  z0 = np.tanh((k0 - kMin) / ka) / a
+  phase = ka / (2 * a) * np.log(1 - a**2 * (z - z0)**2) + ka * (z - z0) * np.arctanh(a * (z - z0)) + k0 * z
+
+  polingDirection = np.sign(np.sin(phase - phase[0]))
+  polingDirection[polingDirection == 0.] = 1.
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))

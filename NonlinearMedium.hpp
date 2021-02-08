@@ -24,7 +24,7 @@ public:
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
-  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
+  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
                                                                 const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
   virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
                                           uint inputMode=0, const std::vector<char>& useOutput={});
@@ -224,7 +224,7 @@ public:
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0) override;
   void runPumpSimulation() override;
   void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0) override;
-  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
+  std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
                                                         const std::vector<char>& useInput={}, const std::vector<char>& useOutput={}) override;
   Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true,
                                   uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={}) override;
