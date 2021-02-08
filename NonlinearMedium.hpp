@@ -36,12 +36,14 @@ public:
   const Arrayd& getTime()      {return _tau;};
   const Arrayd& getFrequency() {return _omega;};
 
+  const Arrayd& getPoling() {return _poling;};
+
 protected:
-  _NonlinearMedium(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
+  _NonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
                    double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                    double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
-                   double chirp, double delay);
+                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   inline void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
                          double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
@@ -57,6 +59,8 @@ protected:
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime);
 
+  void setPoling(const Eigen::Ref<const Arrayd>& poling);
+
   static inline Arrayd fftshift(const Arrayd& input);
   static inline Array2Dcd fftshift2(const Array2Dcd& input);
 
@@ -64,23 +68,25 @@ protected:
   double _z;  /// length of medium
   double _dz;    /// length increment
   uint _nZSteps; /// number of length steps in simulating the PDE
-  uint _nFreqs;  /// number of frequency/time bins in the simulating thte PDE
+  uint _nFreqs;  /// number of frequency/time bins in the simulating the PDE
   double _tMax;  /// positive and negative extent of the simulation window in time
   double _beta2;  /// second order dispersion of the pump
   double _beta1;  /// relative group velocity of the pump
-
   double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
-  Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
 
   std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
   std::vector<std::complex<double>> _nlStep; /// strength of nonlinear process over length dz
-  std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
+
+  Arraycd _env; /// initial envelope of the pump
+  Arrayd _poling; /// array representing the poling direction at a given point on the grid.
 
   Arrayd _tau;   /// array representing the time axis
   Arrayd _omega; /// array representing the frequency axis
+
   Arrayd _dispersionPump; /// dispersion profile of pump
   std::vector<Arrayd> _dispersionSign; /// dispersion profile of signal
-  Arraycd _env; /// initial envelope of the pump
+  Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
+  std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
 
   Array2Dcd pumpFreq;   /// grid for numerically solving PDE, representing pump propagation in frequency domain
   Array2Dcd pumpTime;   /// grid for numerically solving PDE, representing pump propagation in time domain
@@ -116,24 +122,7 @@ public:
 };
 
 
-class _Chi2 : public _NonlinearMedium {
-public:
-  _Chi2(uint nSignalmodes, double relativeLength, std::initializer_list<double> nlLength,
-        double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-        double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
-        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling);
-
-  const Arrayd& getPoling() {return _poling;};
-
-protected:
-  void setPoling(const Eigen::Ref<const Arrayd>& poling);
-  _Chi2() = default;
-
-  Arrayd _poling; /// array representing the poling direction at a given point on the grid.
-};
-
-
-class Chi2PDC : public _Chi2 {
+class Chi2PDC : public _NonlinearMedium {
   NLM(Chi2PDC, 1)
 public:
   Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
@@ -145,7 +134,7 @@ public:
 };
 
 
-class Chi2SHG : public _Chi2 {
+class Chi2SHG : public _NonlinearMedium {
 public:
   using _NonlinearMedium::runSignalSimulation;
 #ifdef DEPLETESHG
@@ -164,7 +153,7 @@ protected:
 };
 
 
-class Chi2SFGPDC : public _Chi2 {
+class Chi2SFGPDC : public _NonlinearMedium {
   NLM(Chi2SFGPDC, 2)
 public:
   Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
@@ -176,7 +165,7 @@ public:
 };
 
 
-class Chi2SFG : public _Chi2 {
+class Chi2SFG : public _NonlinearMedium {
   NLM(Chi2SFG, 2)
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
@@ -188,7 +177,7 @@ public:
 };
 
 
-class Chi2PDCII : public _Chi2 {
+class Chi2PDCII : public _NonlinearMedium {
   NLM(Chi2PDCII, 2)
 public:
   Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthI,
@@ -201,7 +190,7 @@ public:
 };
 
 
-class Chi2SFGII : public _Chi2 {
+class Chi2SFGII : public _NonlinearMedium {
   NLM(Chi2SFGII, 4)
 public:
   Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY,

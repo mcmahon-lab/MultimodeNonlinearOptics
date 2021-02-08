@@ -15,13 +15,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   py::class_<_NonlinearMedium> _NLMBase(m, "_NonlinearMedium", "Base class for nonlinear medium solvers");
   py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3", "Single mode self phase modulation");
-  py::class_<_Chi2, _NonlinearMedium> _Chi2Base(m, "_Chi2", "Base class for Chi(2) solvers");
-  py::class_<Chi2PDC, _Chi2> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
-  py::class_<Chi2SHG, _Chi2> Chi2SHG(m, "Chi2SHG", "Second harmonic generation");
-  py::class_<Chi2SFGPDC, _Chi2> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
-  py::class_<Chi2SFG, _Chi2> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
-  py::class_<Chi2PDCII, _Chi2> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
-  py::class_<Chi2SFGII, _Chi2> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
+  py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
+  py::class_<Chi2SHG, _NonlinearMedium> Chi2SHG(m, "Chi2SHG", "Second harmonic generation");
+  py::class_<Chi2SFGPDC, _NonlinearMedium> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
+  py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
+  py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
+  py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
 
@@ -106,6 +105,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "Read-only array of a signal frequency profile along the length of the medium.", "i"_a = 0);
   _NLMBase.def("signalTimes", &_NonlinearMedium::getSignalTime, py::return_value_policy::reference,
                "Read-only array of a signal time profile along the length of the medium.", "i"_a = 0);
+  _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
+                                 "Read-only array of the domain poling along the length of a Chi(2) medium.");
 
 
 /*
@@ -119,14 +120,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation,
            "Simulate propagation the of pump field");
-
-
-/*
- * _Chi2
- */
-
-  _Chi2Base.def_property_readonly("poling", &_Chi2::getPoling, py::return_value_policy::reference,
-                                  "Read-only array of the domain poling along the length of the Chi(2) medium.");
 
 
 /*
