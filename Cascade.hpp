@@ -1,7 +1,7 @@
 #ifndef CASCADE
 #define CASCADE
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
 
 class Cascade : public _NonlinearMedium {
 public:

@@ -2,7 +2,7 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
 
 // Pybind11 Python binding
 

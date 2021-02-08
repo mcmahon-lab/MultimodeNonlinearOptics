@@ -1,7 +1,7 @@
 #ifndef CHI2PDCII
 #define CHI2PDCII
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
 
 class Chi2PDCII : public _NonlinearMedium {
   NLM(Chi2PDCII, 2)

@@ -1,7 +1,7 @@
 #ifndef CHI3
 #define CHI3
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
 
 class Chi3 : public _NonlinearMedium {
   NLM(Chi3, 1)

@@ -1,7 +1,7 @@
 #ifndef CHI2SHG
 #define CHI2SHG
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
 
 class Chi2SHG : public _NonlinearMedium {
 public:
