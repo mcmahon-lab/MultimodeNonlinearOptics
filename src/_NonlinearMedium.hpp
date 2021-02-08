@@ -14,6 +14,8 @@ typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> A
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcd;
 typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
 
+inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
+
 
 class _NonlinearMedium {
 friend class Cascade;
@@ -96,6 +98,7 @@ protected:
   Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 
+
 // Repeated code for each NLM ODE class. This takes care of:
 // - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
 // - Overriding runSignalSimulation with the function created from the template
@@ -108,6 +111,20 @@ protected: \
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
                            std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override \
      { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime); };
+
+
+// This way is verified to be the most efficient use of the FFT functions, avoiding allocation of temporaries.
+// Note: it seems that some compilers will throw a taking address of temporary error in EigenFFT.
+// This is due to array->matrix casting, the code will work if disabling the warning and compiling.
+#define FFT(output, input) { \
+  fftObj.fwd(fftTemp, (input).matrix()); \
+  output = fftTemp.array(); }
+#define FFTtimes(output, input, phase) { \
+  fftObj.fwd(fftTemp, (input).matrix()); \
+  output = fftTemp.array() * phase; }
+#define IFFT(output, input) { \
+  fftObj.inv(fftTemp, (input).matrix()); \
+  output = fftTemp.array(); }
 
 
 #endif //NONLINEARMEDIUM

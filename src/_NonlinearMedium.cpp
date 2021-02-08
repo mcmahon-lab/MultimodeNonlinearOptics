@@ -3,21 +3,6 @@
 #include <limits>
 #include <thread>
 
-inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
-
-// This way is verified to be the most efficient, avoiding allocation of temporaries.
-// Note: it seems that some compilers will throw a taking address of temporary error in EigenFFT.
-// This is due to array->matrix casting, the code will work if disabling the warning and compiling.
-#define FFT(output, input) { \
-  fftObj.fwd(fftTemp, (input).matrix()); \
-  output = fftTemp.array(); }
-#define FFTtimes(output, input, phase) { \
-  fftObj.fwd(fftTemp, (input).matrix()); \
-  output = fftTemp.array() * phase; }
-#define IFFT(output, input) { \
-  fftObj.inv(fftTemp, (input).matrix()); \
-  output = fftTemp.array(); }
-
 
 _NonlinearMedium::_NonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
                                    double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
