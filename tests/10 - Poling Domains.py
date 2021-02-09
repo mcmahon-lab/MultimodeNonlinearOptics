@@ -93,7 +93,7 @@ for crystal in tests:
   ax = fig.add_subplot(2, 1, 1)
 
   spatialFreq = np.abs(fftshift(fft(crystal.poling)))
-  plt.plot(2 * np.pi / baseParams["relativeLength"] * np.arange(-crystal.pumpTime.shape[0] / 2, crystal.pumpTime.shape[0] / 2),
+  plt.plot(2 * np.pi / baseParams["relativeLength"] * np.arange(-crystal.signalTime.shape[0] / 2, crystal.signalTime.shape[0] / 2),
            spatialFreq / np.max(spatialFreq), label=r"$k_{QPM}$")
   plt.plot([-diffBeta0, -diffBeta0, diffBeta0, diffBeta0],
            [1, 0, 0, 1], label=r"$\Delta\Beta_0$")
@@ -103,7 +103,7 @@ for crystal in tests:
   fig.legend()
 
   ax = fig.add_subplot(2, 1, 2)
-  plt.plot(baseParams["relativeLength"] * np.arange(-crystal.pumpTime.shape[0] / 2, crystal.pumpTime.shape[0] / 2) / nt,
+  plt.plot(baseParams["relativeLength"] * np.arange(-crystal.signalTime.shape[0] / 2, crystal.signalTime.shape[0] / 2) / nt,
            crystal.poling, "-o")
   plt.xlabel(r"$z$")
   plt.ylabel(r"$\chi^{(2)}_{eff}(z) ~/~ \chi^{(2)}$");
@@ -119,11 +119,11 @@ fig = plt.figure()
 #          (tests[-1].poling + 1) * 0.5)
 
 for z, test in zip(zSteps, tests[:len(zStepsPM)]):
-    plt.plot(np.linspace(0, baseParams["relativeLength"], test.pumpTime.shape[0]),
+    plt.plot(np.linspace(0, baseParams["relativeLength"], test.signalTime.shape[0]),
          np.abs(test.signalTimes(1)[:, 0]), label="Phase Matched ({:d} Steps / L_NL)".format(z))
 
 for z, test in zip(zSteps, tests[len(zStepsPM):]):
-  plt.plot(np.linspace(0, baseParams["relativeLength"], test.pumpTime.shape[0]),
+  plt.plot(np.linspace(0, baseParams["relativeLength"], test.signalTime.shape[0]),
            np.abs(test.signalTimes(1)[:, 0]), label="{:d} Steps / L_NL".format(z))
 
 plt.xlabel("z")
