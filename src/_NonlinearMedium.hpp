@@ -47,11 +47,11 @@ protected:
                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                    double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
-  inline void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
+  void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
                          double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
                          double beta3, const std::vector<double>& beta3s);
-  inline void resetGrids(uint nFreqs, double tMax);
-  inline void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+  void resetGrids(uint nFreqs, double tMax);
+  void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
                             double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
   _NonlinearMedium() : _nSignalModes() {};
   _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes) {}

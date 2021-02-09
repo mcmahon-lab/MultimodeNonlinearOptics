@@ -25,9 +25,6 @@ public:
   const Arrayd& getFrequency() {return media.at(0).get().getFrequency();};
 
 private: // Disable functions (note: still accessible from base class)
-  using _NonlinearMedium::setLengths;
-  using _NonlinearMedium::resetGrids;
-  using _NonlinearMedium::setDispersion;
   using _NonlinearMedium::getPumpFreq;
   using _NonlinearMedium::getPumpTime;
   using _NonlinearMedium::getSignalFreq;
