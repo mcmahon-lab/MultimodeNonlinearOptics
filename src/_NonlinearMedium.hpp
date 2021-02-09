@@ -131,4 +131,68 @@ protected: \
   output = fftTemp.array(); }
 
 
+template<class T>
+void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
+                                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) {
+  RowVectorcd fftTemp(_nFreqs);
+
+  // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
+  uint nInputChannels = inputProf.size() / _nFreqs;
+  if (nInputChannels > 1) inputMode = 0;
+  if (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
+
+  if (inTimeDomain)
+    for (uint m = 0; m < T::_nSignalModes; m++) {
+      if (m == inputMode) {
+        signalFreq[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+      }
+      else if (inputMode < 1 && m < nInputChannels) {
+        signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+      }
+      else
+        signalFreq[m].row(0) = 0;
+    }
+  else
+    for (uint m = 0; m < T::_nSignalModes; m++) {
+      if (m == inputMode)
+        signalFreq[m].row(0) = inputProf.segment(0, _nFreqs) * ((0.5_I * _dz) * _dispersionSign[m]).exp();
+      else if (inputMode < 1 && m < nInputChannels)
+        signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs) * ((0.5_I * _dz) * _dispersionSign[m]).exp();
+      else
+        signalFreq[m].row(0) = 0;
+    }
+  for (uint m = 0; m < T::_nSignalModes; m++) {
+    if (m == inputMode || m < nInputChannels)
+    IFFT(signalTime[m].row(0), signalFreq[m].row(0))
+    else
+      signalTime[m].row(0) = 0;
+  }
+
+  Arraycd temp(_nFreqs);
+  std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes);
+  for (uint m = 0; m < T::_nSignalModes; m++) {
+    k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
+  }
+  for (uint i = 1; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the non-linear propagation
+    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTime);
+
+    for (uint m = 0; m < T::_nSignalModes; m++) {
+      temp = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) / 6;
+
+      // Dispersion step
+      FFTtimes(signalFreq[m].row(i), temp, _dispStepSign[m])
+      IFFT(signalTime[m].row(i), signalFreq[m].row(i))
+    }
+  }
+
+  for (uint m = 0; m < T::_nSignalModes; m++) {
+    signalFreq[m].row(_nZSteps - 1) *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
+    IFFT(signalTime[m].row(_nZSteps - 1), signalFreq[m].row(_nZSteps - 1))
+  }
+}
+
+
 #endif //NONLINEARMEDIUM
