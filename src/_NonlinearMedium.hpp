@@ -41,7 +41,7 @@ public:
   const Arrayd& getPoling() {return _poling;};
 
 protected:
-  _NonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
+  _NonlinearMedium(uint nSignalModes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
                    double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                    double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
@@ -54,6 +54,8 @@ protected:
   inline void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
                             double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
   _NonlinearMedium() : _nSignalModes() {};
+  _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes) {}
+
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                    std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) = 0;
 
