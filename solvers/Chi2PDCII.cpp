@@ -26,11 +26,15 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
-                       const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP, const std::vector<Array2Dcd>& signal) {
+void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
 
-  auto& prevS = signal[0].row(i-1);
-  auto& prevO = signal[1].row(i-1);
+  const auto& prevS = signal[0].row(i-1);
+  const auto& prevO = signal[1].row(i-1);
+
+  const auto& prevP = pumpTime.row(2*i-2);
+  const auto& intrP = pumpTime.row(2*i-1);
+  const auto& currP = pumpTime.row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);
@@ -43,14 +47,14 @@ void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k
   const std::complex<double> intmMismatcho = std::exp(1._I * _diffBeta0[1] * ((i-.5) * _dz));
   const std::complex<double> currMismatcho = std::exp(1._I * _diffBeta0[1] * ( i     * _dz));
 
-  k1[0] = (prevPolDir *   _nlStep[0] * prevMismatch) * prevP   *  prevO.conjugate();
-  k1[1] =  prevPolDir * ((_nlStep[1] * prevMismatch) * prevP   *  prevS.conjugate()                + (_nlStep[2] * prevMismatcho) * prevP   *  prevO.conjugate());
-  k2[0] = (intmPolDir *   _nlStep[0] * intmMismatch) * interpP * (prevO + 0.5 * k1[1]).conjugate();
-  k2[1] =  intmPolDir * ((_nlStep[1] * intmMismatch) * interpP * (prevS + 0.5 * k1[0]).conjugate() + (_nlStep[2] * intmMismatcho) * interpP * (prevO + 0.5 * k1[1]).conjugate());
-  k3[0] = (intmPolDir *   _nlStep[0] * intmMismatch) * interpP * (prevO + 0.5 * k2[1]).conjugate();
-  k3[1] =  intmPolDir * ((_nlStep[1] * intmMismatch) * interpP * (prevS + 0.5 * k2[0]).conjugate() + (_nlStep[2] * intmMismatcho) * interpP * (prevO + 0.5 * k2[1]).conjugate());
-  k4[0] = (currPolDir *   _nlStep[0] * currMismatch) * currP   * (prevO + k3[1]).conjugate();
-  k4[1] =  currPolDir * ((_nlStep[1] * currMismatch) * currP   * (prevS + k3[0]).conjugate()       + (_nlStep[2] * currMismatcho) * currP   * (prevO + k3[1]).conjugate());
+  k1[0] = (prevPolDir *   _nlStep[0] * prevMismatch) * prevP *  prevO.conjugate();
+  k1[1] =  prevPolDir * ((_nlStep[1] * prevMismatch) * prevP *  prevS.conjugate()                + (_nlStep[2] * prevMismatcho) * prevP *  prevO.conjugate());
+  k2[0] = (intmPolDir *   _nlStep[0] * intmMismatch) * intrP * (prevO + 0.5 * k1[1]).conjugate();
+  k2[1] =  intmPolDir * ((_nlStep[1] * intmMismatch) * intrP * (prevS + 0.5 * k1[0]).conjugate() + (_nlStep[2] * intmMismatcho) * intrP * (prevO + 0.5 * k1[1]).conjugate());
+  k3[0] = (intmPolDir *   _nlStep[0] * intmMismatch) * intrP * (prevO + 0.5 * k2[1]).conjugate();
+  k3[1] =  intmPolDir * ((_nlStep[1] * intmMismatch) * intrP * (prevS + 0.5 * k2[0]).conjugate() + (_nlStep[2] * intmMismatcho) * intrP * (prevO + 0.5 * k2[1]).conjugate());
+  k4[0] = (currPolDir *   _nlStep[0] * currMismatch) * currP * (prevO + k3[1]).conjugate();
+  k4[1] =  currPolDir * ((_nlStep[1] * currMismatch) * currP * (prevS + k3[0]).conjugate()       + (_nlStep[2] * currMismatcho) * currP * (prevO + k3[1]).conjugate());
 }
 
 #endif //CHI2PDCII

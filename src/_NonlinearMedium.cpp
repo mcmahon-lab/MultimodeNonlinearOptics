@@ -57,10 +57,12 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
                                                 beta1, *std::max_element(beta1s.begin(), beta1s.end(), absComp),
                                                 beta3, *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
 
-  // space resolution
+  // space resolution. Note: pump step is smaller to calculate the value for intermediate RK4 steps
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., maxDispLength, rayleighLength,
                                                            *std::min_element(nlLength.begin(), nlLength.end())}));
+  _nZStepsP = 2 * _nZSteps - 1;
   _dz = _z / _nZSteps;
+  _dzp = _z / _nZStepsP;
 
   // step sizes for the RK in the simulation
   _nlStep.resize(nlLength.size());
@@ -96,8 +98,8 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   _omega = fftshift(_omega);
 
   // Grids for PDE propagation
-  pumpFreq.resize(_nZSteps, _nFreqs);
-  pumpTime.resize(_nZSteps, _nFreqs);
+  pumpFreq.resize(_nZStepsP, _nFreqs);
+  pumpTime.resize(_nZStepsP, _nFreqs);
 
   signalFreq.resize(_nSignalModes);
   signalTime.resize(_nSignalModes);
@@ -112,8 +114,8 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
                                      double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0) {
 
   // Pump group velocity dispersion
-  _beta2  = beta2;
-  _beta1  = beta1;
+  _beta2 = beta2;
+  _beta1 = beta1;
 
   // signal phase mis-match
   _diffBeta0 = diffBeta0;
@@ -125,7 +127,7 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
     _dispersionSign[m] = _omega * (beta1s[m] + _omega * (0.5 * beta2s[m] + _omega * beta3s[m] / 6));
 
   // incremental phases for each simulation step
-  _dispStepPump = (1._I * _dispersionPump * _dz).exp();
+  _dispStepPump = (1._I * _dispersionPump * _dzp).exp();
   _dispStepSign.resize(_nSignalModes);
   for (uint m = 0; m < _nSignalModes; m++)
     _dispStepSign[m] = (1._I * _dispersionSign[m] * _dz).exp();
@@ -170,13 +172,13 @@ void _NonlinearMedium::runPumpSimulation() {
   FFT(pumpFreq.row(0), _env)
   pumpTime.row(0) = _env;
 
-  for (uint i = 1; i < _nZSteps; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dz) * _dispersionPump).exp();
+  for (uint i = 1; i < _nZStepsP; i++) {
+    pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dzp) * _dispersionPump).exp();
     IFFT(pumpTime.row(i), pumpFreq.row(i))
   }
 
   if (_rayleighLength != std::numeric_limits<double>::infinity()) {
-    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZSteps, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
     pumpFreq.colwise() *= relativeStrength.array();
     pumpTime.colwise() *= relativeStrength.array();
   }
@@ -453,19 +455,14 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
       signalTime[m].row(0) = 0;
   }
 
-  Arraycd interpP(_nFreqs), temp(_nFreqs);
+  Arraycd temp(_nFreqs);
   std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes);
   for (uint m = 0; m < T::_nSignalModes; m++) {
     k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
   }
   for (uint i = 1; i < _nZSteps; i++) {
     // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prevP = pumpTime.row(i-1);
-    const auto& currP = pumpTime.row(i);
-
-    interpP = 0.5 * (prevP + currP);
-
-    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, prevP, currP, interpP, signalTime);
+    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTime);
 
     for (uint m = 0; m < T::_nSignalModes; m++) {
       temp = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) / 6;

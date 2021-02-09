@@ -30,13 +30,17 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengt
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
-                       const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP, const std::vector<Array2Dcd>& signal) {
+void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
 
-  auto& prevSz = signal[0].row(i-1);
-  auto& prevSy = signal[1].row(i-1);
-  auto& prevOz = signal[2].row(i-1);
-  auto& prevOy = signal[3].row(i-1);
+  const auto& prevSz = signal[0].row(i-1);
+  const auto& prevSy = signal[1].row(i-1);
+  const auto& prevOz = signal[2].row(i-1);
+  const auto& prevOy = signal[3].row(i-1);
+
+  const auto& prevP = pumpTime.row(2*i-2);
+  const auto& intrP = pumpTime.row(2*i-1);
+  const auto& currP = pumpTime.row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);
@@ -65,15 +69,15 @@ void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k
   k1[2] = (prevPolDir * _nlStep[2]) * (prevInvMsmchCy * prevP.conjugate() * prevSy + prevMismatchSq * prevP * prevOy.conjugate());
   k1[3] = (prevPolDir * _nlStep[3]) * (prevInvMsmchCz * prevP.conjugate() * prevSz + prevMismatchSq * prevP * prevOz.conjugate());
 
-  k2[0] = (intmPolDir * _nlStep[0]  * intmMismatchCz) * interpP * (prevOy + 0.5 * k1[3]);
-  k2[1] = (intmPolDir * _nlStep[1]  * intmMismatchCy) * interpP * (prevOz + 0.5 * k1[2]);
-  k2[2] = (intmPolDir * _nlStep[2]) * (intmInvMsmchCy * interpP.conjugate() * (prevSy + 0.5 * k1[1]) + intmMismatchSq * interpP * (prevOy + 0.5 * k1[3]).conjugate());
-  k2[3] = (intmPolDir * _nlStep[3]) * (intmInvMsmchCz * interpP.conjugate() * (prevSz + 0.5 * k1[0]) + intmMismatchSq * interpP * (prevOz + 0.5 * k1[2]).conjugate());
+  k2[0] = (intmPolDir * _nlStep[0]  * intmMismatchCz) * intrP * (prevOy + 0.5 * k1[3]);
+  k2[1] = (intmPolDir * _nlStep[1]  * intmMismatchCy) * intrP * (prevOz + 0.5 * k1[2]);
+  k2[2] = (intmPolDir * _nlStep[2]) * (intmInvMsmchCy * intrP.conjugate() * (prevSy + 0.5 * k1[1]) + intmMismatchSq * intrP * (prevOy + 0.5 * k1[3]).conjugate());
+  k2[3] = (intmPolDir * _nlStep[3]) * (intmInvMsmchCz * intrP.conjugate() * (prevSz + 0.5 * k1[0]) + intmMismatchSq * intrP * (prevOz + 0.5 * k1[2]).conjugate());
 
-  k3[0] = (intmPolDir * _nlStep[0]  * intmMismatchCz) * interpP * (prevOy + 0.5 * k2[3]);
-  k3[1] = (intmPolDir * _nlStep[1]  * intmMismatchCy) * interpP * (prevOz + 0.5 * k2[2]);
-  k3[2] = (intmPolDir * _nlStep[2]) * (intmInvMsmchCy * interpP.conjugate() * (prevSy + 0.5 * k2[1]) + intmMismatchSq * interpP * (prevOy + 0.5 * k2[3]).conjugate());
-  k3[3] = (intmPolDir * _nlStep[3]) * (intmInvMsmchCz * interpP.conjugate() * (prevSz + 0.5 * k2[0]) + intmMismatchSq * interpP * (prevOz + 0.5 * k2[2]).conjugate());
+  k3[0] = (intmPolDir * _nlStep[0]  * intmMismatchCz) * intrP * (prevOy + 0.5 * k2[3]);
+  k3[1] = (intmPolDir * _nlStep[1]  * intmMismatchCy) * intrP * (prevOz + 0.5 * k2[2]);
+  k3[2] = (intmPolDir * _nlStep[2]) * (intmInvMsmchCy * intrP.conjugate() * (prevSy + 0.5 * k2[1]) + intmMismatchSq * intrP * (prevOy + 0.5 * k2[3]).conjugate());
+  k3[3] = (intmPolDir * _nlStep[3]) * (intmInvMsmchCz * intrP.conjugate() * (prevSz + 0.5 * k2[0]) + intmMismatchSq * intrP * (prevOz + 0.5 * k2[2]).conjugate());
 
   k4[0] = (prevPolDir * _nlStep[0]  * currMismatchCz) * currP * (prevOy + k3[3]);
   k4[1] = (prevPolDir * _nlStep[1]  * currMismatchCy) * currP * (prevOz + k3[2]);

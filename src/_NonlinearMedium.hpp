@@ -68,8 +68,10 @@ protected:
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
   double _z;  /// length of medium
-  double _dz;    /// length increment
+  double _dz;    /// length increment of the signal simulation
+  double _dzp;   /// length increment of the pump simulation
   uint _nZSteps; /// number of length steps in simulating the PDE
+  uint _nZStepsP; /// number of length steps in simulating the pump, larger to calculate values at RK4 intermediate steps
   uint _nFreqs;  /// number of frequency/time bins in the simulating the PDE
   double _tMax;  /// positive and negative extent of the simulation window in time
   double _beta2;  /// second order dispersion of the pump
@@ -106,8 +108,8 @@ protected:
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
-  inline void DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4, \
-                     const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP, const std::vector<Array2Dcd>& signal); \
+  inline void DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
                            std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override \
      { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime); };

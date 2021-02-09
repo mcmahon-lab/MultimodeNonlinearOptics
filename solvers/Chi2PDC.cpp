@@ -24,9 +24,13 @@ Chi2PDC::Chi2PDC(double relativeLength, double nlLength, double beta2, double be
                    {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2PDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, std::vector<Arraycd>& k4,
-                     const Arraycd& prevP, const Arraycd& currP, const Arraycd& interpP, const std::vector<Array2Dcd>& signal) {
+void Chi2PDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
   const auto& prev = signal[0].row(i-1);
+
+  const auto& prevP = pumpTime.row(2*i-2);
+  const auto& intrP = pumpTime.row(2*i-1);
+  const auto& currP = pumpTime.row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);
@@ -36,10 +40,10 @@ void Chi2PDC::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2,
   const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));
   const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0[0] * ( i     * _dz));
 
-  k1[0] = (prevPolDir * _nlStep[0] * prevMismatch) * prevP   *  prev.conjugate();
-  k2[0] = (intmPolDir * _nlStep[0] * intmMismatch) * interpP * (prev + 0.5 * k1[0]).conjugate();
-  k3[0] = (intmPolDir * _nlStep[0] * intmMismatch) * interpP * (prev + 0.5 * k2[0]).conjugate();
-  k4[0] = (currPolDir * _nlStep[0] * currMismatch) * currP   * (prev + k3[0]).conjugate();
+  k1[0] = (prevPolDir * _nlStep[0] * prevMismatch) * prevP *  prev.conjugate();
+  k2[0] = (intmPolDir * _nlStep[0] * intmMismatch) * intrP * (prev + 0.5 * k1[0]).conjugate();
+  k3[0] = (intmPolDir * _nlStep[0] * intmMismatch) * intrP * (prev + 0.5 * k2[0]).conjugate();
+  k4[0] = (currPolDir * _nlStep[0] * currMismatch) * currP * (prev + k3[0]).conjugate();
 }
 
 #endif //CHI2PDC
