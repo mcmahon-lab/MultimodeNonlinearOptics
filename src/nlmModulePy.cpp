@@ -3,6 +3,7 @@
 #include <pybind11/stl.h>
 
 #include "_NonlinearMedium.hpp"
+#include "_FullyNonlinearMedium.hpp"
 #include "Cascade.hpp"
 #include "Chi3.cpp"
 #include "Chi2PDC.cpp"
@@ -31,6 +32,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
+  py::class_<_FullyNonlinearMedium, _NonlinearMedium> _FNLMBase(m, "_FullyNonlinearMedium", "Base class for fully nonlinear medium solvers");
 
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
@@ -115,6 +117,35 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "Read-only array of a signal time profile along the length of the medium.", "i"_a = 0);
   _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
                                  "Read-only array of the domain poling along the length of a Chi(2) medium.");
+
+
+/*
+ * _FullyNonlinearMedium
+ */
+
+  _FNLMBase.def("batchSignalSimulation",
+                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<char>&>(
+                    &_FullyNonlinearMedium::batchSignalSimulation),
+                py::return_value_policy::move,
+                "Run multiple signal simulations.\n"
+                "inputProfs   Profiles of input pulses. May be time or frequency domain.\n"
+                "             Note: Input is assumed to have self.omega or self.tau as the axis.\n"
+                "inTimeDomain Specify if the input is in time or frequency domain.\n"
+                "nThreads     Number of threads used to run simulations in parallel.\n"
+                "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.\n"
+                "useOutput    Specify which signal mode outputs to return. Default is all outputs.\n"
+                "return: Array of signal profiles at the output of the medium\n",
+                "inputProfs"_a, "inTimeDomain"_a = false, "nThreads"_a = 1,
+                "inputMode"_a = 0, "useOutput"_a = defCharVec);
+
+  _FNLMBase.def("setPump", py::overload_cast<int, double, double>(&_FullyNonlinearMedium::setPump),
+                "pulseType"_a, "chirp"_a = 0, "delay"_a = 0);
+  _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double>(&_FullyNonlinearMedium::setPump),
+                "customPump"_a, "chirp"_a = 0, "delay"_a = 0);
+  _FNLMBase.def("runPumpSimulation", &_FullyNonlinearMedium::runPumpSimulation);
+  _FNLMBase.def("computeGreensFunction", &_FullyNonlinearMedium::computeGreensFunction,
+                "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
+                "useInput"_a = defCharVec, "useOutput"_a = defCharVec);
 
 
 /*
