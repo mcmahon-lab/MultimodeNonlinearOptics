@@ -3,113 +3,61 @@
 
 #include "_NonlinearMedium.hpp"
 
-class Chi2SHG : public _NonlinearMedium {
+class Chi2SHG : public _FullyNonlinearMedium {
+  NLM(Chi2SHG, 2)
 public:
   using _NonlinearMedium::runSignalSimulation;
-#ifdef DEPLETESHG
   Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double beta2, double beta2s,
-#else
-  Chi2SHG(double relativeLength, double nlLength, double beta2, double beta2s,
-#endif
-          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
           double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
-          double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
-
-protected:
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override;
+          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
-#ifdef DEPLETESHG
-Chi2SHG::Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double beta2, double beta2s,
-#else
-Chi2SHG::Chi2SHG(double relativeLength, double nlLength, double beta2, double beta2s,
-#endif
-                 const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-                 double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
+Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
+                 double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
+                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                  const Eigen::Ref<const Arrayd>& poling) :
-
-#ifdef DEPLETESHG
-  _NonlinearMedium(_nSignalModes, true, relativeLength, {nlLength, nlLengthP}, beta2, {beta2s}, customPump, pulseType,
-#else
-  _NonlinearMedium(_nSignalModes, true, relativeLength, {nlLength}, beta2, {beta2s}, customPump, pulseType,
-#endif
-                   beta1, {beta1s}, beta3, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling)
+  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthH, nlLengthP}, {beta2h, beta2p}, {beta1h, beta1p},
+                        {beta3h, beta3p}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, poling)
 {}
 
 
-void Chi2SHG::runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                  std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) {
-  RowVectorcd fftTemp(_nFreqs);
+void Chi2SHG::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+  const auto& prvPp = signal[0].row(i-1);
+  const auto& prvSH = signal[1].row(i-1);
 
-#ifdef DEPLETESHG
-  // NOTE: DEPLETESHG not thread safe due to use of single pumpTime and pumpFreq arrays
-  FFTtimes(pumpFreq.row(0), _env, ((0.5_I * _dz) * _dispersionPump).exp())
-  IFFT(pumpTime.row(0), pumpFreq.row(0))
-#endif
+  const double prevPolDir = _poling(i-1);
+  const double currPolDir = _poling(i);
+  const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-  if (inTimeDomain)
-    FFTtimes(signalFreq[0].row(0), inputProf, ((0.5_I * _dz) * _dispersionSign[0]).exp())
-  else
-    signalFreq[0].row(0) = inputProf * ((0.5_I * _dz) * _dispersionSign[0]).exp();
-  IFFT(signalTime[0].row(0), signalFreq[0].row(0))
+  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
 
-  Arraycd interpP(_nFreqs), k1(_nFreqs), k2(_nFreqs), k3(_nFreqs), k4(_nFreqs), temp(_nFreqs);
-#ifdef DEPLETESHG
-  Arraycd l1(_nFreqs), l2(_nFreqs), l3(_nFreqs), l4(_nFreqs), tempPump(_nFreqs);
-#endif
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    const auto& prevP = pumpTime.row(i-1);
-#ifdef DEPLETESHG
-    const auto& prevS = signalTime[0].row(i-1);
-#else
-    const auto& currP = pumpTime.row(i);
-    interpP = 0.5 * (prevP + currP);
-#endif
+  const double prevRelNL = prevPolDir * relIntPrv;
+  const double currRelNL = currPolDir * relIntInt;
+  const double intmRelNL = intmPolDir * relIntCur;
 
-    const double prevPolDir = _poling(i-1);
-    const double currPolDir = _poling(i);
-    const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
+  const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0[0] * ((i- 1) * _dz));
+  const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));
+  const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0[0] * ( i     * _dz));
+  const std::complex<double> prevInvMsmch = 1. / prevMismatch;
+  const std::complex<double> intmInvMsmch = 1. / intmMismatch;
+  const std::complex<double> currInvMsmch = 1. / currMismatch;
 
-    const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0[0] * ((i- 1) * _dz));
-    const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));
-    const std::complex<double> currMismatch = std::exp(1._I * _diffBeta0[0] * ( i     * _dz));
+  k1[0] = (prevRelNL * _nlStep[0] * prevMismatch) * prvPp.conjugate() * prvSH;
+  k1[1] = (prevRelNL * _nlStep[1] * prevInvMsmch  * .5) * prvPp.square();
 
-    k1 = (prevPolDir * _nlStep[0] * prevMismatch) * prevP.square();
-#ifdef DEPLETESHG
-    l1 = (prevPolDir * _nlStep[1] / prevMismatch) *  prevS * prevP.conjugate();
-    k2 = (intmPolDir * _nlStep[0] * intmMismatch) * (prevP + 0.5 * l1).square();
-    l2 = (intmPolDir * _nlStep[1] / intmMismatch) * (prevS + 0.5 * k1) * (prevP + 0.5 * l1).conjugate();
-    k3 = (intmPolDir * _nlStep[0] * intmMismatch) * (prevP + 0.5 * l2).square();
-    l3 = (intmPolDir * _nlStep[1] / intmMismatch) * (prevS + 0.5 * k2) * (prevP + 0.5 * l2).conjugate();
-    k4 = (currPolDir * _nlStep[0] * currMismatch) * (prevP + l3).square();
-    l4 = (currPolDir * _nlStep[1] / currMismatch) * (prevS + k3) * (prevP + l3).conjugate();
-#else
-    k2 = (intmPolDir * _nlStep[0] * intmMismatch) * interpP.square();
-    k3 = (intmPolDir * _nlStep[0] * intmMismatch) * interpP.square();
-    k4 = (currPolDir * _nlStep[0] * currMismatch) * currP.square();
-#endif
-    temp = signalTime[0].row(i-1) + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
-    FFTtimes(signalFreq[0].row(i), temp, _dispStepSign[0])
-    IFFT(signalTime[0].row(i), signalFreq[0].row(i))
+  k2[0] = (intmRelNL * _nlStep[0] * intmMismatch) * (prvPp + .5 * k1[0]).conjugate() * (prvSH + .5 * k1[1]);
+  k2[1] = (intmRelNL * _nlStep[1] * intmInvMsmch  * .5) * (prvPp + .5 * k1[0]).square();
 
-#ifdef DEPLETESHG
-    tempPump = pumpTime.row(i-1) + (l1 + 2 * l2 + 2 * l3 + l4) / 6;
-    FFTtimes(pumpFreq.row(i), tempPump, _dispStepPump)
-    IFFT(pumpTime.row(i), pumpFreq.row(i))
-#endif
-  }
+  k3[0] = (intmRelNL * _nlStep[0] * intmMismatch) * (prvPp + .5 * k2[0]).conjugate() * (prvSH + .5 * k2[1]);
+  k3[1] = (intmRelNL * _nlStep[1] * intmInvMsmch  * .5) * (prvPp + .5 * k2[0]).square();
 
-  signalFreq[0].row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionSign[0]).exp();
-  IFFT(signalTime[0].row(_nZSteps-1), signalFreq[0].row(_nZSteps-1))
-#ifdef DEPLETESHG
-  pumpFreq.row(_nZSteps-1) *= ((-0.5_I * _dz) * _dispersionPump).exp();
-  IFFT(pumpTime.row(_nZSteps-1), pumpFreq.row(_nZSteps-1))
-#endif
+  k4[0] = (currRelNL * _nlStep[0] * currMismatch) * (prvPp + k3[0]).conjugate() * (prvSH + k3[1]);
+  k4[1] = (currRelNL * _nlStep[1] * currInvMsmch  * .5) * (prvPp + k3[0]).square();
 }
 
 #endif //CHI2SHG

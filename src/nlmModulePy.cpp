@@ -26,7 +26,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<_NonlinearMedium> _NLMBase(m, "_NonlinearMedium", "Base class for nonlinear medium solvers");
   py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3", "Single mode self phase modulation");
   py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
-  py::class_<Chi2SHG, _NonlinearMedium> Chi2SHG(m, "Chi2SHG", "Second harmonic generation");
   py::class_<Chi2SFGPDC, _NonlinearMedium> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
   py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
   py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
@@ -34,6 +33,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
   py::class_<_FullyNonlinearMedium, _NonlinearMedium> _FNLMBase(m, "_FullyNonlinearMedium", "Base class for fully nonlinear medium solvers");
+  py::class_<Chi2SHG, _FullyNonlinearMedium> Chi2SHG(m, "Chi2SHG", "Fully nonlinear second harmonic generation");
   py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump.");
 
   // default arguments for Python, including initialization of empty arrays
@@ -180,19 +180,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SHG.def(
-#ifdef DEPLETESHG
-      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-               double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "nlLengthP"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
-#else
-      py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-          double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
-#endif
+      py::init<double, double, double, double, double, double, double, double, double, double,
+               double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
 
 /*
