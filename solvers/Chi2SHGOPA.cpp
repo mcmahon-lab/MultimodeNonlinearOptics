@@ -62,22 +62,22 @@ void Chi2SHGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const std::complex<double> currInvMsmchOPA = 1. / currMismatchOPA;
 
   k1[0] = (prevRelNL * _nlStep[0]  *  prevMismatchSHG) * prvPp.conjugate() * prvSH;
-  k1[1] = (prevRelNL * _nlStep[1]) * (prevInvMsmchSHG  * prvPp.square() + prevMismatchOPA * prvA2 * prvA1);
+  k1[1] = (prevRelNL * _nlStep[1]) * (prevMismatchOPA  * prvA2 * prvA1 + prevInvMsmchSHG * .5 * prvPp.square());
   k1[2] = (prevRelNL * _nlStep[2]  *  prevInvMsmchOPA) * prvSH * prvA2.conjugate();
   k1[3] = (prevRelNL * _nlStep[3]  *  prevInvMsmchOPA) * prvSH * prvA1.conjugate();
 
   k2[0] = (intmRelNL * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k1[0]).conjugate() * (prvSH + .5 * k1[1]);
-  k2[1] = (intmRelNL * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k1[0]).square() + intmMismatchOPA * (prvA1 + .5 * k1[2]) * (prvA2 + .5 * k1[3]));
+  k2[1] = (intmRelNL * _nlStep[1]) * (intmMismatchOPA  * (prvA1 + .5 * k1[2]) * (prvA2 + .5 * k1[3]) + intmInvMsmchSHG * .5 * (prvPp + .5 * k1[0]).square());
   k2[2] = (intmRelNL * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA2 + .5 * k1[3]).conjugate();
   k2[3] = (intmRelNL * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA1 + .5 * k1[2]).conjugate();
 
   k3[0] = (intmRelNL * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k2[0]).conjugate() * (prvSH + .5 * k2[1]);
-  k3[1] = (intmRelNL * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k2[0]).square() + intmMismatchOPA * (prvA1 + .5 * k2[2]) * (prvA2 + .5 * k2[3]));
+  k3[1] = (intmRelNL * _nlStep[1]) * (intmMismatchOPA  * (prvA1 + .5 * k2[2]) * (prvA2 + .5 * k2[3]) + intmInvMsmchSHG * .5 * (prvPp + .5 * k2[0]).square());
   k3[2] = (intmRelNL * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA2 + .5 * k2[3]).conjugate();
   k3[3] = (intmRelNL * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA1 + .5 * k2[2]).conjugate();
 
   k4[0] = (currRelNL * _nlStep[0]  *  currMismatchSHG) * (prvPp + k3[0]).conjugate() * (prvSH + k3[1]);
-  k4[1] = (currRelNL * _nlStep[1]) * (currInvMsmchSHG  * (prvPp + k3[0]).square() + currMismatchOPA * (prvA1 + k3[2]) * (prvA2 + k3[3]));
+  k4[1] = (currRelNL * _nlStep[1]) * (currMismatchOPA  * (prvA1 + k3[2]) * (prvA2 + k3[3]) + currInvMsmchSHG * .5 * (prvPp + k3[0]).square());
   k4[2] = (currRelNL * _nlStep[2]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA2 + k3[3]).conjugate();
   k4[3] = (currRelNL * _nlStep[3]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA1 + k3[2]).conjugate();
 }
