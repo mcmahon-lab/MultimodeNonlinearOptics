@@ -39,6 +39,14 @@ void Chi2SHGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const double currPolDir = _poling(i);
   const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
+  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
+
+  const double prevRelNL = prevPolDir * relIntPrv;
+  const double currRelNL = currPolDir * relIntInt;
+  const double intmRelNL = intmPolDir * relIntCur;
+
   const std::complex<double> prevMismatchSHG = std::exp(1._I * _diffBeta0[0] * ((i- 1) * _dz));
   const std::complex<double> intmMismatchSHG = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));
   const std::complex<double> currMismatchSHG = std::exp(1._I * _diffBeta0[0] * ( i     * _dz));
@@ -53,25 +61,25 @@ void Chi2SHGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const std::complex<double> intmInvMsmchOPA = 1. / intmMismatchOPA;
   const std::complex<double> currInvMsmchOPA = 1. / currMismatchOPA;
 
-  k1[0] = (prevPolDir * _nlStep[0]  *  prevMismatchSHG) * prvPp.conjugate() * prvSH;
-  k1[1] = (prevPolDir * _nlStep[1]) * (prevInvMsmchSHG  * prvPp.square() + prevMismatchOPA * prvA2 * prvA1);
-  k1[2] = (prevPolDir * _nlStep[2]  *  prevInvMsmchOPA) * prvSH * prvA2.conjugate();
-  k1[3] = (prevPolDir * _nlStep[3]  *  prevInvMsmchOPA) * prvSH * prvA1.conjugate();
+  k1[0] = (prevRelNL * _nlStep[0]  *  prevMismatchSHG) * prvPp.conjugate() * prvSH;
+  k1[1] = (prevRelNL * _nlStep[1]) * (prevInvMsmchSHG  * prvPp.square() + prevMismatchOPA * prvA2 * prvA1);
+  k1[2] = (prevRelNL * _nlStep[2]  *  prevInvMsmchOPA) * prvSH * prvA2.conjugate();
+  k1[3] = (prevRelNL * _nlStep[3]  *  prevInvMsmchOPA) * prvSH * prvA1.conjugate();
 
-  k2[0] = (intmPolDir * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k1[0]).conjugate() * (prvSH + .5 * k1[1]);
-  k2[1] = (intmPolDir * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k1[0]).square() + intmMismatchOPA * (prvA1 + .5 * k1[2]) * (prvA2 + .5 * k1[3]));
-  k2[2] = (intmPolDir * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA2 + .5 * k1[3]).conjugate();
-  k2[3] = (intmPolDir * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA1 + .5 * k1[2]).conjugate();
+  k2[0] = (intmRelNL * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k1[0]).conjugate() * (prvSH + .5 * k1[1]);
+  k2[1] = (intmRelNL * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k1[0]).square() + intmMismatchOPA * (prvA1 + .5 * k1[2]) * (prvA2 + .5 * k1[3]));
+  k2[2] = (intmRelNL * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA2 + .5 * k1[3]).conjugate();
+  k2[3] = (intmRelNL * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k1[1]) * (prvA1 + .5 * k1[2]).conjugate();
 
-  k3[0] = (intmPolDir * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k2[0]).conjugate() * (prvSH + .5 * k2[1]);
-  k3[1] = (intmPolDir * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k2[0]).square() + intmMismatchOPA * (prvA1 + .5 * k2[2]) * (prvA2 + .5 * k2[3]));
-  k3[2] = (intmPolDir * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA2 + .5 * k2[3]).conjugate();
-  k3[3] = (intmPolDir * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA1 + .5 * k2[2]).conjugate();
+  k3[0] = (intmRelNL * _nlStep[0]  *  intmMismatchSHG) * (prvPp + .5 * k2[0]).conjugate() * (prvSH + .5 * k2[1]);
+  k3[1] = (intmRelNL * _nlStep[1]) * (intmInvMsmchSHG  * (prvPp + .5 * k2[0]).square() + intmMismatchOPA * (prvA1 + .5 * k2[2]) * (prvA2 + .5 * k2[3]));
+  k3[2] = (intmRelNL * _nlStep[2]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA2 + .5 * k2[3]).conjugate();
+  k3[3] = (intmRelNL * _nlStep[3]  *  intmInvMsmchOPA) * (prvSH + .5 * k2[1]) * (prvA1 + .5 * k2[2]).conjugate();
 
-  k4[0] = (currPolDir * _nlStep[0]  *  currMismatchSHG) * (prvPp + k3[0]).conjugate() * (prvSH + k3[1]);
-  k4[1] = (currPolDir * _nlStep[1]) * (currInvMsmchSHG  * (prvPp + k3[0]).square() + currMismatchOPA * (prvA1 + k3[2]) * (prvA2 + k3[3]));
-  k4[2] = (currPolDir * _nlStep[2]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA2 + k3[3]).conjugate();
-  k4[3] = (currPolDir * _nlStep[3]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA1 + k3[2]).conjugate();
+  k4[0] = (currRelNL * _nlStep[0]  *  currMismatchSHG) * (prvPp + k3[0]).conjugate() * (prvSH + k3[1]);
+  k4[1] = (currRelNL * _nlStep[1]) * (currInvMsmchSHG  * (prvPp + k3[0]).square() + currMismatchOPA * (prvA1 + k3[2]) * (prvA2 + k3[3]));
+  k4[2] = (currRelNL * _nlStep[2]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA2 + k3[3]).conjugate();
+  k4[3] = (currRelNL * _nlStep[3]  *  currInvMsmchOPA) * (prvSH + k3[1]) * (prvA1 + k3[2]).conjugate();
 }
 
 #endif //CHI2SHGOPA
