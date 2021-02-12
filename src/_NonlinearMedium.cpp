@@ -32,7 +32,7 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 
   bool negativeLength = false;
 
-  negativeLength |= (std::abs(relativeLength) <= 0 || std::abs(rayleighLength) <= 0);
+  negativeLength |= (relativeLength <= 0 || rayleighLength <= 0);
   for (double nl : nlLength)
     negativeLength |= (nl <= 0);
 
@@ -53,12 +53,12 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   _z = relativeLength;
 
   auto absComp = [](double a, double b) {return (std::abs(a) < std::abs(b));};
-  double maxDispLength = 1 / std::abs(std::max({beta2, *std::max_element(beta2s.begin(), beta2s.end(), absComp),
+  double minDispLength = 1 / std::abs(std::max({beta2, *std::max_element(beta2s.begin(), beta2s.end(), absComp),
                                                 beta1, *std::max_element(beta1s.begin(), beta1s.end(), absComp),
                                                 beta3, *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
 
   // space resolution. Note: pump step is smaller to calculate the value for intermediate RK4 steps
-  _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., maxDispLength, rayleighLength,
+  _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., minDispLength, rayleighLength,
                                                            *std::min_element(nlLength.begin(), nlLength.end())}));
   _nZStepsP = 2 * _nZSteps - 1;
   _dz = _z / _nZSteps;
@@ -120,9 +120,9 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
   // signal phase mis-match
   _diffBeta0 = diffBeta0;
 
-  // dispersion profile; all beta coefficients must be normalized with respect to some dispersion length scale
+  // dispersion profile
   _dispersionSign.resize(_nSignalModes);
-  _dispersionPump = _omega * (beta1  + _omega * (0.5 * beta2  + _omega * beta3  / 6));
+  _dispersionPump = _omega * (beta1 + _omega * (0.5 * beta2 + _omega * beta3 / 6));
   for (uint m = 0; m < _nSignalModes; m++)
     _dispersionSign[m] = _omega * (beta1s[m] + _omega * (0.5 * beta2s[m] + _omega * beta3s[m] / 6));
 
@@ -151,6 +151,7 @@ void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLe
     IFFT(_env, fftTemp)
   }
 }
+
 
 void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) {
   // custom initial time domain envelope

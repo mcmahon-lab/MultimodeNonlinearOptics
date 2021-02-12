@@ -213,6 +213,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
       "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
+
 /*
  * Chi2SFG
  */
