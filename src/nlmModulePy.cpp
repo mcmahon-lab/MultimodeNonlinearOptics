@@ -2,7 +2,18 @@
 #include <pybind11/eigen.h>
 #include <pybind11/stl.h>
 
-#include "NonlinearMedium.hpp"
+#include "_NonlinearMedium.hpp"
+#include "_FullyNonlinearMedium.hpp"
+#include "Cascade.hpp"
+#include "Chi3.cpp"
+#include "Chi2PDC.cpp"
+#include "Chi2SFG.cpp"
+#include "Chi2SFGPDC.cpp"
+#include "Chi2SFGII.cpp"
+#include "Chi2PDCII.cpp"
+#include "Chi2SHG.cpp"
+#include "Chi2SHGOPA.cpp"
+#include "Chi2DSFG.cpp"
 
 // Pybind11 Python binding
 
@@ -15,15 +26,17 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   py::class_<_NonlinearMedium> _NLMBase(m, "_NonlinearMedium", "Base class for nonlinear medium solvers");
   py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3", "Single mode self phase modulation");
-  py::class_<_Chi2, _NonlinearMedium> _Chi2Base(m, "_Chi2", "Base class for Chi(2) solvers");
-  py::class_<Chi2PDC, _Chi2> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
-  py::class_<Chi2SHG, _Chi2> Chi2SHG(m, "Chi2SHG", "Second harmonic generation");
-  py::class_<Chi2SFGPDC, _Chi2> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
-  py::class_<Chi2SFG, _Chi2> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
-  py::class_<Chi2PDCII, _Chi2> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
-  py::class_<Chi2SFGII, _Chi2> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
+  py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
+  py::class_<Chi2SFGPDC, _NonlinearMedium> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
+  py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
+  py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
+  py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
+  py::class_<_FullyNonlinearMedium, _NonlinearMedium> _FNLMBase(m, "_FullyNonlinearMedium", "Base class for fully nonlinear medium solvers");
+  py::class_<Chi2SHG, _FullyNonlinearMedium> Chi2SHG(m, "Chi2SHG", "Fully nonlinear second harmonic generation");
+  py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump.");
+  py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
 
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
@@ -106,6 +119,37 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "Read-only array of a signal frequency profile along the length of the medium.", "i"_a = 0);
   _NLMBase.def("signalTimes", &_NonlinearMedium::getSignalTime, py::return_value_policy::reference,
                "Read-only array of a signal time profile along the length of the medium.", "i"_a = 0);
+  _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
+                                 "Read-only array of the domain poling along the length of a Chi(2) medium.");
+
+
+/*
+ * _FullyNonlinearMedium
+ */
+
+  _FNLMBase.def("batchSignalSimulation",
+                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<char>&>(
+                    &_FullyNonlinearMedium::batchSignalSimulation),
+                py::return_value_policy::move,
+                "Run multiple signal simulations.\n"
+                "inputProfs   Profiles of input pulses. May be time or frequency domain.\n"
+                "             Note: Input is assumed to have self.omega or self.tau as the axis.\n"
+                "inTimeDomain Specify if the input is in time or frequency domain.\n"
+                "nThreads     Number of threads used to run simulations in parallel.\n"
+                "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.\n"
+                "useOutput    Specify which signal mode outputs to return. Default is all outputs.\n"
+                "return: Array of signal profiles at the output of the medium\n",
+                "inputProfs"_a, "inTimeDomain"_a = false, "nThreads"_a = 1,
+                "inputMode"_a = 0, "useOutput"_a = defCharVec);
+
+  _FNLMBase.def("setPump", py::overload_cast<int, double, double>(&_FullyNonlinearMedium::setPump),
+                "pulseType"_a, "chirp"_a = 0, "delay"_a = 0);
+  _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double>(&_FullyNonlinearMedium::setPump),
+                "customPump"_a, "chirp"_a = 0, "delay"_a = 0);
+  _FNLMBase.def("runPumpSimulation", &_FullyNonlinearMedium::runPumpSimulation);
+  _FNLMBase.def("computeGreensFunction", &_FullyNonlinearMedium::computeGreensFunction,
+                "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
+                "useInput"_a = defCharVec, "useOutput"_a = defCharVec);
 
 
 /*
@@ -119,14 +163,6 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation,
            "Simulate propagation the of pump field");
-
-
-/*
- * _Chi2
- */
-
-  _Chi2Base.def_property_readonly("poling", &_Chi2::getPoling, py::return_value_policy::reference,
-                                  "Read-only array of the domain poling along the length of the Chi(2) medium.");
 
 
 /*
@@ -146,19 +182,23 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SHG.def(
-#ifdef DEPLETESHG
-      py::init<double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-               double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "nlLengthP"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
-#else
-      py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-          double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
-#endif
+      py::init<double, double, double, double, double, double, double, double, double, double,
+               double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+
+
+/*
+ * Chi2DSFG
+ */
+
+  Chi2DSFG.def(
+      py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
+               double, double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthP"_a, "nlLengthS"_a, "nlLengthD"_a, "beta2p"_a, "beta2s"_a, "beta2d"_a,
+      "beta1p"_a = 0, "beta1s"_a = 0, "beta1d"_a = 0, "beta3p"_a = 0, "beta3s"_a = 0, "beta3d"_a = 0, "diffBeta0"_a = 0,
+      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
 
 /*
@@ -172,6 +212,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0,
       "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
       "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+
 
 /*
  * Chi2SFG
@@ -213,6 +254,19 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0,
       "diffBeta0s"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+
+
+/*
+ * Chi2SHGOPA
+ */
+
+  Chi2SHGOPA.def(
+      py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
+          double, double, double, double, double, double, double, double, uint , uint , const Eigen::Ref<const Arrayd>& >(),
+      "relativeLength"_a, "nlLengthP"_a, "nlLengthSH"_a, "nlLengthPA1"_a, "nlLengthPA2"_a,
+      "beta2p"_a, "beta2sh"_a, "beta2pa1"_a, "beta2pa2"_a, "beta1p"_a = 0, "beta1sh"_a = 0, "beta1pa1"_a = 0,
+      "beta1pa2"_a = 0, "beta3p"_a = 0, "beta3sh"_a = 0, "beta3pa1"_a = 0, "beta3pa2"_a = 0, "diffBeta0shg"_a = 0,
+      "diffBeta0opa"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
 
 /*

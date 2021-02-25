@@ -21,11 +21,16 @@ find_package(FFTW QUIET)
 find_package(pybind11 REQUIRED)
 
 # Generate Python module
-pybind11_add_module(nonlinearmedium NonlinearMedium.cpp nlmModulePy.cpp)
+include_directories(src solvers)
+file(GLOB sourceFiles "src/*.cpp")
+pybind11_add_module(nonlinearmedium ${sourceFiles})
 
 # Compile options for optimization
 set(COMPILE_FLAGS -Wall)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -fvisibility=hidden -flto")
+
+# Check what is/is not inlined
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winline")
 
 # Use FFTW if found
 if (FFTW_FOUND)
@@ -35,9 +40,9 @@ if (FFTW_FOUND)
 endif()
 
 # Preprocessor variables:
-if (DEPLETESHG)
-  add_definitions(-DDEPLETESHG)
-endif()
+#if (...)
+#  add_definitions(-D...)
+#endif()
 
 target_compile_options(nonlinearmedium PUBLIC ${COMPILE_FLAGS})
 

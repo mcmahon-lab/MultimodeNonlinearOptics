@@ -88,7 +88,7 @@ plt.xlabel("$\omega'$")
 plt.ylabel("$\omega$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar()
+plt.colorbar(orientation="horizontal")
 
 ax = fig.add_subplot(1, 2, 2)
 plt.imshow(np.abs(S), origin='lower')
@@ -102,7 +102,7 @@ plt.xlabel("$\omega'$")
 plt.ylabel("$\omega$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar()
+plt.colorbar(orientation="horizontal")
 
 # %% [markdown]
 # # Find covariance Matrix and Compare to Hosaka

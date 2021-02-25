@@ -75,21 +75,21 @@ plt.legend();
 # %%
 fig = plt.figure()
 ax = fig.add_subplot(1, 2, 1)
-plt.imshow(np.abs(fftshift(weakC)), origin='lower')
+plt.imshow(np.abs(weakC), origin="lower", aspect="auto")
 plt.title("$|C(\omega, \omega')|$")
 plt.xlabel("$\omega'$")
 plt.ylabel("$\omega$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar()
+plt.colorbar(orientation="horizontal")
 ax = fig.add_subplot(1, 2, 2)
-plt.imshow(np.abs(fftshift(weakS)), origin='lower')
+plt.imshow(np.abs(weakS), origin="lower", aspect="auto")
 plt.title("$|S(\omega, \omega')|$")
 plt.xlabel("$\omega'$")
 plt.ylabel("$\omega$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar();
+plt.colorbar(orientation="horizontal");
 
 # %% [markdown]
 # # Also test time domain Green's function
@@ -104,21 +104,21 @@ weakCT, weakST = crys.computeGreensFunction(runPump=False, inTimeDomain=True)
 # %%
 fig = plt.figure()
 ax = fig.add_subplot(1, 2, 1)
-plt.imshow(np.abs(weakCT), origin='lower')
+plt.imshow(np.abs(weakCT), origin="lower", aspect="auto")
 plt.title("$|C(t,t')|$")
 plt.xlabel("$t'$")
 plt.ylabel("$t$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar()
+plt.colorbar(orientation="horizontal")
 ax = fig.add_subplot(1, 2, 2)
-plt.imshow(np.abs(weakST), origin='lower')
+plt.imshow(np.abs(weakST), origin="lower", aspect="auto")
 plt.title("$|S(t,t')|$")
 plt.xlabel("$t'$")
 plt.ylabel("$t$")
 plt.gca().get_xaxis().set_ticks([])
 plt.gca().get_yaxis().set_ticks([])
-plt.colorbar();
+plt.colorbar(orientation="horizontal");
 
 # %%
 fig = plt.figure()

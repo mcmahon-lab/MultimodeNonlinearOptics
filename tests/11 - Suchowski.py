@@ -239,7 +239,7 @@ print("Simulation size", crystal.pumpTime.shape,
 fig = plt.figure()
 ax = fig.add_subplot(2, 1, 1)
 spatialFreqs = np.abs(fftshift(fft(crystal.poling)))
-plt.plot(2 * np.pi / (1e6 * length) * np.arange(-crystal.pumpTime.shape[0] / 2, crystal.pumpTime.shape[0] / 2),
+plt.plot(2 * np.pi / (1e6 * length) * np.arange(-crystal.signalTime.shape[0] / 2, crystal.signalTime.shape[0] / 2),
        spatialFreqs / np.max(spatialFreqs))
 plt.xlabel("$k_p ~ [\mu m^{-1}]$")
 plt.ylabel("$\chi^{(2)}_{eff}(k_z) ~/~ \chi^{(2)}$")
@@ -250,7 +250,7 @@ plt.plot([-diffBeta0sfg * 1e-9, -diffBeta0sfg * 1e-9, diffBeta0sfg * 1e-9, diffB
 plt.legend()
 
 ax = fig.add_subplot(2, 1, 2)
-plt.plot(length * np.arange(-crystal.pumpTime.shape[0] / 2, crystal.pumpTime.shape[0] / 2),
+plt.plot(length * np.arange(-crystal.signalTime.shape[0] / 2, crystal.signalTime.shape[0] / 2),
        crystal.poling)
 plt.xlabel("$p ~ [mm]$")
 plt.ylabel("$\chi^{(2)}_{eff}(z) ~/~ \chi^{(2)}$");
