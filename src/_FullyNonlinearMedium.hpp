@@ -16,6 +16,9 @@ public:
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) override {
     throw std::runtime_error("Object does not have this method.");
   }
+  void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength) override {
+    throw std::runtime_error("Object does not have this method.");
+  }
   void runPumpSimulation() override {
     throw std::runtime_error("Object does not have this method.");
   }

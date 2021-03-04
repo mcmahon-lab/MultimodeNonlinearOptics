@@ -23,6 +23,7 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   virtual void setPump(int pulseType, double chirpLength=0, double delayLength=0);
   virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0);
+  virtual void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength=0);
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);

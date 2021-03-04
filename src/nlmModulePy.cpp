@@ -64,6 +64,15 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "delay     Initial time delay of the pump, specified in walk-off lengths.\n",
                "customPump"_a, "chirp"_a = 0, "delay"_a = 0);
 
+  _NLMBase.def("setPump",
+               py::overload_cast<const _NonlinearMedium&, uint, double>(&_NonlinearMedium::setPump),
+               "Set the pump over the whole propagation length by copying from another simulation, accounting for the frame of reference\n"
+               "Note: do not call runPumpSimulation after this function or the pump simulation will be overwritten.\n"
+               "other     A NonlinearMedium instance with the same frequency axis, and resolution greater than or equal to the pump's.\n"
+               "modeIndex The index of the mode in 'other' to use as pump in this simulation.\n"
+               "delay     Initial time delay of the pump, specified in walk-off lengths.\n",
+               "other"_a, "modeIndex"_a = 0, "delay"_a = 0);
+
   _NLMBase.def("runPumpSimulation", &_NonlinearMedium::runPumpSimulation,
                "Simulate propagation of the pump field");
 
