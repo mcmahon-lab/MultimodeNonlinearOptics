@@ -61,8 +61,8 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., minDispLength, rayleighLength,
                                                            *std::min_element(nlLength.begin(), nlLength.end())}));
   _nZStepsP = 2 * _nZSteps - 1;
-  _dz = _z / _nZSteps;
-  _dzp = _z / _nZStepsP;
+  _dz = _z / (_nZSteps - 1);
+  _dzp = _z / (_nZStepsP - 1);
 
   // step sizes for the RK in the simulation
   _nlStep.resize(nlLength.size());
@@ -427,7 +427,7 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
     Arrayd poleDomains(poling.cols());
     // cumulative sum
     poleDomains(0) = poling(0);
-    for (int i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
+    for (uint i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
 
     poleDomains *= _nZSteps / poleDomains(poleDomains.cols()-1);
 
