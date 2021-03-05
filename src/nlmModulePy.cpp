@@ -14,6 +14,8 @@
 #include "Chi2SHG.cpp"
 #include "Chi2SHGOPA.cpp"
 #include "Chi2DSFG.cpp"
+#include "Chi2SFGXPM.cpp"
+#include "Chi2SHGXPM.cpp"
 
 // Pybind11 Python binding
 
@@ -31,12 +33,15 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
   py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
   py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
+  py::class_<Chi2SFGXPM, _NonlinearMedium> Chi2SFGXPM(m, "Chi2SFGXPM", "Sum (or difference) frequency generation with cross phase modulation");
+
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
   py::class_<_FullyNonlinearMedium, _NonlinearMedium> _FNLMBase(m, "_FullyNonlinearMedium", "Base class for fully nonlinear medium solvers");
   py::class_<Chi2SHG, _FullyNonlinearMedium> Chi2SHG(m, "Chi2SHG", "Fully nonlinear second harmonic generation");
-  py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump.");
+  py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump");
   py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
+  py::class_<Chi2SHGXPM, _FullyNonlinearMedium> Chi2SHGXPM(m, "Chi2SHGXPM", "Fully nonlinear second harmonic generation with self and cross phase modulation");
 
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
@@ -199,6 +204,18 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
 
 /*
+ * Chi2SHGXPM
+ */
+
+  Chi2SHGXPM.def(
+      py::init<double, double, double, double, double, double, double, double, double, double, double,
+          double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "nlLengthChi3"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+
+
+/*
  * Chi2DSFG
  */
 
@@ -277,6 +294,18 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "beta1pa2"_a = 0, "beta3p"_a = 0, "beta3sh"_a = 0, "beta3pa1"_a = 0, "beta3pa2"_a = 0, "diffBeta0shg"_a = 0,
       "diffBeta0opa"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
 
+
+/*
+ * Chi2SFGXPM
+ */
+
+  Chi2SFGXPM.def(
+      py::init<double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+          double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "nlLengthChi3"_a, "nlLengthChi3Orig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
+      "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 /*
  * Cascade
