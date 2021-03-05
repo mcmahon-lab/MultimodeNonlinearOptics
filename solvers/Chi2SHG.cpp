@@ -37,8 +37,8 @@ void Chi2SHG::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2,
   const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
 
   const double prevRelNL = prevPolDir * relIntPrv;
-  const double currRelNL = currPolDir * relIntInt;
-  const double intmRelNL = intmPolDir * relIntCur;
+  const double intmRelNL = intmPolDir * relIntInt;
+  const double currRelNL = currPolDir * relIntCur;
 
   const std::complex<double> prevMismatch = std::exp(1._I * _diffBeta0[0] * ((i- 1) * _dz));
   const std::complex<double> intmMismatch = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));
