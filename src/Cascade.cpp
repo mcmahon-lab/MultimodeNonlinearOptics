@@ -16,6 +16,7 @@ Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_Nonli
     media.emplace_back(medium);
     _nZSteps += medium.get()._nZSteps;
   }
+  _nZStepsP = 0;
 
   if (modeConnections.size() != media.size() - 1)
     throw std::invalid_argument("Must have one connection per pair of adjacent media");

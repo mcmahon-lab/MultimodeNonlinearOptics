@@ -61,8 +61,8 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., minDispLength, rayleighLength,
                                                            *std::min_element(nlLength.begin(), nlLength.end())}));
   _nZStepsP = 2 * _nZSteps - 1;
-  _dz = _z / _nZSteps;
-  _dzp = _z / _nZStepsP;
+  _dz = _z / (_nZSteps - 1);
+  _dzp = _z / (_nZStepsP - 1);
 
   // step sizes for the RK in the simulation
   _nlStep.resize(nlLength.size());
@@ -427,14 +427,14 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
     Arrayd poleDomains(poling.cols());
     // cumulative sum
     poleDomains(0) = poling(0);
-    for (int i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
+    for (uint i = 1; i < poling.cols(); i++) poleDomains(i) = poling(i) + poleDomains(i-1);
 
     poleDomains *= _nZSteps / poleDomains(poleDomains.cols()-1);
 
     _poling.resize(_nZSteps);
     uint prevInd = 0;
     int direction = 1;
-    for (int i = 0; i < poleDomains.cols(); i++) {
+    for (uint i = 0; i < poleDomains.cols(); i++) {
       const double currInd = poleDomains(i);
       const uint currIndRound = static_cast<uint>(currInd);
 
@@ -450,4 +450,33 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
       prevInd = currIndRound + 1;
     }
   }
+}
+
+
+void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, double delayLength) {
+  if (other._nFreqs != _nFreqs || other._tMax != _tMax)
+    throw std::invalid_argument("Medium does not have same time and frequency axes as this one");
+
+  if (modeIndex >= _nSignalModes)
+    throw std::invalid_argument("Mode index larger than number of modes in medium");
+
+  if (other._nZSteps < _nZSteps)
+    throw std::invalid_argument("Medium does not have sufficient resolution to be used with this one");
+
+  RowVectorcd fftTemp(_nFreqs);
+  auto delay = 1._I * _beta1 * delayLength * _omega;
+  for (uint i = 0; i < _nZStepsP - 1; i++) {
+    double j_ = i * (static_cast<double>(other._nZSteps - 1) / (_nZStepsP - 1)); // integer overflow danger
+    uint j = static_cast<uint>(j_);
+    double frac = j_ - j;
+
+    pumpFreq.row(i) = ((1 - frac) * other.signalFreq[modeIndex].row(j) + frac * other.signalFreq[modeIndex].row(j+1))
+        * ((1._I * (i * _dzp)) * _dispersionPump - (1._I * (j_ + 0.5) * other._dz) * other._dispersionSign[modeIndex] + delay).exp();
+
+    IFFT(pumpTime.row(i), pumpFreq.row(i))
+  }
+  pumpFreq.bottomRows<1>() = other.signalFreq[modeIndex].bottomRows<1>()
+      * ((1._I * _z) * _dispersionPump - (1._I * other._z) * other._dispersionSign[modeIndex] + delay).exp();
+
+  IFFT(pumpTime.bottomRows<1>(), pumpFreq.bottomRows<1>())
 }

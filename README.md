@@ -138,6 +138,21 @@ A<sub>p</sub>'(z, t) = D&#770; A<sub>p</sub> +
 
 Noise reduction by self phase modulation.
 
+###### Chi2SFGXPM
+<span>
+A&#8320;'(z, t) = D&#770; A&#8320; +
+<i>i L</i><sub>NL0</sub><sup>-1</sup> A<sub>p</sub> A&#8321;
+e<sup><i>i</i> &#916;<i>k z</i></sup>
++ 2 <i>i L</i><sub>NL2</sub><sup>-1</sup> |A<sub>p</sub>|&#178; A&#8320;
+<br>
+A&#8321;'(z, t) = D&#770; A&#8321; +
+<i>i L</i><sub>NL1</sub><sup>-1</sup> A<sub>p</sub><sup>&#8224;</sup> A&#8320;
+e<sup>-<i>i</i> &#916;<i>k z</i></sup>
++ 2 <i>i L</i><sub>NL3</sub><sup>-1</sup> |A<sub>p</sub>|&#178; A&#8321;
+</span>
+
+Sum (or difference) frequency generation with cross phase modulation.
+
 ###### Pump equation
 Unless specified otherwise, the pump propagates influenced only by dispersion, and the effective intensity scales according Rayleigh length.
 
@@ -203,3 +218,18 @@ e<sup>-<i>i</i> &#916;<i>k&#8321; z</i></sup>
 </span>
 
 Non-degenerate optical parametric amplification driven by second harmonic generation.
+
+###### Chi2SHGXPM
+<span>
+A&#8320;'(z, t) = D&#770; A&#8320; +
+<i>i L</i><sub>NL0</sub><sup>-1</sup> A&#8321; A&#8320;<sup>&#8224;</sup>
+e<sup><i>i</i> &#916;<i>k z</i></sup>
++ <i>i L</i><sub>NL2</sub><sup>-1</sup> (|A&#8320;|&#178; + 2 |A&#8321;|&#178;) A&#8320;
+<br>
+A&#8321;'(z, t) = D&#770; A&#8321; +
+&frac12 <i>i L</i><sub>NL1</sub><sup>-1</sup> A&#8320;&#178;
+e<sup>-<i>i</i> &#916;<i>k z</i></sup>
++ 2 <i>i L</i><sub>NL2</sub><sup>-1</sup> (2 |A&#8320;|&#178; + |A&#8321;|&#178;) A&#8321;
+</span>
+
+Second harmonic generation with self and cross phase modulation.

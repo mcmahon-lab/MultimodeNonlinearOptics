@@ -44,8 +44,8 @@ void Chi2SHGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
 
   const double prevRelNL = prevPolDir * relIntPrv;
-  const double currRelNL = currPolDir * relIntInt;
-  const double intmRelNL = intmPolDir * relIntCur;
+  const double intmRelNL = intmPolDir * relIntInt;
+  const double currRelNL = currPolDir * relIntCur;
 
   const std::complex<double> prevMismatchSHG = std::exp(1._I * _diffBeta0[0] * ((i- 1) * _dz));
   const std::complex<double> intmMismatchSHG = std::exp(1._I * _diffBeta0[0] * ((i-.5) * _dz));

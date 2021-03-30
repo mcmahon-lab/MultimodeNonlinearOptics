@@ -37,7 +37,20 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
   return NL
 
 
-def calculateChi3NlLength(gamma, peakPower):
+def calculateChi3NlLength(n2, wavelength, peakPower, beamRadius):
+  """
+  Return nonlinear length (meters).
+  n2: nonlinear index in (cm^2 W^-1)
+  wavelength: in nm
+  peakPower: pulse peak power (W)
+  beamRadius: effective radius of the beam, to calculate intensity (m)
+  """
+  gamma = 2 * np.pi * n2 / (wavelength * np.pi * beamRadius**2)
+  NL = 1e-5 / (peakPower * gamma)
+  return NL
+
+
+def calculateChi3NlLengthGamma(gamma, peakPower):
   """
   Return nonlinear length (meters).
   gamma: nonlinear coefficient (W^-1 km^-1); gamma = 2 pi n_2 / (lambda A_eff)
