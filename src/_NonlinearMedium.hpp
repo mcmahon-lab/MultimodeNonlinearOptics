@@ -27,10 +27,11 @@ public:
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
-  virtual std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
-                                                                const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
-  virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false, bool runPump=true, uint nThreads=1,
-                                          uint inputMode=0, const std::vector<char>& useOutput={});
+  virtual std::pair<Array2Dcd, Array2Dcd>
+      computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
+                            const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
+  virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
+                                          bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={});
 
   const Array2Dcd& getPumpFreq() {return pumpFreq;};
   const Array2Dcd& getPumpTime() {return pumpTime;};
@@ -49,11 +50,11 @@ protected:
                    double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
-                         double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
-                         double beta3, const std::vector<double>& beta3s);
+                  double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
+                  double beta3, const std::vector<double>& beta3s);
   void resetGrids(uint nFreqs, double tMax);
   void setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
-                            double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
+                     double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
   _NonlinearMedium() : _nSignalModes() {};
   _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes) {}
 
@@ -70,13 +71,13 @@ protected:
   static inline Array2Dcd fftshift2(const Array2Dcd& input);
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
-  double _z;  /// length of medium
-  double _dz;    /// length increment of the signal simulation
-  double _dzp;   /// length increment of the pump simulation
-  uint _nZSteps; /// number of length steps in simulating the PDE
+  double _z;      /// length of medium
+  double _dz;     /// length increment of the signal simulation
+  double _dzp;    /// length increment of the pump simulation
+  uint _nZSteps;  /// number of length steps in simulating the PDE
   uint _nZStepsP; /// number of length steps in simulating the pump, larger to calculate values at RK4 intermediate steps
-  uint _nFreqs;  /// number of frequency/time bins in the simulating the PDE
-  double _tMax;  /// positive and negative extent of the simulation window in time
+  uint _nFreqs;   /// number of frequency/time bins in the simulating the PDE
+  double _tMax;   /// positive and negative extent of the simulation window in time
   double _beta2;  /// second order dispersion of the pump
   double _beta1;  /// relative group velocity of the pump
   double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
@@ -95,8 +96,8 @@ protected:
   Arraycd _dispStepPump; /// incremental phase due to dispersion over length dz for the pump
   std::vector<Arraycd> _dispStepSign; /// incremental phase due to dispersion over length dz for the signal
 
-  Array2Dcd pumpFreq;   /// grid for numerically solving PDE, representing pump propagation in frequency domain
-  Array2Dcd pumpTime;   /// grid for numerically solving PDE, representing pump propagation in time domain
+  Array2Dcd pumpFreq; /// grid for numerically solving PDE, representing pump propagation in frequency domain
+  Array2Dcd pumpTime; /// grid for numerically solving PDE, representing pump propagation in time domain
   std::vector<Array2Dcd> signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
