@@ -90,7 +90,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "inputProf    Profile of input pulse. May be time or frequency domain.\n"
                "             Note: Input is assumed to have self.omega or self.tau as the axis.\n"
                "inTimeDomain Specify if the input is in time or frequency domain.\n"
-               "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.\n",
+               "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.",
                "inputProf"_a, "inTimeDomain"_a = true, "inputMode"_a = 0);
 
   _NLMBase.def("computeGreensFunction",
@@ -102,7 +102,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "normalize    Whether to adjust the final matrix so that amplitudes are converted 1-to-1 between different modes.\n"
                "useInput     Specify which inputs modes to include in the transformation. Default is all inputs.\n"
                "useOutput    Specify which output modes to include in the transformation. Default is all outputs.\n"
-               "return: Green's function matrices C, S\n",
+               "return: Green's function matrices C, S",
                "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
                "useInput"_a = defCharVec, "useOutput"_a = defCharVec);
 
@@ -116,7 +116,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "nThreads     Number of threads used to run simulations in parallel.\n"
                "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.\n"
                "useOutput    Specify which signal mode outputs to return. Default is all outputs.\n"
-               "return: Array of signal profiles at the output of the medium\n",
+               "return: Array of signal profiles at the output of the medium",
                "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1,
                "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
@@ -159,7 +159,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                 "nThreads     Number of threads used to run simulations in parallel.\n"
                 "inputMode    Specify which signal mode of the nonlinear medium the input corresponds to.\n"
                 "useOutput    Specify which signal mode outputs to return. Default is all outputs.\n"
-                "return: Array of signal profiles at the output of the medium\n",
+                "return: Array of signal profiles at the output of the medium",
                 "inputProfs"_a, "inTimeDomain"_a = false, "nThreads"_a = 1,
                 "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
