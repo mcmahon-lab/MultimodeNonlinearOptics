@@ -1,7 +1,7 @@
 #include "Cascade.hpp"
 
-Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
-                 const std::vector<std::map<uint, uint>>& modeConnections) {
+Cascade::Cascade(const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
+                 const std::vector<std::map<uint, uint>>& modeConnections, bool sharePump) {
 
   if (inputMedia.empty())
     throw std::invalid_argument("Cascade must contain at least one medium");

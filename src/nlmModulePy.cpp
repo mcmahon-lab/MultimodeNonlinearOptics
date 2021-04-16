@@ -320,8 +320,9 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  * Cascade
  */
 
-  Cascade.def(py::init<bool, const std::vector<std::reference_wrapper<_NonlinearMedium>>&, std::vector<std::map<uint, uint>>&>(),
-              "sharePump"_a, "inputMedia"_a, "modeConnections"_a);
+  Cascade.def(py::init<const std::vector<std::reference_wrapper<_NonlinearMedium>>&, std::vector<std::map<uint, uint>>&, bool>(),
+              "inputMedia"_a, "modeConnections"_a, "sharePump"_a,
+              py::keep_alive<1, 2>());
 
   Cascade.def("setPump",
               py::overload_cast<int, double, double, uint>(&Cascade::setPump),
@@ -352,7 +353,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
   Cascade.def("addMedium", &Cascade::addMedium,
-              "medium"_a, "connection"_a);
+              "medium"_a, "connection"_a,
+              py::keep_alive<1, 2>());
 
   Cascade.def_property_readonly("omega", &Cascade::getFrequency, py::return_value_policy::reference);
   Cascade.def_property_readonly("tau", &Cascade::getTime, py::return_value_policy::reference);

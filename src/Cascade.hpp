@@ -5,8 +5,8 @@
 
 class Cascade : public _NonlinearMedium {
 public:
-  Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
-          const std::vector<std::map<uint, uint>>& connections);
+  Cascade(const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
+          const std::vector<std::map<uint, uint>>& connections, bool sharePump);
   void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
 
   void setPump(int pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
