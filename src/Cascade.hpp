@@ -8,8 +8,13 @@ public:
   Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
           const std::vector<std::map<uint, uint>>& connections);
   void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
-  void setPump(int pulseType, double chirpLength=0, double delayLength=0) override;
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0) override;
+
+  void setPump(int pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
+  void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength, uint pumpIndex) override {
+    throw std::runtime_error("Object does not have this method.");
+  }
+
   void runPumpSimulation() override;
   void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0) override;
   std::pair<Array2Dcd, Array2Dcd> computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,

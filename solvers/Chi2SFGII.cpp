@@ -24,9 +24,9 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengt
                      double beta3, double beta3sz, double beta3sy, double beta3oz, double beta3oy,
                      double diffBeta0z, double diffBeta0y, double diffBeta0s, double rayleighLength,
                      double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthSignZ, nlLengthSignY, nlLengthOrigZ, nlLengthOrigY},
-                   beta2, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, beta1, {beta1sz, beta1sy, beta1oz, beta1oy},
-                   beta3, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0s},
+  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLengthSignZ, nlLengthSignY, nlLengthOrigZ, nlLengthOrigY},
+                   {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
+                   {beta3}, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0s},
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
@@ -38,9 +38,9 @@ void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k
   const auto& prevOz = signal[2].row(i-1);
   const auto& prevOy = signal[3].row(i-1);
 
-  const auto& prevP = pumpTime.row(2*i-2);
-  const auto& intrP = pumpTime.row(2*i-1);
-  const auto& currP = pumpTime.row(2*i);
+  const auto& prevP = pumpTime[0].row(2*i-2);
+  const auto& intrP = pumpTime[0].row(2*i-1);
+  const auto& currP = pumpTime[0].row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);
