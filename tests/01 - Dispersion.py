@@ -157,7 +157,7 @@ plt.xlabel("length");
 # %%
 plt.figure()
 for i in range(6):
-    profile = np.abs(fiber.pumpTime[int(499 * i / 5)])
+    profile = np.abs(fiber.pumpTime[int((fiber.pumpTime.shape[0]-1) * i / 5)])
     plt.plot(fftshift(fiber.tau), fftshift(profile / np.max(profile)), label="z="+str(i))
 for i in range(5,-1, -1):
     plt.plot(np.sqrt(1 + i**2) * np.array([-1, 1]), [np.exp(-0.5), np.exp(-0.5)])
