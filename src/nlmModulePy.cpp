@@ -11,6 +11,7 @@
 #include "Chi2SFGPDC.cpp"
 #include "Chi2SFGII.cpp"
 #include "Chi2PDCII.cpp"
+#include "Chi2SFGOPA.cpp"
 #include "Chi2SHG.cpp"
 #include "Chi2SHGOPA.cpp"
 #include "Chi2DSFG.cpp"
@@ -34,6 +35,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
   py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
   py::class_<Chi2SFGXPM, _NonlinearMedium> Chi2SFGXPM(m, "Chi2SFGXPM", "Sum (or difference) frequency generation with cross phase modulation");
+  py::class_<Chi2SFGOPA, _NonlinearMedium> Chi2SFGOPA(m, "Chi2SFGOPA", "Simultaneous sum frequency generation and non-degenerate optical parametric amplification with two pumps");
 
   py::class_<Cascade, _NonlinearMedium> Cascade(m, "Cascade");
 
@@ -289,6 +291,20 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0,
       "diffBeta0s"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+
+
+/*
+ * Chi2SFGOPA
+ */
+
+  Chi2SFGOPA.def(
+      py::init<double, double, double, double, double, double, double, double, double, const Eigen::Ref<const Arraycd>&,
+               int, double, double, double, double, double, double, double, double, double, double, double,
+                double, double, uint, uint, double, double, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthFh"_a, "nlLengthHh"_a, "nlLengthFf"_a, "nlLengthHf"_a, "beta2F"_a, "beta2H"_a, "beta2h"_a,
+      "beta2f"_a, "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0,
+      "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0, "diffBeta0SFG"_a = 0, "diffBeta0OPA"_a = 0, "diffBeta0DOPA"_a = 0,
+      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*

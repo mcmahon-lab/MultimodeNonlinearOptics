@@ -153,6 +153,24 @@ e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 
 Sum (or difference) frequency generation with cross phase modulation.
 
+###### Chi2SFGOPA
+<span>
+A&#8320;'(z, t) = D&#770; A&#8320; +
+<i>i L</i><sub>NL0</sub><sup>-1</sup> A<sub>p0</sub> A&#8321;
+e<sup><i>i</i> &#916;<i>k&#8320; z</i></sup> +
+<i>i L</i><sub>NL1</sub><sup>-1</sup> A<sub>p1</sub> A&#8321;<sup>&#8224;</sup>
+e<sup><i>i</i> &#916;<i>k&#8321; z</i></sup>
+<br>
+A&#8321;'(z, t) = D&#770; A&#8321; + 
+<i>i L</i><sub>NL2</sub><sup>-1</sup>
+(A<sub>p0</sub><sup>&#8224;</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8320; z</i></sup> +
+ A<sub>p0</sub> A&#8321;<sup>&#8224;</sup> e<sup><i>i</i> &#916;<i>k&#8322; z</i></sup>) +
+<i>i L</i><sub>NL3</sub><sup>-1</sup> A<sub>p1</sub> A&#8320;<sup>&#8224;</sup>
+e<sup><i>i</i> &#916;<i>k&#8321; z</i></sup>
+</span>
+
+Simultaneous sum frequency generation and non-degenerate optical parametric amplification with two pumps.
+
 ###### Pump equation
 Unless specified otherwise, the pump propagates influenced only by dispersion, and the effective intensity scales according Rayleigh length.
 
