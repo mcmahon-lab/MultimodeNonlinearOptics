@@ -22,7 +22,7 @@ Chi2SFGOPA::Chi2SFGOPA(double relativeLength, double nlLengthFh, double nlLength
                        double beta3h, double beta3f, double diffBeta0SFG, double diffBeta0OPA, double diffBeta0DOPA,
                        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
                        const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 2, true, relativeLength, {nlLengthFh, nlLengthHh, nlLengthFf, nlLengthHf}, {beta2F, beta2H},
+  _NonlinearMedium(_nSignalModes, 2, true, relativeLength, {nlLengthFh, nlLengthFf, nlLengthHh, nlLengthHf}, {beta2F, beta2H},
                    {beta2h, beta2f}, customPump, pulseType, {beta1F, beta1H}, {beta1h, beta1f}, {beta3F, beta3H}, {beta3h, beta3f},
                    {diffBeta0SFG, diffBeta0OPA, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
@@ -57,17 +57,17 @@ void Chi2SFGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const std::complex<double> intmMismatchDOPA = std::exp(1._I * _diffBeta0[2] * ((i-.5) * _dz));
   const std::complex<double> currMismatchDOPA = std::exp(1._I * _diffBeta0[2] * ( i     * _dz));
 
-  k1[0] = prevPolDir * (_nlStep[1] * prevMismatchOPA * prevP1 * prevF.conjugate() + _nlStep[0] *  prevMismatchSFG * prevP0 * prevF);
-  k1[1] = prevPolDir * (_nlStep[3] * prevMismatchOPA * prevP1 * prevH.conjugate() + _nlStep[2] * (prevInvMsmchSFG * prevP0.conjugate() * prevH + prevMismatchDOPA * prevP0 * prevF.conjugate()));
+  k1[0] = prevPolDir * (_nlStep[2] * prevMismatchOPA * prevP1 * prevF.conjugate() + _nlStep[0] *  prevMismatchSFG * prevP0 * prevF);
+  k1[1] = prevPolDir * (_nlStep[3] * prevMismatchOPA * prevP1 * prevH.conjugate() + _nlStep[1] * (prevInvMsmchSFG * prevP0.conjugate() * prevH + prevMismatchDOPA * prevP0 * prevF.conjugate()));
 
-  k2[0] = intmPolDir * (_nlStep[1] * intmMismatchOPA * intrP1 * (prevF + 0.5 * k1[1]).conjugate() + _nlStep[0] *  intmMismatchSFG * intrP0 * (prevF + 0.5 * k1[1]));
-  k2[1] = intmPolDir * (_nlStep[3] * intmMismatchOPA * intrP1 * (prevH + 0.5 * k1[0]).conjugate() + _nlStep[2] * (intmInvMsmchSFG * intrP0.conjugate() * (prevH + 0.5 * k1[0]) + intmMismatchDOPA * intrP0 * (prevF + 0.5 * k1[1]).conjugate()));
+  k2[0] = intmPolDir * (_nlStep[2] * intmMismatchOPA * intrP1 * (prevF + 0.5 * k1[1]).conjugate() + _nlStep[0] *  intmMismatchSFG * intrP0 * (prevF + 0.5 * k1[1]));
+  k2[1] = intmPolDir * (_nlStep[3] * intmMismatchOPA * intrP1 * (prevH + 0.5 * k1[0]).conjugate() + _nlStep[1] * (intmInvMsmchSFG * intrP0.conjugate() * (prevH + 0.5 * k1[0]) + intmMismatchDOPA * intrP0 * (prevF + 0.5 * k1[1]).conjugate()));
 
-  k3[0] = intmPolDir * (_nlStep[1] * intmMismatchOPA * intrP1 * (prevF + 0.5 * k2[1]).conjugate() + _nlStep[0] *  intmMismatchSFG * intrP0 * (prevF + 0.5 * k2[1]));
-  k3[1] = intmPolDir * (_nlStep[3] * intmMismatchOPA * intrP1 * (prevH + 0.5 * k2[0]).conjugate() + _nlStep[2] * (intmInvMsmchSFG * intrP0.conjugate() * (prevH + 0.5 * k2[0]) + intmMismatchDOPA * intrP0 * (prevF + 0.5 * k2[1]).conjugate()));
+  k3[0] = intmPolDir * (_nlStep[2] * intmMismatchOPA * intrP1 * (prevF + 0.5 * k2[1]).conjugate() + _nlStep[0] *  intmMismatchSFG * intrP0 * (prevF + 0.5 * k2[1]));
+  k3[1] = intmPolDir * (_nlStep[3] * intmMismatchOPA * intrP1 * (prevH + 0.5 * k2[0]).conjugate() + _nlStep[1] * (intmInvMsmchSFG * intrP0.conjugate() * (prevH + 0.5 * k2[0]) + intmMismatchDOPA * intrP0 * (prevF + 0.5 * k2[1]).conjugate()));
 
-  k4[0] = currPolDir * (_nlStep[1] * currMismatchOPA * currP1 * (prevF + k3[1]).conjugate() + _nlStep[0] *  currMismatchSFG * currP0 * (prevF + k3[1]));
-  k4[1] = currPolDir * (_nlStep[3] * currMismatchOPA * currP1 * (prevH + k3[0]).conjugate() + _nlStep[2] * (currInvMsmchSFG * currP0.conjugate() * (prevH + k3[0]) + currMismatchDOPA * currP0 * (prevF + k3[1]).conjugate()));
+  k4[0] = currPolDir * (_nlStep[2] * currMismatchOPA * currP1 * (prevF + k3[1]).conjugate() + _nlStep[0] *  currMismatchSFG * currP0 * (prevF + k3[1]));
+  k4[1] = currPolDir * (_nlStep[3] * currMismatchOPA * currP1 * (prevH + k3[0]).conjugate() + _nlStep[1] * (currInvMsmchSFG * currP0.conjugate() * (prevH + k3[0]) + currMismatchDOPA * currP0 * (prevF + k3[1]).conjugate()));
 }
 
 #endif //CHI2SFGOPA
