@@ -25,7 +25,7 @@ Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Re
 void Chi3::runPumpSimulation() {
   RowVectorcd fftTemp(_nFreqs);
 
-  FFTtimes(pumpFreq[0].row(0), _env[0], ((0.5_I * _dzp) * _dispersionPump[0]).exp())
+  FFTtimes(pumpFreq[0].row(0), _envelope[0], ((0.5_I * _dzp) * _dispersionPump[0]).exp())
   IFFT(pumpTime[0].row(0), pumpFreq[0].row(0))
 
   Eigen::VectorXcd relativeStrength = (_dzp / _dz * _nlStep[0]) /

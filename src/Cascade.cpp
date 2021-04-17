@@ -81,7 +81,7 @@ void Cascade::runPumpSimulation() {
   else {
     media[0].get().runPumpSimulation();
     for (uint i = 1; i < media.size(); i++) {
-      media[i].get()._env[0] = media[i-1].get().pumpTime[0].bottomRows<1>();
+      media[i].get()._envelope[0] = media[i-1].get().pumpTime[0].bottomRows<1>();
       media[i].get().runPumpSimulation();
     }
   }

@@ -88,7 +88,7 @@ protected:
   std::vector<double> _diffBeta0; /// wave-vector mismatch of the simulated process
   std::vector<std::complex<double>> _nlStep; /// strength of nonlinear process over length dz
 
-  std::vector<Arraycd> _env; /// initial envelope of the pump
+  std::vector<Arraycd> _envelope; /// initial envelope of the pump
   Arrayd _poling; /// array representing the poling direction at a given point on the grid.
 
   Arrayd _tau;   /// array representing the time axis

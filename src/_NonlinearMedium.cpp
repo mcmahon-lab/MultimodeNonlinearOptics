@@ -18,7 +18,8 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
   if (canBePoled)
     setPoling(poling);
-  _env.resize(_nPumpModes);
+
+  _envelope.resize(_nPumpModes);
   if (customPump.size() != 0)
     setPump(customPump, chirp, delay);
   else
@@ -161,18 +162,18 @@ void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLe
 
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   if (pulseType == 1)
-    _env[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
+    _envelope[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
   else if (pulseType == 2) {
-    _env[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
-    _env[pumpIndex](0) = 1;
+    _envelope[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
+    _envelope[pumpIndex](0) = 1;
   }
   else
-    _env[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
+    _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
 
   if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
-    IFFT(_env[pumpIndex], fftTemp)
+    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
 
@@ -184,12 +185,12 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
   if (pumpIndex >= _nPumpModes)
     throw std::invalid_argument("Invalid pump index");
 
-  _env[pumpIndex] = customPump;
+  _envelope[pumpIndex] = customPump;
 
   if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
-    IFFT(_env[pumpIndex], fftTemp)
+    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
 
@@ -198,8 +199,8 @@ void _NonlinearMedium::runPumpSimulation() {
   RowVectorcd fftTemp(_nFreqs);
 
   for (uint m = 0; m < _nPumpModes; m++) {
-    FFT(pumpFreq[m].row(0), _env[m])
-    pumpTime[m].row(0) = _env[m];
+    FFT(pumpFreq[m].row(0), _envelope[m])
+    pumpTime[m].row(0) = _envelope[m];
 
     for (uint i = 1; i < _nZStepsP; i++) {
       pumpFreq[m].row(i) = pumpFreq[m].row(0) * (1._I * (i * _dzp) * _dispersionPump[m]).exp();
