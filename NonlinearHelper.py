@@ -304,6 +304,7 @@ def periodicPoling(deltaBeta0, L):
   nDomains  = 2 * L / polPeriod
   poling = np.ones(int(nDomains) + int(np.ceil(nDomains % 1)))
   poling[-1] = nDomains % 1
+  poling *= L / np.sum(poling)
   return poling
 
 
