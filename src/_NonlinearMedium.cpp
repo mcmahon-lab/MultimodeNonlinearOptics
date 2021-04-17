@@ -16,6 +16,7 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
+
   if (canBePoled)
     setPoling(poling);
 
@@ -24,6 +25,8 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
     setPump(customPump, chirp, delay);
   else
     setPump(pulseType, chirp, delay);
+  for (uint m = 1; m < _nPumpModes; m++)
+    _envelope[m].setZero(_nFreqs);
 }
 
 
