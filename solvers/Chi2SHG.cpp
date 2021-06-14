@@ -18,8 +18,8 @@ Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, doub
                  double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
                  double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                  const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthH, nlLengthP}, {beta2h, beta2p}, {beta1h, beta1p},
-                        {beta3h, beta3p}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, poling)
+  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
+                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, poling)
 {}
 
 

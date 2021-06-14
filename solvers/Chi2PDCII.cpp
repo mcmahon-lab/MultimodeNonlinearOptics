@@ -21,8 +21,8 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig
                      double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                      double diffBeta0, double diffBeta0o, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                      double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, true, relativeLength, {nlLength, nlLengthOrig, nlLengthI}, beta2, {beta2s, beta2o},
-                   customPump, pulseType, beta1, {beta1s, beta1o}, beta3, {beta3s, beta3o}, {diffBeta0, diffBeta0o},
+  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength, nlLengthOrig, nlLengthI}, {beta2}, {beta2s, beta2o},
+                   customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0, diffBeta0o},
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
@@ -32,9 +32,9 @@ void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k
   const auto& prevS = signal[0].row(i-1);
   const auto& prevO = signal[1].row(i-1);
 
-  const auto& prevP = pumpTime.row(2*i-2);
-  const auto& intrP = pumpTime.row(2*i-1);
-  const auto& currP = pumpTime.row(2*i);
+  const auto& prevP = pumpTime[0].row(2*i-2);
+  const auto& intrP = pumpTime[0].row(2*i-1);
+  const auto& currP = pumpTime[0].row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);

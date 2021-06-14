@@ -304,6 +304,7 @@ def periodicPoling(deltaBeta0, L):
   nDomains  = 2 * L / polPeriod
   poling = np.ones(int(nDomains) + int(np.ceil(nDomains % 1)))
   poling[-1] = nDomains % 1
+  poling *= L / np.sum(poling)
   return poling
 
 
@@ -399,20 +400,20 @@ def combinePoling(polingA, polingB, tol):
           cumulative += polingA[indexA]
           indexA += 1
           remainingA = polingA[indexA % polingA.size]
-      combinedDomains.append(cumulative)
+      if cumulative > 0: combinedDomains.append(cumulative)
 
     if remainingA > remainingB:
-      combinedDomains.append(remainingB)
+      if remainingB > 0: combinedDomains.append(remainingB)
       remainingA -= remainingB
       indexB += 1
       remainingB = polingB[indexB % polingB.size]
     else:
-      combinedDomains.append(remainingA)
+      if remainingA > 0: combinedDomains.append(remainingA)
       remainingB -= remainingA
       indexA += 1
       remainingA = polingA[indexA % polingA.size]
 
-  combinedDomains.append(min(remainingA, remainingB))
+  if min(remainingA, remainingB) > 0: combinedDomains.append(min(remainingA, remainingB))
 
   if indexA < polingA.size-1:
     for i in range(indexA, polingA.size):

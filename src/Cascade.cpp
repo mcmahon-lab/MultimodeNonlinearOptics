@@ -1,7 +1,7 @@
 #include "Cascade.hpp"
 
-Cascade::Cascade(bool sharePump, const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
-                 const std::vector<std::map<uint, uint>>& modeConnections) {
+Cascade::Cascade(const std::vector<std::reference_wrapper<_NonlinearMedium>>& inputMedia,
+                 const std::vector<std::map<uint, uint>>& modeConnections, bool sharePump) {
 
   if (inputMedia.empty())
     throw std::invalid_argument("Cascade must contain at least one medium");
@@ -52,22 +52,22 @@ void Cascade::addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& co
 }
 
 
-void Cascade::setPump(int pulseType, double chirpLength, double delayLength) {
+void Cascade::setPump(int pulseType, double chirpLength, double delayLength, uint pumpIndex) {
   if (sharedPump)
-    media[0].get().setPump(pulseType, chirpLength, delayLength);
+    media[0].get().setPump(pulseType, chirpLength, delayLength, pumpIndex);
   else {
     for (auto& medium : media)
-      medium.get().setPump(pulseType, chirpLength, delayLength);
+      medium.get().setPump(pulseType, chirpLength, delayLength, pumpIndex);
   }
 }
 
 
-void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) {
+void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) {
   if (sharedPump)
-    media[0].get().setPump(customPump, chirpLength, delayLength);
+    media[0].get().setPump(customPump, chirpLength, delayLength, pumpIndex);
   else {
     for (auto& medium : media)
-      medium.get().setPump(customPump, chirpLength, delayLength);
+      medium.get().setPump(customPump, chirpLength, delayLength, pumpIndex);
   }
 }
 
@@ -81,7 +81,7 @@ void Cascade::runPumpSimulation() {
   else {
     media[0].get().runPumpSimulation();
     for (uint i = 1; i < media.size(); i++) {
-      media[i].get()._env = media[i-1].get().pumpTime.bottomRows<1>();
+      media[i].get()._envelope[0] = media[i-1].get().pumpTime[0].bottomRows<1>();
       media[i].get().runPumpSimulation();
     }
   }

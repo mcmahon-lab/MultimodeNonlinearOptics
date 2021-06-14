@@ -20,8 +20,8 @@ Chi2SFGXPM::Chi2SFGXPM(double relativeLength, double nlLength, double nlLengthOr
                        double beta2, double beta2s, double beta2o, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
                        double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o, double diffBeta0, double rayleighLength,
                        double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, true, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
-                   beta2, {beta2s, beta2o}, customPump, pulseType, beta1, {beta1s, beta1o}, beta3, {beta3s, beta3o},
+  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
+                   {beta2}, {beta2s, beta2o}, customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o},
                    {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
@@ -30,9 +30,9 @@ void Chi2SFGXPM::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& 
   const auto& prevS = signal[0].row(i-1);
   const auto& prevO = signal[1].row(i-1);
 
-  const auto& prevP = pumpTime.row(2*i-2);
-  const auto& intrP = pumpTime.row(2*i-1);
-  const auto& currP = pumpTime.row(2*i);
+  const auto& prevP = pumpTime[0].row(2*i-2);
+  const auto& intrP = pumpTime[0].row(2*i-1);
+  const auto& currP = pumpTime[0].row(2*i);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);

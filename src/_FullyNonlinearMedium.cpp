@@ -7,7 +7,7 @@ _FullyNonlinearMedium::_FullyNonlinearMedium(uint nSignalmodes, bool canBePoled,
                                              uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium(nSignalmodes)
 {
-  setLengths(relativeLength, nlLength, zPrecision, rayleighLength, 0, beta2s, 0, beta1s, 0, beta3s);
+  setLengths(relativeLength, nlLength, zPrecision, rayleighLength, {0}, beta2s, {0}, beta1s, {0}, beta3s);
   _dzp = _nZStepsP = 0;
   resetGrids(tPrecision, tMax);
   _FullyNonlinearMedium::setDispersion(beta2s, beta1s, beta3s, diffBeta0);

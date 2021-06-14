@@ -4,28 +4,36 @@
 #include <thread>
 
 
-_NonlinearMedium::_NonlinearMedium(uint nSignalModes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
-                                   double beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-                                   double beta1, std::initializer_list<double> beta1s, double beta3, std::initializer_list<double> beta3s,
-                                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
-                                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _nSignalModes(nSignalModes)
+_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength,
+                                   std::initializer_list<double> nlLength, std::initializer_list<double> beta2,
+                                   std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump,
+                                   int pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
+                                   std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
+                                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
+                                   uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes)
 {
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
+
   if (canBePoled)
     setPoling(poling);
+
+  _envelope.resize(_nPumpModes);
   if (customPump.size() != 0)
     setPump(customPump, chirp, delay);
   else
     setPump(pulseType, chirp, delay);
+  for (uint m = 1; m < _nPumpModes; m++)
+    _envelope[m].setZero(_nFreqs);
 }
 
 
 void _NonlinearMedium::setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision,
-                                  double rayleighLength, double beta2, const std::vector<double>& beta2s, double beta1,
-                                  const std::vector<double>& beta1s, double beta3, const std::vector<double>& beta3s) {
+                                  double rayleighLength, const std::vector<double>& beta2, const std::vector<double>& beta2s,
+                                  const std::vector<double>& beta1, const std::vector<double>& beta1s,
+                                  const std::vector<double>& beta3, const std::vector<double>& beta3s) {
   // Equations are normalized to either the dispersion or nonlinear length scales L_ds, L_nl
   // The total length z is given in units of dispersion length or nonlinear length, whichever is set to unit length
   // Therefore, one length scale must be kept fixed at 1. The time scale is given in units of initial width of pump.
@@ -40,7 +48,9 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 
   bool allNonUnit = true;
 
-  allNonUnit &= (std::abs(beta1) != 1 && std::abs(beta2) != 1 && std::abs(beta3) != 1);
+  for (double b : beta1)  allNonUnit &= (std::abs(b) != 1);
+  for (double b : beta2)  allNonUnit &= (std::abs(b) != 1);
+  for (double b : beta3)  allNonUnit &= (std::abs(b) != 1);
   for (double b : beta1s) allNonUnit &= (std::abs(b) != 1);
   for (double b : beta2s) allNonUnit &= (std::abs(b) != 1);
   for (double b : beta3s) allNonUnit &= (std::abs(b) != 1);
@@ -53,9 +63,12 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   _z = relativeLength;
 
   auto absComp = [](double a, double b) {return (std::abs(a) < std::abs(b));};
-  double minDispLength = 1 / std::abs(std::max({beta2, *std::max_element(beta2s.begin(), beta2s.end(), absComp),
-                                                beta1, *std::max_element(beta1s.begin(), beta1s.end(), absComp),
-                                                beta3, *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
+  double minDispLength = 1 / std::abs(std::max({*std::max_element(beta2.begin(),  beta2.end(),  absComp),
+                                                *std::max_element(beta2s.begin(), beta2s.end(), absComp),
+                                                *std::max_element(beta1.begin(),  beta1.end(),  absComp),
+                                                *std::max_element(beta1s.begin(), beta1s.end(), absComp),
+                                                *std::max_element(beta3.begin(),  beta3.end(),  absComp),
+                                                *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
 
   // space resolution. Note: pump step is smaller to calculate the value for intermediate RK4 steps
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., minDispLength, rayleighLength,
@@ -98,8 +111,12 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   _omega = fftshift(_omega);
 
   // Grids for PDE propagation
-  pumpFreq.resize(_nZStepsP, _nFreqs);
-  pumpTime.resize(_nZStepsP, _nFreqs);
+  pumpFreq.resize(_nPumpModes);
+  pumpTime.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++) {
+    pumpFreq[m].setZero(_nZStepsP, _nFreqs);
+    pumpTime[m].setZero(_nZStepsP, _nFreqs);
+  }
 
   signalFreq.resize(_nSignalModes);
   signalTime.resize(_nSignalModes);
@@ -110,8 +127,10 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 }
 
 
-void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& beta2s, double beta1, const std::vector<double>& beta1s,
-                                     double beta3, const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0) {
+void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std::vector<double>& beta2s,
+                                     const std::vector<double>& beta1, const std::vector<double>& beta1s,
+                                     const std::vector<double>& beta3, const std::vector<double>& beta3s,
+                                     std::initializer_list<double> diffBeta0) {
 
   // Pump group velocity dispersion
   _beta2 = beta2;
@@ -121,48 +140,60 @@ void _NonlinearMedium::setDispersion(double beta2, const std::vector<double>& be
   _diffBeta0 = diffBeta0;
 
   // dispersion profile
+  _dispersionPump.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++)
+    _dispersionPump[m] = _omega * (beta1[m] + _omega * (0.5 * beta2[m] + _omega * beta3[m] / 6));
+
   _dispersionSign.resize(_nSignalModes);
-  _dispersionPump = _omega * (beta1 + _omega * (0.5 * beta2 + _omega * beta3 / 6));
   for (uint m = 0; m < _nSignalModes; m++)
     _dispersionSign[m] = _omega * (beta1s[m] + _omega * (0.5 * beta2s[m] + _omega * beta3s[m] / 6));
 
   // incremental phases for each simulation step
-  _dispStepPump = (1._I * _dispersionPump * _dzp).exp();
+  _dispStepPump.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++)
+    _dispStepPump[m] = (1._I * _dispersionPump[m] * _dzp).exp();
+
   _dispStepSign.resize(_nSignalModes);
   for (uint m = 0; m < _nSignalModes; m++)
     _dispStepSign[m] = (1._I * _dispersionSign[m] * _dz).exp();
 }
 
 
-void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLength) {
+void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+  if (pumpIndex >= _nPumpModes)
+    throw std::invalid_argument("Invalid pump index");
+
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   if (pulseType == 1)
-    _env = (1 / _tau.cosh()).cast<std::complex<double>>();
+    _envelope[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
   else if (pulseType == 2) {
-    _env = (_tau.sin() / _tau).cast<std::complex<double>>();
-    _env(0) = 1;
+    _envelope[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
+    _envelope[pumpIndex](0) = 1;
   }
   else
-    _env = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
+    _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
 
   if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env, (1._I * (_beta1 * delayLength + 0.5 * _beta2 * chirpLength * _omega) * _omega).exp())
-    IFFT(_env, fftTemp)
+    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
 
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
-  _env = customPump;
+  if (pumpIndex >= _nPumpModes)
+    throw std::invalid_argument("Invalid pump index");
+
+  _envelope[pumpIndex] = customPump;
 
   if (chirpLength != 0 || delayLength != 0) {
     RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _env, (1._I * (_beta1 * delayLength + 0.5 * _beta2 * chirpLength * _omega) * _omega).exp())
-    IFFT(_env, fftTemp)
+    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
 
@@ -170,18 +201,20 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 void _NonlinearMedium::runPumpSimulation() {
   RowVectorcd fftTemp(_nFreqs);
 
-  FFT(pumpFreq.row(0), _env)
-  pumpTime.row(0) = _env;
+  for (uint m = 0; m < _nPumpModes; m++) {
+    FFT(pumpFreq[m].row(0), _envelope[m])
+    pumpTime[m].row(0) = _envelope[m];
 
-  for (uint i = 1; i < _nZStepsP; i++) {
-    pumpFreq.row(i) = pumpFreq.row(0) * (1._I * (i * _dzp) * _dispersionPump).exp();
-    IFFT(pumpTime.row(i), pumpFreq.row(i))
-  }
+    for (uint i = 1; i < _nZStepsP; i++) {
+      pumpFreq[m].row(i) = pumpFreq[m].row(0) * (1._I * (i * _dzp) * _dispersionPump[m]).exp();
+      IFFT(pumpTime[m].row(i), pumpFreq[m].row(i))
+    }
 
-  if (_rayleighLength != std::numeric_limits<double>::infinity()) {
-    Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
-    pumpFreq.colwise() *= relativeStrength.array();
-    pumpTime.colwise() *= relativeStrength.array();
+    if (_rayleighLength != std::numeric_limits<double>::infinity()) {
+      Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+      pumpFreq[m].colwise() *= relativeStrength.array();
+      pumpTime[m].colwise() *= relativeStrength.array();
+    }
   }
 }
 
@@ -453,30 +486,33 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 }
 
 
-void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, double delayLength) {
+void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, double delayLength, uint pumpIndex) {
   if (other._nFreqs != _nFreqs || other._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as this one");
 
   if (modeIndex >= _nSignalModes)
     throw std::invalid_argument("Mode index larger than number of modes in medium");
 
+  if (pumpIndex >= _nPumpModes)
+    throw std::invalid_argument("Invalid pump index");
+
   if (other._nZSteps < _nZSteps)
     throw std::invalid_argument("Medium does not have sufficient resolution to be used with this one");
 
   RowVectorcd fftTemp(_nFreqs);
-  auto delay = 1._I * _beta1 * delayLength * _omega;
+  auto delay = 1._I * _beta1[pumpIndex] * delayLength * _omega;
   for (uint i = 0; i < _nZStepsP - 1; i++) {
     double j_ = i * (static_cast<double>(other._nZSteps - 1) / (_nZStepsP - 1)); // integer overflow danger
     uint j = static_cast<uint>(j_);
     double frac = j_ - j;
 
-    pumpFreq.row(i) = ((1 - frac) * other.signalFreq[modeIndex].row(j) + frac * other.signalFreq[modeIndex].row(j+1))
-        * ((1._I * (i * _dzp)) * _dispersionPump - (1._I * (j_ + 0.5) * other._dz) * other._dispersionSign[modeIndex] + delay).exp();
+    pumpFreq[pumpIndex].row(i) = ((1 - frac) * other.signalFreq[modeIndex].row(j) + frac * other.signalFreq[modeIndex].row(j+1))
+        * ((1._I * (i * _dzp)) * _dispersionPump[pumpIndex] - (1._I * (j_ + 0.5) * other._dz) * other._dispersionSign[modeIndex] + delay).exp();
 
-    IFFT(pumpTime.row(i), pumpFreq.row(i))
+    IFFT(pumpTime[pumpIndex].row(i), pumpFreq[pumpIndex].row(i))
   }
-  pumpFreq.bottomRows<1>() = other.signalFreq[modeIndex].bottomRows<1>()
-      * ((1._I * _z) * _dispersionPump - (1._I * other._z) * other._dispersionSign[modeIndex] + delay).exp();
+  pumpFreq[pumpIndex].bottomRows<1>() = other.signalFreq[modeIndex].bottomRows<1>()
+      * ((1._I * _z) * _dispersionPump[pumpIndex] - (1._I * other._z) * other._dispersionSign[modeIndex] + delay).exp();
 
-  IFFT(pumpTime.bottomRows<1>(), pumpFreq.bottomRows<1>())
+  IFFT(pumpTime[pumpIndex].bottomRows<1>(), pumpFreq[pumpIndex].bottomRows<1>())
 }
