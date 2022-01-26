@@ -442,6 +442,16 @@ def incoherentPowerGreens(Z):
   return 0.5 * (Z[:N, :N]**2 + Z[N:, N:]**2 + Z[:N, N:]**2 + Z[N:, :N]**2)
 
 
+def photonMean(V):
+  """
+  Calculate the mean photon number per mode from a Gaussian quadrature covariance matrix.
+  n = a^† a = 1/4 (x + i p) (x - i p) = 1/4 (x^2 + p^2 - i [x, p]) = 1/4 (x^2 + p^2 - 2).
+  Note: this does not include displacements.
+  """
+  N = V.shape[0] // 2
+  return 0.25 * (V[:N, :N].diagonal() + V[N:, N:].diagonal() - 2)
+
+
 def photonCov(V):
   """
   Calculate the photon number covariance from a Gaussian quadrature covariance matrix.
