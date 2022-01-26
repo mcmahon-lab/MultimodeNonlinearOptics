@@ -3,6 +3,13 @@ from numpy.fft import fft, ifft, fftshift, ifftshift, fft2, ifft2
 from scipy.linalg import det, sqrtm, inv, eig, eigvals, norm
 
 
+# The functions provided here use a convention of hbar = 2, such that:
+# x = a^† + a
+# p = i (a^† - a)
+# [a_i^†, a_j] = δ_ij
+# [x_i, p_j] = 2 i δ_ij
+
+
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
   """
   Return dispersion length (meters).
@@ -284,8 +291,8 @@ def basisTransforms(n):
   Return the two matrices to transform from the a basis (bosonic) to the xp basis (quadrature),
   and back from the xp basis to the a basis.
   """
-  toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]]) / np.sqrt(2)
-  frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) / np.sqrt(2)
+  toXPTrans = np.block([[np.eye(n),      np.eye(n)], [-1j * np.eye(n),  1j * np.eye(n)]])
+  frXPTrans = np.block([[np.eye(n), 1j * np.eye(n)], [      np.eye(n), -1j * np.eye(n)]]) * 0.5
   return toXPTrans, frXPTrans
 
 
@@ -439,11 +446,11 @@ def photonCov(V):
   """
   Calculate the photon number covariance from a Gaussian quadrature covariance matrix.
   Note: only for zero mean displacement states, non-zero displacement requires additional terms.
-  Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
   See "Mode structure and photon number correlations in squeezed quantum pulses".
+  Derived using different convention, n_k = 1/4 (x_k^2 + p_k^2 - 2).
   """
   N = V.shape[0] // 2
-  return 0.5 * (V[:N, :N]**2 + V[N:, N:]**2 + V[:N, N:]**2 + V[N:, :N]**2 - 0.5 * np.eye(N))
+  return 0.125 * (V[:N, :N]**2 + V[:N, N:]**2 + V[N:, :N]**2 + V[N:, N:]**2) - 0.25 * np.eye(N)
 
 
 def parametricFluorescence(modes, diag):
@@ -481,20 +488,23 @@ def fullEffectiveAdjacencyMatrix(cov):
                    [idnt[:n//2,:n//2], zero]]) @ (idnt - inv(cov + 0.5 * idnt))
 
 
-def covLumpLoss(cov, loss):
+def covLumpLoss(cov, transmission, abasis=False):
   """
   Add a lump loss to a covariance matrix.
   This is equivalent to doubling the modes, applying a beam-splitter, and tracing out the new modes.
   In Green function formalism:
-  Z' = [[t  ir] [[Z  0]
-        [ir  t]] [0 I/2]]
-  or = [[t  r]  [[Z  0]
-        [r -t]]  [0 I/2]]
-  Z' Z'^† = t^2 Z Z^† + r^2 I/2 = t^2 C + r^2 I/2
+  Z' = [[t  ir] [[Z 0]
+        [ir  t]] [0 I/2]] (bosonic operators)
+  or = [[t  r]  [[Z 0]
+        [r -t]]  [0 I]]   (quadrature operators)
+  Z' Z'^† = t^2 Z Z^† + r^2 I [1/2] = t^2 C + r^2 I [1/2]
   """
-  if not np.shape(loss):
-    return (1 - loss) * cov + (loss * 0.5) * np.identity(cov.shape[0])
+  vacuumVar = (0.5 if abasis else 1)
+  if not np.shape(transmission):
+    return transmission * cov + ((1 - transmission) * vacuumVar) * np.identity(cov.shape[0])
 
   else:
-    reflection = np.sqrt(1 - loss)
-    return np.outer(reflection, reflection) * cov + (loss * 0.5) * np.identity(cov.shape[0])
+    transmission = np.tile(transmission, 2)
+    sqrtTrans = np.sqrt(transmission)
+    return np.outer(sqrtTrans, sqrtTrans) * cov + ((1 - transmission) * vacuumVar) * np.identity(cov.shape[0])
+
