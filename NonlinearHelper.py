@@ -246,13 +246,12 @@ def ftGreens(greenC, greenS, toTime=True):
   Derivation:
   Fa = F(Ca + Sa*) = (F C F^-1)(F a) + (F S F)(F^-1 a*) = (F C F^-1)(F a) + (F S F)(F a)*, since F^-1 = F*
   """
-  nt = greenS.shape[0]
   if toTime:
     convertedC = fftshift(fft(ifft(ifftshift(greenC), axis=0), axis=1))
-    convertedS = fftshift(ifft2(ifftshift(greenS))) * nt
+    convertedS = fftshift(ifft2(ifftshift(greenS))) * greenS.shape[0]
   else:
     convertedC = fftshift(ifft(fft(ifftshift(greenC), axis=0), axis=1))
-    convertedS = fftshift(fft2(ifftshift(greenS))) / nt
+    convertedS = fftshift(fft2(ifftshift(greenS))) / greenS.shape[0]
 
   return convertedC, convertedS
 
@@ -427,7 +426,7 @@ def combinePoling(polingA, polingB, tol):
 
 def incoherentPowerGreens(Z):
   """
-  Convert a Green's matrix in the quadrature basis into one for incoherent light.
+  Calculate a transformatoin matrix for incoherent light from a Green's matrix in the quadrature basis.
   Note: output is a linear transformation for power.
   Derived by parametrizing x = cos θ, p = sin θ and averaging over all
   x_j^2 + p_j^2 = (Z_ji^xx cos θ + Z_ji^xp sin θ)^2 + (Z_ji^px cos θ + Z_ji^pp sin θ)^2
@@ -438,7 +437,7 @@ def incoherentPowerGreens(Z):
 
 def photonCov(V):
   """
-  Calculate the photon number covariance from a Gaussian covariance matrix.
+  Calculate the photon number covariance from a Gaussian quadrature covariance matrix.
   Note: only for zero mean displacement states, non-zero displacement requires additional terms.
   Derived using n_k = 1/2 (x_k^2 + p_k^2 - 1).
   See "Mode structure and photon number correlations in squeezed quantum pulses".
@@ -452,9 +451,7 @@ def parametricFluorescence(modes, diag):
   Given decomposition of a transmission matrix in the complex frequency domain,
   predict observed parametric fluorescence.
   """
-  incoherent = np.sum(np.abs(modes)**2 * np.sinh(np.log(diag[:, np.newaxis]))**2, axis=0)
-  coherent   = np.abs(np.sum(modes * np.sinh(np.log(diag[:, np.newaxis])), axis=0))**2
-  return incoherent, coherent
+  return np.sum(np.abs(modes)**2 * np.sinh(np.log(diag[:, np.newaxis]))**2, axis=0)
 
 
 def effectiveAdjacencyMatrix(modes, diag):
@@ -481,7 +478,7 @@ def fullEffectiveAdjacencyMatrix(cov):
   idnt = np.identity(n)
   zero = np.zeros((n // 2, n // 2))
   return np.block([[zero, idnt[:n//2,:n//2]],
-                   [idnt[:n//2,:n//2], zero]]) @ (np.eye(n) - inv(cov + np.eye(n) / 2))
+                   [idnt[:n//2,:n//2], zero]]) @ (idnt - inv(cov + 0.5 * idnt))
 
 
 def covLumpLoss(cov, loss):
