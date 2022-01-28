@@ -20,7 +20,7 @@ This repository also contains a collection of Jupyter notebooks that test for co
 These are found in the `tests/` directory, and may also serve as useful examples.
 They are saved with [Jupytext](https://jupytext.readthedocs.io/en/latest/).
 
-The `NonlinearHelper` module provides functions for configuring simulations and analysis routines, for example:
+The `classical`, `multimode` and `poling` modules provide functions for configuring simulations and analysis routines, for example:
 - Calculating covariance matrices and related quantities,
 - Converting to dimensionless quantities,
 - Generating poling patterns,
