@@ -16,7 +16,7 @@ To compile, it requires [Pybind11](https://pybind11.readthedocs.io/en/master/) f
 It will also compile with [fftw](http://www.fftw.org/) if it is found.
 There is also a deprecated Python implementation using NumPy, with a similar interface to the C++ version.
 
-This repository also contains a collection of Jupyter notebooks that test for correct behavior or reproduce the results of some relevant theory/computation papers.
+This repository also contains a collection of Jupyter notebooks that test for correct behavior or reproduce some published results.
 These are found in the `tests/` directory, and may also serve as useful examples.
 They are saved with [Jupytext](https://jupytext.readthedocs.io/en/latest/).
 
@@ -193,7 +193,7 @@ A&#8320;'(z, t) = D&#770; A&#8320; +
 e<sup><i>i</i> &#916;<i>k z</i></sup>
 <br>
 A&#8321;'(z, t) = D&#770; A&#8321; +
-<i>i L</i><sub>NL1</sub><sup>-1</sup> A&#8321; A&#8322;
+<i>i L</i><sub>NL1</sub><sup>-1</sup> A&#8320; A&#8322;
 e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 <br>
 A&#8322;'(z, t) = D&#770; A&#8322; +
