@@ -105,7 +105,7 @@ def downSampledCov(Z, measurements, omega, freqCutoff, nModeClasses=1):
   Zcut[:measurements*nModeClasses] = Z[subset]
   Zcut[measurements*nModeClasses:] = Z[nt * nModeClasses + subset]
 
-  covCut = calcCovarianceMtx(Z, np.inf)
+  covCut = calcCovarianceMtx(Zcut, np.inf)
 
   return covCut
 
