@@ -64,3 +64,4 @@ class MgOLNo:
               + (a4 + b4 * f) / (l0**2 - a5**2) - a6 * l0**2)
 
   del a1, a2, a3, a4, a5, a6, b1, b2, b3, b4, f
+
