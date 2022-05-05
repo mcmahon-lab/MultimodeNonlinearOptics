@@ -1,10 +1,10 @@
 try:
-  from symengine import symbols, diff, pi, Lambdify
+  from symengine import symbols, diff, pi, Lambdify, atan
   def lambdify(*funcArgs):
     f = Lambdify(*funcArgs)
     return lambda *callArgs : float(f(*callArgs))
 except:
-  from sympy import symbols, diff, pi, lambdify
+  from sympy import symbols, diff, pi, lambdify, atan
 
 l0 = symbols("l0") # Lambda_0, free space wavelength
 T = symbols("T")   # Temperature
@@ -58,6 +58,12 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
                          subs(symbols("w"), (2 * pi * c * 1e6) / l0))
     cls.beta3.__doc__ = "Calculate 3rd order dispersion from the Sellmeier equation"
     cls.beta3 = staticmethod(cls.beta3)
+
+    if angleTuning:
+      walkoffang = atan(-diff(cls.ind, th) / cls.ind)
+      cls.walkoff = lambdify(methodArguments, walkoffang)
+      cls.walkoff.__doc__ = "Calculate the spatial walk-off angle"
+      cls.walkoff = staticmethod(cls.walkoff)
 
     if deleteInd:
       del cls.ind
