@@ -16,7 +16,7 @@ d22 = 2.59
                                   (2Ez Ex)
                                   (2Ex Ey)"""
 
-@nlMaterial
+@nlMaterial()
 class MgOLNe:
   """
   MgO-doped Lithium Niobate extraordinary axis.
@@ -41,7 +41,7 @@ class MgOLNe:
   del a1, a2, a3, a4, a5, a6, b1, b2, b3, b4, f
 
 
-@nlMaterial
+@nlMaterial()
 class MgOLNo:
   """
   MgO-doped Lithium Niobate ordinary axis.
