@@ -19,7 +19,7 @@ d31 = 2.5
                                (2Ez Ex)
                                (2Ex Ey)"""
 
-@nlMaterial
+@nlMaterial()
 class KTPz:
   """
   KTP z-axis
@@ -51,7 +51,7 @@ class KTPz:
   del a, b, c, d, e, f, nz, a0, a1, a2, a3, b0, b1, b2, b3, Dn
 
 
-@nlMaterial
+@nlMaterial()
 class KTPy:
   """
   KTP y-axis
@@ -87,3 +87,4 @@ class KTPy:
   ind = Piecewise((nyHI, l0 > 1.2), (nyLO, l0 < 1.2)) + Dn
 
   del a, b, c, d, nyHI, nyLO, a0, a1, a2, a3, b0, b1, b2, b3, Dn
+

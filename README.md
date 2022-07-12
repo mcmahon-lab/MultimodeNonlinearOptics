@@ -201,7 +201,7 @@ A&#8322;'(z, t) = D&#770; A&#8322; +
 e<sup><i>i</i> &#916;<i>k z</i></sup>
 </span>
 
-Sum or difference frequency generation.
+Sum or difference frequency generation, or optical parametric amplification.
 
 ###### Chi2SHG
 <span>
