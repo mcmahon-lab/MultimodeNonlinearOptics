@@ -130,3 +130,37 @@ def combinePoling(polingA, polingB, tol):
 
   return np.array(combinedDomains)
 
+
+def domainsToSpace(poling, nZSteps):
+  """
+  Convert an array of domain lengths to an array of orientations (+/-1) in discretized space.
+  For visualizing or generating spatial Fourier transforms.
+  """
+  poling = np.array(poling)
+  if np.any(poling <= 0):
+    raise ValueError("Poling contains non-positive length domains")
+
+  poleDomains = np.cumsum(poling, dtype=np.float_)
+  poleDomains *= nZSteps / poleDomains[-1]
+
+  _poling = np.empty(nZSteps)
+  prevInd = 0
+  direction = 1
+
+  for i in range(poleDomains.size):
+    currInd = poleDomains[i]
+    currIndRound = int(currInd)
+
+    if currInd < prevInd:
+      raise ValueError("Poling period too small for given resolution")
+
+    _poling[prevInd:currIndRound] = direction
+
+    if (currIndRound < nZSteps): # interpolate indices corresponding to steps on the boundary of two domains
+      _poling[currIndRound] = direction * (2 * abs(np.fmod(currInd, 1)) - 1)
+
+    direction *= -1
+    prevInd = currIndRound + 1
+
+  return _poling
+
