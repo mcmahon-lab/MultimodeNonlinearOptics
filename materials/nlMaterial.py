@@ -1,14 +1,14 @@
 try:
-  from symengine import symbols, diff, pi, Lambdify, atan
+  from symengine import symbols, diff, pi, Lambdify, atan, re
   def lambdify(*funcArgs):
     f = Lambdify(*funcArgs)
     return lambda *callArgs : float(f(*callArgs))
 except:
-  from sympy import symbols, diff, pi, lambdify, atan
+  from sympy import symbols, diff, pi, lambdify, atan, re
 
-l0 = symbols("l0") # Lambda_0, free space wavelength
-T = symbols("T")   # Temperature
-th = symbols("th") # Theta, tuning angle
+l0 = symbols("l0", real=True) # Lambda_0, free space wavelength
+T  = symbols("T",  real=True) # Temperature
+th = symbols("th", real=True) # Theta, tuning angle
 
 # Decorator does all the math for the material classes
 def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
@@ -60,7 +60,7 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
     cls.beta3 = staticmethod(cls.beta3)
 
     if angleTuning:
-      walkoffang = atan(-diff(cls.ind, th) / cls.ind)
+      walkoffang = re(atan(-diff(cls.ind, th) / cls.ind))
       cls.walkoff = lambdify(methodArguments, walkoffang)
       cls.walkoff.__doc__ = "Calculate the spatial walk-off angle"
       cls.walkoff = staticmethod(cls.walkoff)
