@@ -74,11 +74,12 @@ def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
   return mindk, maxdk
 
 
-def combinePoling(polingA, polingB, tol):
+def combinePoling(polingA, polingB, minLength, tol):
   """
   Combine poling structures by flipping the sign each time either structure flips (multiplying).
   polingA and polingB must contain the lengths of each domain.
   Note: to combine two structures you need to start with the sum and difference of spatial frequencies.
+  minLength is the minimum domain length. tol is the allowable error tolerance in the domain lengths.
   """
   if abs(np.sum(polingA) - np.sum(polingB)) > tol:
    raise ValueError("Patterns A and B different lengths")
@@ -108,16 +109,22 @@ def combinePoling(polingA, polingB, tol):
           remainingA = polingA[indexA % polingA.size]
       if cumulative > 0: combinedDomains.append(cumulative)
 
-    if remainingA > remainingB:
-      if remainingB > 0: combinedDomains.append(remainingB)
+    if remainingA > remainingB and remainingB > minLength:
+      combinedDomains.append(remainingB)
       remainingA -= remainingB
       indexB += 1
       remainingB = polingB[indexB % polingB.size]
-    else:
-      if remainingA > 0: combinedDomains.append(remainingA)
+    elif remainingB > remainingA and remainingA > minLength:
+      combinedDomains.append(remainingA)
       remainingB -= remainingA
       indexA += 1
       remainingA = polingA[indexA % polingA.size]
+    else: # remainingA, remainingB < minLength
+      indexA += 1
+      indexB += 1
+      combinedDomains.append(remainingA)
+      remainingA += polingA[indexA % polingA.size]
+      remainingB += polingB[indexB % polingB.size]
 
   if min(remainingA, remainingB) > 0: combinedDomains.append(min(remainingA, remainingB))
 
@@ -129,4 +136,38 @@ def combinePoling(polingA, polingB, tol):
       combinedDomains.append(polingB[i])
 
   return np.array(combinedDomains)
+
+
+def domainsToSpace(poling, nZSteps):
+  """
+  Convert an array of domain lengths to an array of orientations (+/-1) in discretized space.
+  For visualizing or generating spatial Fourier transforms.
+  """
+  poling = np.array(poling)
+  if np.any(poling <= 0):
+    raise ValueError("Poling contains non-positive length domains")
+
+  poleDomains = np.cumsum(poling, dtype=np.float_)
+  poleDomains *= nZSteps / poleDomains[-1]
+
+  _poling = np.empty(nZSteps)
+  prevInd = 0
+  direction = 1
+
+  for i in range(poleDomains.size):
+    currInd = poleDomains[i]
+    currIndRound = int(currInd)
+
+    if currInd < prevInd:
+      raise ValueError("Poling period too small for given resolution")
+
+    _poling[prevInd:currIndRound] = direction
+
+    if (currIndRound < nZSteps): # interpolate indices corresponding to steps on the boundary of two domains
+      _poling[currIndRound] = direction * (2 * abs(np.fmod(currInd, 1)) - 1)
+
+    direction *= -1
+    prevInd = currIndRound + 1
+
+  return _poling
 
