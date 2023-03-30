@@ -104,7 +104,7 @@ protected:
   std::vector<Array2Dcd> signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
-  Eigen::FFT<double> fftObj; /// fft class object for performing dft
+  static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 
 

@@ -3,6 +3,7 @@
 #include <limits>
 #include <thread>
 
+Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 
 _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength,
                                    std::initializer_list<double> nlLength, std::initializer_list<double> beta2,
