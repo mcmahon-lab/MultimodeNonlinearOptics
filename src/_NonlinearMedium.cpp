@@ -103,7 +103,7 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   _nFreqs = nFreqs;
   _tMax = tMax;
 
-  int Nt = _nFreqs;
+  int Nt = static_cast<int>(_nFreqs);
 
   // time and frequency axes
   _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
