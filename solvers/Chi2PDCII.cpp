@@ -26,11 +26,11 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLength, double nlLengthOrig
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2PDCII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi2PDCII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                        std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
 
-  const auto& prevS = signal[0].row(i-1);
-  const auto& prevO = signal[1].row(i-1);
+  const auto& prevS = signal[0].row(iPrevSig);
+  const auto& prevO = signal[1].row(iPrevSig);
 
   const auto& prevP = pumpTime[0].row(2*i-2);
   const auto& intrP = pumpTime[0].row(2*i-1);

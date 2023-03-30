@@ -226,7 +226,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
 
-  runSignalSimulation(inputProf, inTimeDomain, inputMode, signalFreq, signalTime);
+  runSignalSimulation(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, false);
 }
 
 
@@ -283,20 +283,14 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
-  // Each thread needs a separate computation grid to avoid interfering with other threads
-  std::vector<std::vector<Array2Dcd>> grids(2 * (nThreads - 1));
-
   // Calculate Green's functions with real and imaginary impulse response
-  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
-                        (std::vector<Array2Dcd>& gridFreq, std::vector<Array2Dcd>& gridTime, uint start, uint stop) {
-    if (gridFreq.size() == 0) {
-      gridFreq.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(_nZSteps, _nFreqs);
-    }
-    if (gridTime.size() == 0) {
-      gridTime.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(_nZSteps, _nFreqs);
-    }
+  auto calcGreensPart = [&, inTimeDomain, _nFreqs=_nFreqs](uint start, uint stop) {
+    // As a trick for memory efficiency here we use a single array instead of 2D time and frequency grids
+    std::vector<Array2Dcd> gridFreq(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(1, _nFreqs);
+    std::vector<Array2Dcd> gridTime(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(1, _nFreqs);
+
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
@@ -304,7 +298,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime);
+      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) += 0.5 * grid[outputs[om]].bottomRows<1>();
@@ -313,7 +307,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1._I;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime);
+      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) -= 0.5_I * grid[outputs[om]].bottomRows<1>();
@@ -324,10 +318,9 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
   // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
-    threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
-                         (i * _nFreqs * nInputModes) / nThreads, ((i + 1) * _nFreqs * nInputModes) / nThreads);
+    threads.emplace_back(calcGreensPart, (i * _nFreqs * nInputModes) / nThreads, ((i + 1) * _nFreqs * nInputModes) / nThreads);
   }
-  calcGreensPart(signalFreq, signalTime, 0, (_nFreqs * nInputModes) / nThreads);
+  calcGreensPart(0, (_nFreqs * nInputModes) / nThreads);
   for (auto& thread : threads) {
     if (thread.joinable()) thread.join();
   }
@@ -391,24 +384,18 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
-  // Each thread needs a separate computation grid to avoid interfering with other threads
-  std::vector<std::vector<Array2Dcd>> grids(2 * (nThreads - 1));
-
   // Calculate all signal propagations
-  auto calcBatch = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
-                   (std::vector<Array2Dcd>& gridFreq, std::vector<Array2Dcd>& gridTime, uint start, uint stop) {
-    if (gridFreq.size() == 0) {
-      gridFreq.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(_nZSteps, _nFreqs);
-    }
-    if (gridTime.size() == 0) {
-      gridTime.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(_nZSteps, _nFreqs);
-    }
+  auto calcBatch = [&, inTimeDomain, _nFreqs=_nFreqs] (uint start, uint stop) {
+    // As a trick for memory efficiency here we use a single array instead of 2D time and frequency grids
+    std::vector<Array2Dcd> gridFreq(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(1, _nFreqs);
+    std::vector<Array2Dcd> gridTime(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(1, _nFreqs);
+
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
-      runSignalSimulation(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime);
+      runSignalSimulation(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, true);
       for (uint om = 0; om < nOutputModes; om++)
         outSignals.row(i).segment(om*_nFreqs, _nFreqs) = grid[outputs[om]].bottomRows<1>();
     }
@@ -416,10 +403,9 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
 
   // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
-    threads.emplace_back(calcBatch, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
-                         (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
+    threads.emplace_back(calcBatch, (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
   }
-  calcBatch(signalFreq, signalTime, 0, nInputs / nThreads);
+  calcBatch(0, nInputs / nThreads);
   for (auto& thread : threads) {
     if (thread.joinable()) thread.join();
   }

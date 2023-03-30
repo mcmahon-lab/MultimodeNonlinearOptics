@@ -27,10 +27,10 @@ Chi2SFGOPA::Chi2SFGOPA(double relativeLength, double nlLengthFh, double nlLength
                    {diffBeta0SFG, diffBeta0OPA, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2SFGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi2SFGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                         std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
-  const auto& prevH = signal[0].row(i-1);
-  const auto& prevF = signal[1].row(i-1);
+  const auto& prevH = signal[0].row(iPrevSig);
+  const auto& prevF = signal[1].row(iPrevSig);
 
   const auto& prevP0 = pumpTime[0].row(2*i-2);
   const auto& intrP0 = pumpTime[0].row(2*i-1);

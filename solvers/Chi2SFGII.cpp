@@ -30,13 +30,13 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengt
                    rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
 
 
-void Chi2SFGII::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                        std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
 
-  const auto& prevSz = signal[0].row(i-1);
-  const auto& prevSy = signal[1].row(i-1);
-  const auto& prevOz = signal[2].row(i-1);
-  const auto& prevOy = signal[3].row(i-1);
+  const auto& prevSz = signal[0].row(iPrevSig);
+  const auto& prevSy = signal[1].row(iPrevSig);
+  const auto& prevOz = signal[2].row(iPrevSig);
+  const auto& prevOy = signal[3].row(iPrevSig);
 
   const auto& prevP = pumpTime[0].row(2*i-2);
   const auto& intrP = pumpTime[0].row(2*i-1);

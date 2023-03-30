@@ -61,11 +61,12 @@ protected:
   _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes), _nPumpModes() {}
 
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) = 0;
+                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
+                                   bool optimized) = 0;
 
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime);
+                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, bool optimized);
 
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
 
@@ -115,11 +116,12 @@ protected:
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
-  inline void DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
+  inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
-                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override \
-     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime); };
+                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
+                           bool optimized) override \
+     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, optimized); };
 
 
 // FFT macros for convenience, indexed and regular
@@ -137,7 +139,8 @@ protected: \
 
 template<class T>
 void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) {
+                                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
+                                                bool optimized) {
   // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
   uint nInputChannels = inputProf.size() / _nFreqs;
   if (nInputChannels > 1) inputMode = 0;
@@ -178,23 +181,40 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   for (uint m = 0; m < T::_nSignalModes; m++) {
     k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
   }
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTime);
+  if (optimized) { // for batchSignalSimulation or computeGreensFunction, where we use a single row instead of a grid
+    for (uint i = 1; i < _nZSteps; i++) {
+      // Do a Runge-Kutta step for the non-linear propagation
+      static_cast<T*>(this)->DiffEq(i, 0, k1, k2, k3, k4, signalTime);
 
-    for (uint m = 0; m < T::_nSignalModes; m++) {
-      signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) / 6;
+      for (uint m = 0; m < T::_nSignalModes; m++) {
+        signalTime[m].row(0) += (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
 
-      // Dispersion step
-      FFTi(signalFreq[m], signalTime[m], i, i)
-      signalFreq[m].row(i) *= _dispStepSign[m];
-      IFFTi(signalTime[m], signalFreq[m], i, i)
+        // Dispersion step
+        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        signalFreq[m].row(0) *= _dispStepSign[m];
+        IFFTi(signalTime[m], signalFreq[m], 0, 0)
+      }
+    }
+  }
+  else { // for the regular case of filling in the PDE grids
+    for (uint i = 1; i < _nZSteps; i++) {
+      // Do a Runge-Kutta step for the non-linear propagation
+      static_cast<T*>(this)->DiffEq(i, i-1, k1, k2, k3, k4, signalTime);
+
+      for (uint m = 0; m < T::_nSignalModes; m++) {
+        signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
+
+        // Dispersion step
+        FFTi(signalFreq[m], signalTime[m], i, i)
+        signalFreq[m].row(i) *= _dispStepSign[m];
+        IFFTi(signalTime[m], signalFreq[m], i, i)
+      }
     }
   }
 
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    signalFreq[m].row(_nZSteps - 1) *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
-    IFFTi(signalTime[m], signalFreq[m], _nZSteps - 1, _nZSteps - 1)
+    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
+    IFFTi(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1)
   }
 }
 
