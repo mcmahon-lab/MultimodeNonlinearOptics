@@ -8,6 +8,7 @@
 #include "Chi3.cpp"
 #include "Chi2PDC.cpp"
 #include "Chi2SFG.cpp"
+#include "Chi2AFC.cpp"
 #include "Chi2SFGPDC.cpp"
 #include "Chi2SFGII.cpp"
 #include "Chi2PDCII.cpp"
@@ -32,6 +33,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
   py::class_<Chi2SFGPDC, _NonlinearMedium> Chi2SFGPDC(m, "Chi2SFGPDC", "Simultaneous sum frequency generation and parametric amplification");
   py::class_<Chi2SFG, _NonlinearMedium> Chi2SFG(m, "Chi2SFG", "Sum (or difference) frequency generation");
+  py::class_<Chi2AFC, _NonlinearMedium> Chi2AFC(m, "Chi2AFC", "Adiabatic sum (or difference) frequency generation, in a rotating frame with linearly varying poling frequency built-in to the solver");
   py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
   py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
   py::class_<Chi2SFGXPM, _NonlinearMedium> Chi2SFGXPM(m, "Chi2SFGXPM", "Sum (or difference) frequency generation with cross phase modulation");
@@ -262,6 +264,19 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+
+
+/*
+ * Chi2AFC
+ */
+
+  Chi2AFC.def(
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+               double, double, double, double, double, double, double, uint, uint, double, double>(),
+      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
+      "beta3o"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "chirp"_a = 0, "delay"_a = 0);
 
 
 /*
