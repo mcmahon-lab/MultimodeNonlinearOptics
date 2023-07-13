@@ -11,7 +11,7 @@
 # limitations under the License.
 
 import numpy as np
-from scipy.linalg import block_diag, sqrtm, polar, schur
+from scipy.linalg import block_diag, sqrtm, schur, svd
 from functools import lru_cache
 
 def sympmat(n):
@@ -43,6 +43,25 @@ def changebasis(n):
     m[2 * i, i] = 1
     m[2 * i + 1, i + n] = 1
   return m
+
+
+def leftPolar(a):
+  """
+  Compute the polar decomposition.
+  Args:
+      a: The array to be factored.
+  Returns:
+      u: unitary
+      p: Hermitian positive semidefinite.
+  """
+  a = np.asarray(a)
+  try:
+    w, s, vh = svd(a, full_matrices=False, lapack_driver="gesdd")
+  except np.linalg.LinAlgError:
+    w, s, vh = svd(a, full_matrices=False, lapack_driver="gesvd")
+  u = w.dot(vh)
+  p = (w * s).dot(w.T.conj())
+  return u, p
 
 
 def takagi(N, tol=1e-13, rounding=13):
@@ -82,7 +101,10 @@ def takagi(N, tol=1e-13, rounding=13):
         Uc = Uc[:, permutation]
         return l, Uc
 
-    v, l, ws = np.linalg.svd(N)
+    try:
+      v, l, ws = svd(N, lapack_driver="gesdd")
+    except np.linalg.LinAlgError:
+      v, l, ws = svd(N, lapack_driver="gesvd")
 
     roundedl = np.round(l, rounding)
 
@@ -275,7 +297,7 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
 
     if np.linalg.norm(S.T @ S - np.eye(2 * n)) >= tol:
 
-        u, sigma = polar(S, side='left')
+        u, sigma = leftPolar(S)
         ss, uss = takagi(sigma, tol=tol, rounding=rounding)
 
         # Apply a permutation matrix so that the squeezers appear in the order
@@ -302,7 +324,10 @@ def bloch_messiah(S, tol=1e-10, rounding=9):
             for i, degen in enumerate(degeneracies):
                 last += degen
                 if degen > 1:
-                    u_svd, _, v_svd = np.linalg.svd(qomega[first:last, n+first:n+last].real)
+                    try:
+                      u_svd, _, v_svd = svd(qomega[first:last, n+first:n+last].real, lapack_driver="gesdd")
+                    except np.linalg.LinAlgError:
+                      u_svd, _, v_svd = svd(qomega[first:last, n+first:n+last].real, lapack_driver="gesvd")
                     u_list[i] = u_svd
                     v_list[i] = v_svd.T
                 else:
