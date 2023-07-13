@@ -225,6 +225,15 @@ def photonMean(V):
   N = V.shape[0] // 2
   return 0.25 * (V[:N, :N].diagonal() + V[N:, N:].diagonal() - 2)
 
+def photonMeanA(sigma):
+  """
+  Calculate the mean photon number per mode from a Gaussian covariance matrix in the a basis.
+  n = a^† a = a a^† - 1/2.
+  Note: this does not include displacements.
+  """
+  N = sigma.shape[0] // 2
+  return sigma[:N, :N].diagonal().real - 0.5
+
 
 def photonCov(V):
   """
@@ -235,6 +244,13 @@ def photonCov(V):
   """
   N = V.shape[0] // 2
   return 0.125 * (V[:N, :N]**2 + V[:N, N:]**2 + V[N:, :N]**2 + V[N:, N:]**2) - 0.25 * np.eye(N)
+
+def photonCovA(sigma):
+  """
+  Calculate the photon number covariance from a covariance matrix in the a basis.
+  """
+  N = V.shape[0] // 2
+  return np.abs(sigma[:nt, :nt]).real**2 + np.abs(sigma[:nt, nt:]).real**2 - 0.25 * np.eye(N)
 
 
 def parametricFluorescence(modes, diag):
