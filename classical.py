@@ -8,7 +8,7 @@ import numpy as np
 def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
   """
   Return dispersion length (meters).
-  beta2: group velocity dispersion (ps^2 / km)
+  beta2: group velocity dispersion (ps^2 / km or fs^2/mm)
   timeScale:  width of pulse (ps)
   pulseTypeFWHM: calculate time scale from FHWM for "sech" or "gauss" (Note: in power/field^2)
   """
