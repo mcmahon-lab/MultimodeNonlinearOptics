@@ -32,7 +32,7 @@ void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
   const auto& intrP = pumpTime[0].row(2*i-1);
   const auto& currP = pumpTime[0].row(2*i);
 
-  const double arg = (_diffBeta0[1] - _diffBeta0[0]) / _z;
+  const double arg = 0.5 * (_diffBeta0[1] - _diffBeta0[0]) / _z;
   const std::complex<double> prevMismatch = std::exp(0.5_I * ((_diffBeta0[0] + (i- 1) * _dz * arg) * (i- 1) * _dz));
   const std::complex<double> intmMismatch = std::exp(0.5_I * ((_diffBeta0[0] + (i-.5) * _dz * arg) * (i-.5) * _dz));
   const std::complex<double> currMismatch = std::exp(0.5_I * ((_diffBeta0[0] +  i     * _dz * arg) *  i     * _dz));
