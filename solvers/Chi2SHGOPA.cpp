@@ -28,12 +28,12 @@ Chi2SHGOPA::Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthS
                         rayleighLength, tMax, tPrecision, zPrecision, poling) {}
 
 
-void Chi2SHGOPA::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi2SHGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                         std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
-  const auto& prvPp = signal[0].row(i-1);
-  const auto& prvSH = signal[1].row(i-1);
-  const auto& prvA1 = signal[2].row(i-1);
-  const auto& prvA2 = signal[3].row(i-1);
+  const auto& prvPp = signal[0].row(iPrevSig);
+  const auto& prvSH = signal[1].row(iPrevSig);
+  const auto& prvA1 = signal[2].row(iPrevSig);
+  const auto& prvA2 = signal[3].row(iPrevSig);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);

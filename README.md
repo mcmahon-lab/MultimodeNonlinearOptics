@@ -93,6 +93,12 @@ e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 
 Sum (or difference) frequency generation.
 
+###### Chi2AFC
+
+Adiabatic frequency conversion (*aka* adiabatic sum/difference frequency generation),
+in a rotating frame with a linearly varying poling frequency built-in to the solver.
+Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SFG applied to AFC.
+
 ###### Chi2SFGII
 <span>
 A&#8320;'(z, t) = D&#770; A&#8320; +

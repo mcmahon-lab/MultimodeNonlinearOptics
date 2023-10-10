@@ -23,29 +23,28 @@ Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Re
 
 
 void Chi3::runPumpSimulation() {
-  RowVectorcd fftTemp(_nFreqs);
-
-  FFTtimes(pumpFreq[0].row(0), _envelope[0], ((0.5_I * _dzp) * _dispersionPump[0]).exp())
-  IFFT(pumpTime[0].row(0), pumpFreq[0].row(0))
+  FFTi(pumpFreq[0], _envelope[0], 0, 0)
+  pumpFreq[0].row(0) *= ((0.5_I * _dzp) * _dispersionPump[0]).exp();
+  IFFTi(pumpTime[0], pumpFreq[0], 0, 0)
 
   Eigen::VectorXcd relativeStrength = (_dzp / _dz * _nlStep[0]) /
       (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
 
-  Arraycd temp(_nFreqs);
   for (uint i = 1; i < _nZStepsP; i++) {
-    temp = pumpTime[0].row(i-1) * (relativeStrength(i-1) * pumpTime[0].row(i-1).abs2()).exp();
-    FFTtimes(pumpFreq[0].row(i), temp, _dispStepPump[0])
-    IFFT(pumpTime[0].row(i), pumpFreq[0].row(i))
+    pumpTime[0].row(i) = pumpTime[0].row(i-1) * (relativeStrength(i-1) * pumpTime[0].row(i-1).abs2()).exp();
+    FFTi(pumpFreq[0], pumpTime[0], i, i)
+    pumpFreq[0].row(i) *= _dispStepPump[0];
+    IFFTi(pumpTime[0], pumpFreq[0], i, i)
   }
 
   pumpFreq[0].row(_nZStepsP-1) *= ((-0.5_I * _dzp) * _dispersionPump[0]).exp();
-  IFFT(pumpTime[0].row(_nZStepsP-1), pumpFreq[0].row(_nZStepsP-1))
+  IFFTi(pumpTime[0], pumpFreq[0], _nZStepsP-1, _nZStepsP-1)
 }
 
 
-void Chi3::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi3::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                   std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
-  const auto& prev = signal[0].row(i-1);
+  const auto& prev = signal[0].row(iPrevSig);
 
   const auto& prevP = pumpTime[0].row(2*i-2);
   const auto& intrP = pumpTime[0].row(2*i-1);

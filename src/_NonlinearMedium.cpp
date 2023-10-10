@@ -3,6 +3,7 @@
 #include <limits>
 #include <thread>
 
+Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 
 _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength,
                                    std::initializer_list<double> nlLength, std::initializer_list<double> beta2,
@@ -102,7 +103,7 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   _nFreqs = nFreqs;
   _tMax = tMax;
 
-  int Nt = _nFreqs;
+  int Nt = static_cast<int>(_nFreqs);
 
   // time and frequency axes
   _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
@@ -174,8 +175,9 @@ void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLe
     _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
 
   if (chirpLength != 0 || delayLength != 0) {
-    RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    Arraycd fftTemp(_nFreqs);
+    FFT(fftTemp, _envelope[pumpIndex])
+    fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
     IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
@@ -191,23 +193,22 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
   _envelope[pumpIndex] = customPump;
 
   if (chirpLength != 0 || delayLength != 0) {
-    RowVectorcd fftTemp(_nFreqs);
-    FFTtimes(fftTemp, _envelope[pumpIndex], (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp())
+    Arraycd fftTemp(_nFreqs);
+    FFT(fftTemp, _envelope[pumpIndex])
+    fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
     IFFT(_envelope[pumpIndex], fftTemp)
   }
 }
 
 
 void _NonlinearMedium::runPumpSimulation() {
-  RowVectorcd fftTemp(_nFreqs);
-
   for (uint m = 0; m < _nPumpModes; m++) {
-    FFT(pumpFreq[m].row(0), _envelope[m])
+    FFTi(pumpFreq[m], _envelope[m], 0, 0)
     pumpTime[m].row(0) = _envelope[m];
 
     for (uint i = 1; i < _nZStepsP; i++) {
       pumpFreq[m].row(i) = pumpFreq[m].row(0) * (1._I * (i * _dzp) * _dispersionPump[m]).exp();
-      IFFT(pumpTime[m].row(i), pumpFreq[m].row(i))
+      IFFTi(pumpTime[m], pumpFreq[m], i, i)
     }
 
     if (_rayleighLength != std::numeric_limits<double>::infinity()) {
@@ -225,7 +226,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
 
-  runSignalSimulation(inputProf, inTimeDomain, inputMode, signalFreq, signalTime);
+  runSignalSimulation(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, false);
 }
 
 
@@ -282,20 +283,14 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
-  // Each thread needs a separate computation grid to avoid interfering with other threads
-  std::vector<std::vector<Array2Dcd>> grids(2 * (nThreads - 1));
-
   // Calculate Green's functions with real and imaginary impulse response
-  auto calcGreensPart = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
-                        (std::vector<Array2Dcd>& gridFreq, std::vector<Array2Dcd>& gridTime, uint start, uint stop) {
-    if (gridFreq.size() == 0) {
-      gridFreq.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(_nZSteps, _nFreqs);
-    }
-    if (gridTime.size() == 0) {
-      gridTime.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(_nZSteps, _nFreqs);
-    }
+  auto calcGreensPart = [&, inTimeDomain, _nFreqs=_nFreqs](uint start, uint stop) {
+    // As a trick for memory efficiency here we use a single array instead of 2D time and frequency grids
+    std::vector<Array2Dcd> gridFreq(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(1, _nFreqs);
+    std::vector<Array2Dcd> gridTime(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(1, _nFreqs);
+
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
@@ -303,7 +298,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime);
+      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) += 0.5 * grid[outputs[om]].bottomRows<1>();
@@ -312,7 +307,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1._I;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime);
+      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) -= 0.5_I * grid[outputs[om]].bottomRows<1>();
@@ -323,10 +318,9 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
   // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
-    threads.emplace_back(calcGreensPart, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
-                         (i * _nFreqs * nInputModes) / nThreads, ((i + 1) * _nFreqs * nInputModes) / nThreads);
+    threads.emplace_back(calcGreensPart, (i * _nFreqs * nInputModes) / nThreads, ((i + 1) * _nFreqs * nInputModes) / nThreads);
   }
-  calcGreensPart(signalFreq, signalTime, 0, (_nFreqs * nInputModes) / nThreads);
+  calcGreensPart(0, (_nFreqs * nInputModes) / nThreads);
   for (auto& thread : threads) {
     if (thread.joinable()) thread.join();
   }
@@ -390,24 +384,18 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
   std::vector<std::thread> threads;
   threads.reserve(nThreads - 1);
 
-  // Each thread needs a separate computation grid to avoid interfering with other threads
-  std::vector<std::vector<Array2Dcd>> grids(2 * (nThreads - 1));
-
   // Calculate all signal propagations
-  auto calcBatch = [&, inTimeDomain, _nZSteps=_nZSteps, _nFreqs=_nFreqs]
-                   (std::vector<Array2Dcd>& gridFreq, std::vector<Array2Dcd>& gridTime, uint start, uint stop) {
-    if (gridFreq.size() == 0) {
-      gridFreq.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(_nZSteps, _nFreqs);
-    }
-    if (gridTime.size() == 0) {
-      gridTime.resize(_nSignalModes);
-      for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(_nZSteps, _nFreqs);
-    }
+  auto calcBatch = [&, inTimeDomain, _nFreqs=_nFreqs] (uint start, uint stop) {
+    // As a trick for memory efficiency here we use a single array instead of 2D time and frequency grids
+    std::vector<Array2Dcd> gridFreq(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridFreq[m].resize(1, _nFreqs);
+    std::vector<Array2Dcd> gridTime(_nSignalModes);
+    for (uint m = 0; m < _nSignalModes; m++) gridTime[m].resize(1, _nFreqs);
+
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
-      runSignalSimulation(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime);
+      runSignalSimulation(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, true);
       for (uint om = 0; om < nOutputModes; om++)
         outSignals.row(i).segment(om*_nFreqs, _nFreqs) = grid[outputs[om]].bottomRows<1>();
     }
@@ -415,10 +403,9 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
 
   // Spawn threads. One batch will be processed in original thread.
   for (uint i = 1; i < nThreads; i++) {
-    threads.emplace_back(calcBatch, std::ref(grids[2*i-2]), std::ref(grids[2*i-1]),
-                         (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
+    threads.emplace_back(calcBatch, (i * nInputs) / nThreads, ((i + 1) * nInputs) / nThreads);
   }
-  calcBatch(signalFreq, signalTime, 0, nInputs / nThreads);
+  calcBatch(0, nInputs / nThreads);
   for (auto& thread : threads) {
     if (thread.joinable()) thread.join();
   }
@@ -499,7 +486,6 @@ void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, do
   if (other._nZSteps < _nZSteps)
     throw std::invalid_argument("Medium does not have sufficient resolution to be used with this one");
 
-  RowVectorcd fftTemp(_nFreqs);
   auto delay = 1._I * _beta1[pumpIndex] * delayLength * _omega;
   for (uint i = 0; i < _nZStepsP - 1; i++) {
     double j_ = i * (static_cast<double>(other._nZSteps - 1) / (_nZStepsP - 1)); // integer overflow danger
@@ -509,10 +495,10 @@ void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, do
     pumpFreq[pumpIndex].row(i) = ((1 - frac) * other.signalFreq[modeIndex].row(j) + frac * other.signalFreq[modeIndex].row(j+1))
         * ((1._I * (i * _dzp)) * _dispersionPump[pumpIndex] - (1._I * (j_ + 0.5) * other._dz) * other._dispersionSign[modeIndex] + delay).exp();
 
-    IFFT(pumpTime[pumpIndex].row(i), pumpFreq[pumpIndex].row(i))
+    IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], i, i)
   }
   pumpFreq[pumpIndex].bottomRows<1>() = other.signalFreq[modeIndex].bottomRows<1>()
       * ((1._I * _z) * _dispersionPump[pumpIndex] - (1._I * other._z) * other._dispersionSign[modeIndex] + delay).exp();
 
-  IFFT(pumpTime[pumpIndex].bottomRows<1>(), pumpFreq[pumpIndex].bottomRows<1>())
+  IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], _nZSteps-1, _nZSteps-1)
 }

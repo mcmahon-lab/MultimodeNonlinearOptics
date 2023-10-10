@@ -2,17 +2,17 @@
 #define NONLINEARMEDIUM
 
 #include <eigen3/Eigen/Core>
-#include <eigen3/unsupported/Eigen/FFT>
+//#include <eigen3/unsupported/Eigen/FFT>
+#include "CustomEigenFFT.h" // Note: using modified version instead
 #include <utility>
 
 
 // Eigen default 1D Array is defined with X rows, 1 column, which does not work with row-major order 2D arrays.
 // Thus define custom double and complex double 1D arrays. Also define the row-major order 2D double and complex arrays.
-// Row vector defined for compatibility with EigenFFT.
+
 typedef Eigen::Array<double, 1, Eigen::Dynamic, Eigen::RowMajor> Arrayd;
 typedef Eigen::Array<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> Arraycd;
 typedef Eigen::Array<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Array2Dcd;
-typedef Eigen::Matrix<std::complex<double>, 1, Eigen::Dynamic, Eigen::RowMajor> RowVectorcd;
 
 inline constexpr std::complex<double> operator"" _I(long double c) {return std::complex<double> {0, static_cast<double>(c)};}
 
@@ -61,11 +61,12 @@ protected:
   _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes), _nPumpModes() {}
 
   virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) = 0;
+                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
+                                   bool optimized) = 0;
 
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime);
+                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, bool optimized);
 
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
 
@@ -104,7 +105,7 @@ protected:
   std::vector<Array2Dcd> signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
-  Eigen::FFT<double> fftObj; /// fft class object for performing dft
+  static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 };
 
 
@@ -115,32 +116,31 @@ protected:
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
-  inline void DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
+  inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
-                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) override \
-     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime); };
+                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
+                           bool optimized) override \
+     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, optimized); };
 
 
-// This way is verified to be the most efficient use of the FFT functions, avoiding allocation of temporaries.
-// Note: it seems that some compilers will throw a taking address of temporary error in EigenFFT.
-// This is due to array->matrix casting, the code will work if disabling the warning and compiling.
+// FFT macros for convenience, indexed and regular
+
+#define FFTi(output, input, rowOut, rowIn) { \
+  fftObj.fwd(output, input, rowOut, rowIn, _nFreqs); }
+#define IFFTi(output, input, rowOut, rowIn) { \
+  fftObj.inv(output, input, rowOut, rowIn, _nFreqs); }
+
 #define FFT(output, input) { \
-  fftObj.fwd(fftTemp, (input).matrix()); \
-  output = fftTemp.array(); }
-#define FFTtimes(output, input, phase) { \
-  fftObj.fwd(fftTemp, (input).matrix()); \
-  output = fftTemp.array() * phase; }
+  fftObj.fwd(output, input, _nFreqs); }
 #define IFFT(output, input) { \
-  fftObj.inv(fftTemp, (input).matrix()); \
-  output = fftTemp.array(); }
+  fftObj.inv(output, input, _nFreqs); }
 
 
 template<class T>
 void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime) {
-  RowVectorcd fftTemp(_nFreqs);
-
+                                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
+                                                bool optimized) {
   // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
   uint nInputChannels = inputProf.size() / _nFreqs;
   if (nInputChannels > 1) inputMode = 0;
@@ -149,12 +149,14 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   if (inTimeDomain)
     for (uint m = 0; m < T::_nSignalModes; m++) {
       if (m == inputMode) {
-        signalFreq[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+        signalTime[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
       }
       else if (inputMode < 1 && m < nInputChannels) {
-        signalFreq[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTtimes(signalFreq[m].row(0), signalFreq[m].row(0), ((0.5_I * _dz) * _dispersionSign[m]).exp())
+        signalTime[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
+        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        signalFreq[m] *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
       }
       else
         signalFreq[m].row(0) = 0;
@@ -170,32 +172,49 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     }
   for (uint m = 0; m < T::_nSignalModes; m++) {
     if (m == inputMode || m < nInputChannels)
-    IFFT(signalTime[m].row(0), signalFreq[m].row(0))
+      IFFTi(signalTime[m], signalFreq[m], 0, 0)
     else
       signalTime[m].row(0) = 0;
   }
 
-  Arraycd temp(_nFreqs);
   std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes);
   for (uint m = 0; m < T::_nSignalModes; m++) {
     k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
   }
-  for (uint i = 1; i < _nZSteps; i++) {
-    // Do a Runge-Kutta step for the non-linear propagation
-    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTime);
+  if (optimized) { // for batchSignalSimulation or computeGreensFunction, where we use a single row instead of a grid
+    for (uint i = 1; i < _nZSteps; i++) {
+      // Do a Runge-Kutta step for the non-linear propagation
+      static_cast<T*>(this)->DiffEq(i, 0, k1, k2, k3, k4, signalTime);
 
-    for (uint m = 0; m < T::_nSignalModes; m++) {
-      temp = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) / 6;
+      for (uint m = 0; m < T::_nSignalModes; m++) {
+        signalTime[m].row(0) += (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
 
-      // Dispersion step
-      FFTtimes(signalFreq[m].row(i), temp, _dispStepSign[m])
-      IFFT(signalTime[m].row(i), signalFreq[m].row(i))
+        // Dispersion step
+        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        signalFreq[m].row(0) *= _dispStepSign[m];
+        IFFTi(signalTime[m], signalFreq[m], 0, 0)
+      }
+    }
+  }
+  else { // for the regular case of filling in the PDE grids
+    for (uint i = 1; i < _nZSteps; i++) {
+      // Do a Runge-Kutta step for the non-linear propagation
+      static_cast<T*>(this)->DiffEq(i, i-1, k1, k2, k3, k4, signalTime);
+
+      for (uint m = 0; m < T::_nSignalModes; m++) {
+        signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
+
+        // Dispersion step
+        FFTi(signalFreq[m], signalTime[m], i, i)
+        signalFreq[m].row(i) *= _dispStepSign[m];
+        IFFTi(signalTime[m], signalFreq[m], i, i)
+      }
     }
   }
 
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    signalFreq[m].row(_nZSteps - 1) *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
-    IFFT(signalTime[m].row(_nZSteps - 1), signalFreq[m].row(_nZSteps - 1))
+    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
+    IFFTi(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1)
   }
 }
 

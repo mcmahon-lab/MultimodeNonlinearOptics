@@ -23,11 +23,11 @@ Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, do
                         tPrecision, zPrecision, poling) {}
 
 
-void Chi2DSFG::DiffEq(uint i, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
+void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
-  const auto& prvP = signal[0].row(i-1);
-  const auto& prvS = signal[1].row(i-1);
-  const auto& prvD = signal[2].row(i-1);
+  const auto& prvP = signal[0].row(iPrevSig);
+  const auto& prvS = signal[1].row(iPrevSig);
+  const auto& prvD = signal[2].row(iPrevSig);
 
   const double prevPolDir = _poling(i-1);
   const double currPolDir = _poling(i);
