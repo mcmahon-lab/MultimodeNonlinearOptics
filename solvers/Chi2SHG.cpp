@@ -7,8 +7,8 @@ class Chi2SHG : public _FullyNonlinearMedium {
   NLM(Chi2SHG, 2)
 public:
   using _NonlinearMedium::runSignalSimulation;
-  Chi2SHG(double relativeLength, double nlLength, double nlLengthP, double beta2, double beta2s,
-          double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
+  Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
+          double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0=0,
           double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
