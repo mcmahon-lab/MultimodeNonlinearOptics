@@ -18,6 +18,7 @@
 #include "Chi2DSFG.cpp"
 #include "Chi2SFGXPM.cpp"
 #include "Chi2SHGXPM.cpp"
+#include "Chi2ASHG.cpp"
 
 // Pybind11 Python binding
 
@@ -46,6 +47,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump");
   py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
   py::class_<Chi2SHGXPM, _FullyNonlinearMedium> Chi2SHGXPM(m, "Chi2SHGXPM", "Fully nonlinear second harmonic generation with self and cross phase modulation");
+  py::class_<Chi2ASHG, _FullyNonlinearMedium> Chi2ASHG(m, "Chi2ASHG", "Fully nonlinear adiabatic second harmonic generation");
 
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
@@ -346,6 +348,19 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+
+
+  /*
+ * Chi2ASHG
+ */
+
+  Chi2ASHG.def(
+      py::init<double, double, double, double, double, double, double, double, double, double, double,
+          double, double, uint, uint>(),
+      "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+
 
 /*
  * Cascade

@@ -253,3 +253,7 @@ e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 </span>
 
 Second harmonic generation with self and cross phase modulation.
+
+###### Chi2ASHG
+Adiabatic second harmonic generation, in a rotating frame with a linearly varying poling frequency built-in to the solver.
+Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SHG applied to the adiabatic case.
