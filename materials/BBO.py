@@ -1,8 +1,8 @@
 from .nlMaterial import *
 try:
-  from symengine import sqrt as ssqrt, sin as ssin, cos as scos
+  from symengine import sqrt as ssqrt
 except:
-  from sympy import sqrt as ssqrt, sin as ssin, cos as scos
+  from sympy import sqrt as ssqrt
 
 info = """BBO
 Tamosauskas et al 2018
@@ -64,7 +64,7 @@ class BBO:
   """
   Angle-tuned Barium Borate
   """
-  ind = 1 / ssqrt(scos(th)**2 / BBOo.ind**2 + ssin(th)**2 / BBOe.ind**2)
+  ind = angledRefractiveIndex(BBOo.ind, BBOe.ind)
 
 
 del BBOo.ind, BBOe.ind

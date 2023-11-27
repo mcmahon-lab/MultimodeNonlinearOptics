@@ -1,8 +1,8 @@
 from .nlMaterial import *
 try:
-  from symengine import sqrt as ssqrt, sin as ssin, cos as scos
+  from symengine import sqrt as ssqrt
 except:
-  from sympy import sqrt as ssqrt, sin as ssin, cos as scos
+  from sympy import sqrt as ssqrt
 
 info = """LBO
 Kato 1994
@@ -99,7 +99,7 @@ class LBOxy:
   Angle-tuned extraordinary axis for lithium triborate on the xy-plane
   Generally Type I processes. φ=0 -> y, φ=90 -> x
   """
-  ind = 1 / ssqrt(scos(th)**2 / LBOy.ind**2 + ssin(th)**2 / LBOx.ind**2)
+  ind = angledRefractiveIndex(LBOy.ind, LBOx.ind)
 
 
 @nlMaterial(angleTuning=True)
@@ -108,7 +108,7 @@ class LBOyz:
   Angle-tuned extraordinary axis for lithium triborate on the yz-plane
   Generally Type II processes. θ=0 -> y, θ=90 -> z
   """
-  ind = 1 / ssqrt(scos(th)**2 / LBOy.ind**2 + ssin(th)**2 / LBOz.ind**2)
+  ind = angledRefractiveIndex(LBOy.ind, LBOz.ind)
 
 
 del LBOz.ind, LBOy.ind, LBOx.ind

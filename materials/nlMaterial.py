@@ -1,10 +1,10 @@
 try:
-  from symengine import symbols, diff, pi, Lambdify, atan, re
+  from symengine import symbols, diff, pi, Lambdify, atan, re, sqrt as ssqrt, sin as ssin, cos as scos
   def lambdify(*funcArgs):
     f = Lambdify(*funcArgs)
     return lambda *callArgs : float(f(*callArgs))
 except:
-  from sympy import symbols, diff, pi, lambdify, atan, re
+  from sympy import symbols, diff, pi, lambdify, atan, re, sqrt as ssqrt, sin as ssin, cos as scos
 
 l0 = symbols("l0", real=True) # Lambda_0, free space wavelength
 T  = symbols("T",  real=True) # Temperature
@@ -71,3 +71,11 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
     return cls
   return nlmDecorator
 
+
+def angledRefractiveIndex(axisIndex1, axisIndex2):
+  """
+  Returns the equation for the refractive index at a given angle theta (th) between two optical axes.
+  The refractive index equations for each axis must be given.
+  The ellipsoidal equation is: n(theta) = [cos(theta)^2 / n_1^2 + sin(theta)^2 / n_2^2]^(-1/2)
+  """
+  return 1 / ssqrt(scos(th)**2 / axisIndex1**2 + ssin(th)**2 / axisIndex2**2)
