@@ -49,6 +49,62 @@ def detunePoling(kMin, kMax, k0, ka, L, dL):
   return polingProfile.ravel() * dL
 
 
+def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
+  """
+  Generate a custom phase matching function based on varying the duty-cycle of the periodic poling.
+  The real-space nonlinearity function must be provided, the inverse Fourier transform of the PMF.
+  The function is normalized to 1 unless otherwise normalize is set to False.
+  Only supports real positive functions
+  (ie function may not have a complex phase: this requires a phase shift in the periods).
+  If the duty cycle generates domains smaller than minSize these are set to zero
+  TODO could use domain-deletion for min size.
+  """
+  poling = periodicPoling(deltaBeta0, L)
+  nDomainPairs = poling.size // 2
+  halfPeriod = poling[0]
+
+  if minSize > poling[0]: raise ValueError("minSize larger than half period.")
+  minDuty = 0.5 * minSize / poling[0]
+
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2), nDomainPairs))
+  if normalize:
+    relativeNL *= 1 / np.max(np.abs(relativeNL))
+  elif np.any(np.abs(relativeNL) > 1):
+    raise ValueError("Function has value larger than 1")
+
+  dutyCycle = np.arcsin(relativeNL) / np.pi
+
+  dutyCycle[np.abs(dutyCycle) < minDuty] = 0
+  dutyCycle[dutyCycle < 0] += 1 # Note negative values affects duty cycle but not effective nonlinearity
+
+  # Split poling into pairs of domains and vary their width according to the PMF
+  dcPoling = np.empty_like(poling)
+  dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
+  dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
+  # Fix the last domain
+  if poling.size % 2:
+    dcPoling[-1] = poling[-1]
+  else:
+    dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
+
+  # remove empty domains and combine adjacent ones
+  iAccum = 0
+  accum = False
+  for i in range(dcPoling.size-1):
+    if dcPoling[i] == 0:
+      accum = True
+    elif accum:
+      dcPoling[iAccum] += dcPoling[i]
+      dcPoling[i] = 0
+      accum = False
+    else:
+      iAccum = i
+
+  dcPoling = dcPoling[dcPoling > 0].copy()
+
+  return dcPoling
+
+
 def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
                            beta1a=0, beta2a=0, beta3a=0,
                            beta1b=0, beta2b=0, beta3b=0,
