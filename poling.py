@@ -57,7 +57,7 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
   Only supports real positive functions
   (ie function may not have a complex phase: this requires a phase shift in the periods).
   If the duty cycle generates domains smaller than minSize these are set to zero
-  TODO could use domain-deletion for min size.
+  In this case those regions should be manually filled with the domain-deletion strategy deletedDomainPmf().
   """
   poling = periodicPoling(deltaBeta0, L)
   nDomainPairs = poling.size // 2
