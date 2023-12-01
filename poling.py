@@ -100,12 +100,17 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
     else:
       iAccum = i
 
+  # Don't accidentally flip the last domain when duty cycle is 0
+  if not poling.size % 2 and dutyCycle[-1] == 0 and dutyCycle[-2] == 0:
+    dcPoling[iAccum] += dcPoling[-1]
+    dcPoling[-1] = 0
+
   dcPoling = dcPoling[dcPoling > 0].copy()
 
   return dcPoling
 
 
-def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True):
+def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override=False):
   """
   Generate a custom phase matching function based on domain-deletion in the periodic poling.
   The real-space nonlinearity function must be provided, the inverse Fourier transform of the PMF.
@@ -116,12 +121,13 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True):
   or smoother discretization of the PMF function.
   However, both are not possible simultaneously, since the largest value of the function cannot exceed
   the effective nonlinearity due to a change in duty cycle.
+  (This can be overriden with override for specfic cases, but the function is not guaranteed to be optimal.)
   """
   if 0 >= dutyCycle or dutyCycle >= 1:
     raise ValueError("Duty cycle not in the open interval (0, 1)")
 
-  if dutyCycle != 0.5 and not normalize:
-    raise ValueError("Changing the and duty cycle and normalizing are incompatible")
+  if dutyCycle != 0.5 and normalize:
+    raise ValueError("Changing the duty cycle and normalizing are incompatible")
 
   poling = periodicPoling(deltaBeta0, L)
 
@@ -145,10 +151,11 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True):
   # if the effective nonlinearity is reduced via duty cycle must
   # make sure the function does not change faster than the nonlinearity
   if dutyCycle != 0.5:
-    if np.any(nlUnit < relativeNL):
-      raise ValueError("Function takes on values larger than the effective nonlinearity by duty cycle."
-                       "Combining domain deletion and duty cycle modulation is only allowed when the"
-                       "function takes values less than the duty cycle allows. It is suggested that"
+    if np.any(nlUnit < relativeNL) and not override:
+      raise ValueError("Function takes on values larger than the effective nonlinearity by duty cycle "
+                       f"({nlUnit} vs {relativeNL.max()}). "
+                       "Combining domain deletion and duty cycle modulation is only allowed when the "
+                       "function takes values less than the duty cycle allows. It is suggested that "
                        "the crystal be split up into regions with different design strategies.")
 
   # We need to match (approximate) the integral of the function with discrete impulses
@@ -163,10 +170,11 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True):
   # Make domains based on where we need to flip the nonlinearity
   locationIndices = np.flatnonzero(nlLocations)
   newPoling = np.zeros(2 * locationIndices.size +
-                       (0 if locationIndices[-1] == nDomainPairs-1 else 1))
+                       (0 if (locationIndices[-1] == nDomainPairs-1
+                              and (poling.size % 2 == 0)) else 1))
   domainLength = halfPeriod * (2 * dutyCycle)
 
-  newPoling[0] = max(np.sum(poling[0 : 2*locationIndices[0]]), poling[0])
+  newPoling[0] = max(np.sum(poling[0 : 2*locationIndices[0]]), poling[1])
   for i in range(1, locationIndices.size):
     newPoling[2*i-1] = domainLength
     newPoling[2*i] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
