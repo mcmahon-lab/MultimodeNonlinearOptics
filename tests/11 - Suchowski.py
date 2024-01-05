@@ -26,17 +26,15 @@
 import numpy as np
 from numpy.fft import fft, ifft, fftshift, ifftshift
 
-try:
-    from nonlinearmedium import Chi2SFG
-except:
-    from NonlinearMedium import Chi2SFG
+from nonlinearmedium import Chi2SFG
 
-from NonlinearHelper import *
+from classical import calculateDispLength, calculateChi2NlLength, findFrameOfReference
+from poling import linearPoling
 
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %%
 from materials import KTPz

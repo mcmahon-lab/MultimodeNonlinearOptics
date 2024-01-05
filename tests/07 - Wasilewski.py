@@ -30,7 +30,7 @@ from nonlinearmedium import Chi2PDC
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # The paper makes predictions about the Green's function in the weak generation regime. We consider the case without dispersion at either frequencies.

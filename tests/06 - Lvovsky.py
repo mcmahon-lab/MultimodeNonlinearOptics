@@ -28,13 +28,13 @@ from numpy.fft import fftshift
 
 from nonlinearmedium import Chi2PDC
 
-from NonlinearHelper import calcQuadratureGreens
+from multimode import calcQuadratureGreens
 from decompositions import bloch_messiah
 
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # Rough estimate of the paper's parameters

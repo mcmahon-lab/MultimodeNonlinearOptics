@@ -29,7 +29,7 @@ from nonlinearmedium import Chi2PDC, Chi3
 
 # %%
 # %matplotlib notebook
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # # Qualitative test
