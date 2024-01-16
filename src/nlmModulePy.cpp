@@ -286,11 +286,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2PDCII.def(
-      py::init<double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double,
-               double, double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "nlLengthI"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
+               double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthI"_a, "nlLengthII"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
       "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0,
-      "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity,
+      "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
       "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
