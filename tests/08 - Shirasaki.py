@@ -26,11 +26,11 @@ import matplotlib.pyplot as plt
 
 from nonlinearmedium import Chi3
 
-from NonlinearHelper import calcQuadratureGreens, calcCovarianceMtx, calcLOSqueezing
+from multimode import calcQuadratureGreens, calcCovarianceMtx, calcLOSqueezing
 
 # %%
 # %matplotlib notebook
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # # Squeezing and Local Oscillator using a Gaussian pulse

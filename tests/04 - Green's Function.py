@@ -32,7 +32,7 @@ from nonlinearmedium import Chi3
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # Using a soliton as a pump

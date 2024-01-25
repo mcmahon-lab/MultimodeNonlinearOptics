@@ -30,7 +30,7 @@ from nonlinearmedium import Chi3, Chi2PDC
 
 # %%
 # %matplotlib notebook
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %%
 fiber1 = Chi3(relativeLength=5,

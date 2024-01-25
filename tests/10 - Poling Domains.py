@@ -20,17 +20,12 @@
 import numpy as np
 from numpy.fft import fft, ifft, fftshift, ifftshift
 
-try:
-    from nonlinearmedium import Chi2SFG
-except:
-    from NonlinearMedium import Chi2SFG
-
-from NonlinearHelper import *
+from nonlinearmedium import Chi2SFG
 
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %% [markdown]
 # # Check the effect of Quasi Phase Matching on a $\chi^{(2)}$ system that is not phase matched

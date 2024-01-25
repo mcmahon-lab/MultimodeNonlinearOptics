@@ -31,14 +31,14 @@ from numpy.fft import fftshift
 
 from nonlinearmedium import Chi3
 
-from NonlinearHelper import calcQuadratureGreens, calcCovarianceMtx, normalizedCov
+from multimode import calcQuadratureGreens, calcCovarianceMtx, normalizedCov
 from decompositions import bloch_messiah
 from scipy.linalg import sqrtm, eig
 
 # %%
 # %matplotlib notebook
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [9, 6]
+plt.rcParams["figure.figsize"] = [9, 6]
 
 # %%
 nFreqs = 512
