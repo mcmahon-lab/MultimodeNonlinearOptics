@@ -3,6 +3,7 @@
 `_NonlinearMedium`:
 Base class for split-step method simulation.
 Solvers that assume an undepleted pump should use this class.
+A curiously recurring template pattern (CRTP) is used to compile the differential equations into the base class.
 
 `_FullyNonlinearMedium`:
 Base class for split-step method simulation.

@@ -12,7 +12,7 @@ Green's functions can be calculated with linear equations.
 `nonlinearmedium` is a compiled C++ library meant to be imported and used in Python.
 To compile, it requires [Pybind11](https://pybind11.readthedocs.io/) for Python binding and [Eigen](http://eigen.tuxfamily.org/) for vectorized operations.
 It will also compile with [fftw](http://www.fftw.org/) if it is found.
-The program is written using the curiously recurring template pattern to efficiently and optimally implement as many differential equation solvers as one can dream of.
+The program is written using the curiously recurring template pattern (CRTP) to efficiently implement as many differential equation solvers as one can dream of.
 The solvers are implemented and described in the `solver/` directory, and registered in `src/nlmModulePy.cpp`.
 
 This repository also contains a collection of Jupyter notebooks that test for correct behavior or reproduce some published results.

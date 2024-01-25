@@ -10,7 +10,7 @@ A material must include `ind` as a class variable, which must be a Sellmeier equ
 - `T`, the temperature (if applicable),
 - `th`, the angle (&theta;; if applicable),
 
-Imported from `nlMatieral.py`.
+imported from `nlMatieral.py`.
 
 The class must have the `nlMaterial` decorator.
 The dependence on temperature and angle may be turned on or off by setting `angleTuning` and `temperatureTuning` to `True` or `False` as decorator arguments.
@@ -25,6 +25,6 @@ The material class will be populated with the following class functions, as a fu
 - `walkoff` (if `angleTuning` is set), the spatial walk-off angle.
 Additional information may be stored as class variables so long as they do not use these names.
 
-For convenience, `nlMaterial` also provide the function
+For convenience, `nlMaterial` also provide the function `angledRefractiveIndex`
 [cos(&theta;)&#178; / n<sub>*i*</sub>&#178; + sin(&theta;)&#178; / n<sub>*j*</sub>&#178;]<sup>-1/2</sup>
 for computing the index between two crystal axes *i*, *j*.
