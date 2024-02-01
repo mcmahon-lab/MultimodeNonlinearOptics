@@ -81,7 +81,7 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
   dcPoling = np.empty_like(poling)
   dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
   dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
-  # Fix the last domain
+  # Fix the last domain # TODO possible that the duty cycle reduces the last domain enough to fit another domain
   if poling.size % 2:
     dcPoling[-1] = poling[-1]
   else:
@@ -101,7 +101,7 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
       iAccum = i
 
   # Don't accidentally flip the last domain when duty cycle is 0
-  if not poling.size % 2 and dutyCycle[-1] == 0 and dutyCycle[-2] == 0:
+  if dutyCycle[-1] == 0:
     dcPoling[iAccum] += dcPoling[-1]
     dcPoling[-1] = 0
 
@@ -130,16 +130,24 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
     raise ValueError("Changing the duty cycle and normalizing are incompatible")
 
   poling = periodicPoling(deltaBeta0, L)
-
-  nDomainPairs = poling.size // 2
   halfPeriod = poling[0]
+  hasSingleDomain = bool(poling.size % 2)
+  nDomainPairs = poling.size // 2
+
   if dutyCycle != 0.5:
     poling[0:2*nDomainPairs:2] *= 2 * dutyCycle
     poling[1:2*nDomainPairs:2] *= 2 * (1 - dutyCycle)
-    if not (poling.size % 2):
+    if not hasSingleDomain:
       poling[-1] = halfPeriod + poling[-1] - poling[-2]
+    # check if the duty cycle reduces the last domain enough to fit another domain
+    elif 2 * dutyCycle * halfPeriod < poling[-1]: # and hasSingleDomain
+      # Note poling[0] = 2 * dutyCycle * halfPeriod
+      poling = np.concatenate([poling[:-1], [poling[0], poling[-1] - poling[0]]])
+      hasSingleDomain = False
+      nDomainPairs += 1
 
-  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2), nDomainPairs))
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2),
+                               nDomainPairs + hasSingleDomain))
   if normalize:
     relativeNL *= 1 / np.max(np.abs(relativeNL))
   elif np.any(np.abs(relativeNL) > 1):
@@ -158,28 +166,49 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
                        "function takes values less than the duty cycle allows. It is suggested that "
                        "the crystal be split up into regions with different design strategies.")
 
-  # We need to match (approximate) the integral of the function with discrete impulses
+  # We need to (approximately) match the integral of the function with discrete impulses
   integral = np.cumsum(relativeNL)
   discreteCumSum = 0
   nlLocations = np.zeros(relativeNL.size, dtype=np.bool)
-  for i in range(integral.size):
+  for i in range(integral.size - hasSingleDomain):
     if abs(discreteCumSum + nlUnit - integral[i]) < abs(discreteCumSum - integral[i]):
       discreteCumSum += nlUnit
       nlLocations[i] = True
+  if hasSingleDomain:
+    nlUnit = np.sin(0.5 * np.pi * poling[-1] / halfPeriod)
+    if abs(discreteCumSum + nlUnit - integral[i]) < abs(discreteCumSum - integral[i]):
+      discreteCumSum += nlUnit
+      nlLocations[-1] = True
 
   # Make domains based on where we need to flip the nonlinearity
   locationIndices = np.flatnonzero(nlLocations)
-  newPoling = np.zeros(2 * locationIndices.size +
-                       (0 if (locationIndices[-1] == nDomainPairs-1
-                              and (poling.size % 2 == 0)) else 1))
   domainLength = halfPeriod * (2 * dutyCycle)
+  startsOn = (locationIndices[0] == 0)
+  endsOn = (locationIndices[-1] == nDomainPairs+hasSingleDomain-1)
 
-  newPoling[0] = max(np.sum(poling[0 : 2*locationIndices[0]]), poling[1])
-  for i in range(1, locationIndices.size):
-    newPoling[2*i-1] = domainLength
-    newPoling[2*i] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
-  newPoling[-2] = domainLength
-  newPoling[-1] = np.sum(poling[2*locationIndices[-1]+1 :])
+  newPoling = np.zeros(2 * locationIndices.size
+                       + (not startsOn)
+                       - (endsOn and hasSingleDomain)
+                       )
+
+  if startsOn:
+    newPoling[0::2] = domainLength
+    for i in range(1, locationIndices.size):
+      newPoling[2*i-1] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
+    if not endsOn: # Extend the last domain to the end of the crystal
+      newPoling[2*i+1] = np.sum(poling[2*locationIndices[-1]+1 :])
+    else: # Make the last domain the remaining length of the crystal
+      newPoling[-1] = poling[-1]
+
+  else:
+    newPoling[1::2] = domainLength
+    newPoling[0] = np.sum(poling[0 : 2*locationIndices[0]])
+    for i in range(1, locationIndices.size):
+      newPoling[2*i] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
+    if not endsOn: # Extend the last domain to the end of the crystal
+      newPoling[2*i+2] = np.sum(poling[2*locationIndices[-1]+1 :])
+    else: # Make the last domain the remaining length of the crystal
+      newPoling[-1] = poling[-1]
 
   return newPoling
 
