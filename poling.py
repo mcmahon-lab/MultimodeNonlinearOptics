@@ -26,7 +26,7 @@ def linearPoling(kMin, kMax, L, dL):
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
-  return polingProfile.flatten() * dL
+  return polingProfile.ravel() * dL
 
 
 def detunePoling(kMin, kMax, k0, ka, L, dL):
@@ -46,7 +46,171 @@ def detunePoling(kMin, kMax, k0, ka, L, dL):
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
-  return polingProfile.flatten() * dL
+  return polingProfile.ravel() * dL
+
+
+def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
+  """
+  Generate a custom phase matching function based on varying the duty-cycle of the periodic poling.
+  The real-space nonlinearity function must be provided, the inverse Fourier transform of the PMF.
+  The function is normalized to 1 unless otherwise normalize is set to False.
+  Only supports real positive functions
+  (ie function may not have a complex phase: this requires a phase shift in the periods).
+  If the duty cycle generates domains smaller than minSize these are set to zero
+  In this case those regions should be manually filled with the domain-deletion strategy deletedDomainPmf().
+  """
+  poling = periodicPoling(deltaBeta0, L)
+  nDomainPairs = poling.size // 2
+  halfPeriod = poling[0]
+
+  if minSize > poling[0]: raise ValueError("minSize larger than half period.")
+  minDuty = 0.5 * minSize / poling[0]
+
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2), nDomainPairs))
+  if normalize:
+    relativeNL *= 1 / np.max(np.abs(relativeNL))
+  elif np.any(np.abs(relativeNL) > 1):
+    raise ValueError("Function has value larger than 1")
+
+  dutyCycle = np.arcsin(relativeNL) / np.pi
+
+  dutyCycle[np.abs(dutyCycle) < minDuty] = 0
+  dutyCycle[dutyCycle < 0] += 1 # Note negative values affects duty cycle but not effective nonlinearity
+
+  # Split poling into pairs of domains and vary their width according to the PMF
+  dcPoling = np.empty_like(poling)
+  dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
+  dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
+  # Fix the last domain # TODO possible that the duty cycle reduces the last domain enough to fit another domain
+  if poling.size % 2:
+    dcPoling[-1] = poling[-1]
+  else:
+    dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
+
+  # remove empty domains and combine adjacent ones
+  iAccum = 0
+  accum = False
+  for i in range(dcPoling.size-1):
+    if dcPoling[i] == 0:
+      accum = True
+    elif accum:
+      dcPoling[iAccum] += dcPoling[i]
+      dcPoling[i] = 0
+      accum = False
+    else:
+      iAccum = i
+
+  # Don't accidentally flip the last domain when duty cycle is 0
+  if dutyCycle[-1] == 0:
+    dcPoling[iAccum] += dcPoling[-1]
+    dcPoling[-1] = 0
+
+  dcPoling = dcPoling[dcPoling > 0].copy()
+
+  return dcPoling
+
+
+def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override=False):
+  """
+  Generate a custom phase matching function based on domain-deletion in the periodic poling.
+  The real-space nonlinearity function must be provided, the inverse Fourier transform of the PMF.
+  The function is normalized to 1 unless normalize is set to False.
+  Only supports real positive functions
+  (ie function may not have a complex phase: this requires a phase shift in the periods).
+  The duty cycle may be specified to provide a smaller nonlinearity unit, allowing for a higher density,
+  or smoother discretization of the PMF function.
+  However, both are not possible simultaneously, since the largest value of the function cannot exceed
+  the effective nonlinearity due to a change in duty cycle.
+  (This can be overriden with override for specfic cases, but the function is not guaranteed to be optimal.)
+  """
+  if 0 >= dutyCycle or dutyCycle >= 1:
+    raise ValueError("Duty cycle not in the open interval (0, 1)")
+
+  if dutyCycle != 0.5 and normalize:
+    raise ValueError("Changing the duty cycle and normalizing are incompatible")
+
+  poling = periodicPoling(deltaBeta0, L)
+  halfPeriod = poling[0]
+  hasSingleDomain = bool(poling.size % 2)
+  nDomainPairs = poling.size // 2
+
+  if dutyCycle != 0.5:
+    poling[0:2*nDomainPairs:2] *= 2 * dutyCycle
+    poling[1:2*nDomainPairs:2] *= 2 * (1 - dutyCycle)
+    if not hasSingleDomain:
+      poling[-1] = halfPeriod + poling[-1] - poling[-2]
+    # check if the duty cycle reduces the last domain enough to fit another domain
+    elif 2 * dutyCycle * halfPeriod < poling[-1]: # and hasSingleDomain
+      # Note poling[0] = 2 * dutyCycle * halfPeriod
+      poling = np.concatenate([poling[:-1], [poling[0], poling[-1] - poling[0]]])
+      hasSingleDomain = False
+      nDomainPairs += 1
+
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2),
+                               nDomainPairs + hasSingleDomain))
+  if normalize:
+    relativeNL *= 1 / np.max(np.abs(relativeNL))
+  elif np.any(np.abs(relativeNL) > 1):
+    raise ValueError("Function has value larger than 1")
+
+  # account for the effect of duty cycle on NL if applicable
+  nlUnit = np.sin(np.pi * dutyCycle)
+
+  # if the effective nonlinearity is reduced via duty cycle must
+  # make sure the function does not change faster than the nonlinearity
+  if dutyCycle != 0.5:
+    if np.any(nlUnit < relativeNL) and not override:
+      raise ValueError("Function takes on values larger than the effective nonlinearity by duty cycle "
+                       f"({nlUnit} vs {relativeNL.max()}). "
+                       "Combining domain deletion and duty cycle modulation is only allowed when the "
+                       "function takes values less than the duty cycle allows. It is suggested that "
+                       "the crystal be split up into regions with different design strategies.")
+
+  # We need to (approximately) match the integral of the function with discrete impulses
+  integral = np.cumsum(relativeNL)
+  discreteCumSum = 0
+  nlLocations = np.zeros(relativeNL.size, dtype=np.bool)
+  for i in range(integral.size - hasSingleDomain):
+    if abs(discreteCumSum + nlUnit - integral[i]) < abs(discreteCumSum - integral[i]):
+      discreteCumSum += nlUnit
+      nlLocations[i] = True
+  if hasSingleDomain:
+    nlUnit = np.sin(0.5 * np.pi * poling[-1] / halfPeriod)
+    if abs(discreteCumSum + nlUnit - integral[i]) < abs(discreteCumSum - integral[i]):
+      discreteCumSum += nlUnit
+      nlLocations[-1] = True
+
+  # Make domains based on where we need to flip the nonlinearity
+  locationIndices = np.flatnonzero(nlLocations)
+  domainLength = halfPeriod * (2 * dutyCycle)
+  startsOn = (locationIndices[0] == 0)
+  endsOn = (locationIndices[-1] == nDomainPairs+hasSingleDomain-1)
+
+  newPoling = np.zeros(2 * locationIndices.size
+                       + (not startsOn)
+                       - (endsOn and hasSingleDomain)
+                       )
+
+  if startsOn:
+    newPoling[0::2] = domainLength
+    for i in range(1, locationIndices.size):
+      newPoling[2*i-1] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
+    if not endsOn: # Extend the last domain to the end of the crystal
+      newPoling[2*i+1] = np.sum(poling[2*locationIndices[-1]+1 :])
+    else: # Make the last domain the remaining length of the crystal
+      newPoling[-1] = poling[-1]
+
+  else:
+    newPoling[1::2] = domainLength
+    newPoling[0] = np.sum(poling[0 : 2*locationIndices[0]])
+    for i in range(1, locationIndices.size):
+      newPoling[2*i] = np.sum(poling[2*locationIndices[i-1]+1 : 2*locationIndices[i]])
+    if not endsOn: # Extend the last domain to the end of the crystal
+      newPoling[2*i+2] = np.sum(poling[2*locationIndices[-1]+1 :])
+    else: # Make the last domain the remaining length of the crystal
+      newPoling[-1] = poling[-1]
+
+  return newPoling
 
 
 def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
