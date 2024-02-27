@@ -35,7 +35,7 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
   c = 299792458 # m / s
   e0 = 1 / (4e-7 * np.pi * c**2) # F / m
   peakField = np.sqrt(2 * peakPower / (np.pi * beamRadius**2) / (indexP * e0 * c)) # V / m
-  NL = 1 / ((2 * d * 1e-12 * freqS * 1e9 * peakField) / (indexS * c))
+  NL = 1 / ((d * 1e-12 * freqS * 1e9 * peakField) / (2 * indexS * c))
   return NL
 
 

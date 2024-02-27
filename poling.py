@@ -81,7 +81,7 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
   dcPoling = np.empty_like(poling)
   dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
   dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
-  # Fix the last domain # TODO possible that the duty cycle reduces the last domain enough to fit another domain
+  # Fix the last domain
   if poling.size % 2:
     dcPoling[-1] = poling[-1]
   else:
@@ -168,6 +168,7 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
 
   # We need to (approximately) match the integral of the function with discrete impulses
   integral = np.cumsum(relativeNL)
+  integral *= integral[-1] / (nlUnit * np.round(integral[-1] / nlUnit)) # precompute units needed and redistribute weight
   discreteCumSum = 0
   nlLocations = np.zeros(relativeNL.size, dtype=np.bool)
   for i in range(integral.size - hasSingleDomain):
