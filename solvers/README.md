@@ -108,7 +108,7 @@ A&#8320;'(z, t) = D&#770; A&#8320; +
 <br>
 A<sub>p</sub>'(z, t) = D&#770; A<sub>p</sub> +
 <i>i L</i><sub>NL</sub><sup>-1</sup> |A<sub>p</sub>|&#178; A<sub>p</sub> /
-&radic;<span style="text-decoration:overline;">1 + ((z-L/2) / zr)&#178;</span>
+(1 + ((z-L/2) / zr)&#178;)
 </span>
 
 Noise reduction by self phase modulation.

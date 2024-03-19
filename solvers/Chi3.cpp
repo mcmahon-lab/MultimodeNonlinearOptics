@@ -27,11 +27,11 @@ void Chi3::runPumpSimulation() {
   pumpFreq[0].row(0) *= ((0.5_I * _dzp) * _dispersionPump[0]).exp();
   IFFTi(pumpTime[0], pumpFreq[0], 0, 0)
 
-  Eigen::VectorXcd relativeStrength = (_dzp / _dz * _nlStep[0]) /
-      (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+  Eigen::VectorXcd relativeIntensity = (_dzp / _dz * _nlStep[0]) /
+      (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square());
 
   for (uint i = 1; i < _nZStepsP; i++) {
-    pumpTime[0].row(i) = pumpTime[0].row(i-1) * (relativeStrength(i-1) * pumpTime[0].row(i-1).abs2()).exp();
+    pumpTime[0].row(i) = pumpTime[0].row(i-1) * (relativeIntensity(i-1) * pumpTime[0].row(i-1).abs2()).exp();
     FFTi(pumpFreq[0], pumpTime[0], i, i)
     pumpFreq[0].row(i) *= _dispStepPump[0];
     IFFTi(pumpTime[0], pumpFreq[0], i, i)
