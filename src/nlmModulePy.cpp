@@ -19,6 +19,7 @@
 #include "Chi2SFGXPM.cpp"
 #include "Chi2SHGXPM.cpp"
 #include "Chi2ASHG.cpp"
+#include "Chi3GNLSE.cpp"
 
 // Pybind11 Python binding
 
@@ -48,6 +49,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
   py::class_<Chi2SHGXPM, _FullyNonlinearMedium> Chi2SHGXPM(m, "Chi2SHGXPM", "Fully nonlinear second harmonic generation with self and cross phase modulation");
   py::class_<Chi2ASHG, _FullyNonlinearMedium> Chi2ASHG(m, "Chi2ASHG", "Fully nonlinear adiabatic second harmonic generation");
+  py::class_<Chi3GNLSE, _FullyNonlinearMedium> Chi3GNLSE(m, "Chi3GNLSE", "Fully nonlinear general nonlinear Schrodinger equation");
 
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
@@ -360,6 +362,20 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
       "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
       "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+
+
+/*
+ * Chi3GNLSE
+ */
+
+  Chi3GNLSE.def(
+      py::init<double, double, double, double, double, double, double, double, double, double, double, double,
+          uint, uint>(),
+      "relativeLength"_a, "nlLength"_a, "selfSteepLength"_a,  "fr"_a, "fb"_a, "tau1"_a, "tau2"_a, "tau3"_a,
+      "beta2"_a, "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,"zPrecision"_a = 100);
+
+  Chi3GNLSE.def_property_readonly("ramanResponse", &Chi3GNLSE::getRamanResponse, py::return_value_policy::reference,
+                                  "Read-only array of the Raman response function in the frequency domain.");
 
 
 /*

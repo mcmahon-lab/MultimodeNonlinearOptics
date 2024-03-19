@@ -221,3 +221,20 @@ Second harmonic generation with self and cross phase modulation.
 ###### Chi2ASHG
 Adiabatic second harmonic generation, in a rotating frame with a linearly varying poling frequency built-in to the solver.
 Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SHG applied to the adiabatic case.
+
+###### Chi3GNLSE
+<span>
+A&#8320;'(z, t) = D&#770; A&#8320; +
+<i>i</i> 
+(<i>L</i> <sub>NL0</sub><sup>-1</sup> + <i>i L</i><sub>NL1</sub><sup>-1</sup> <i>d/d</i>t)
+[A&#8320 <i>&#x222b;d</i>t R(t') |A&#8320(t-t')|&#178;]
+<br>
+R(t < 0) = 0
+<br>
+R(t &GreaterEqual; 0) =
+  f<sub>r</sub> (1 - f<sub>b</sub>) (&tau;&#8321; / &tau;&#8322;&#178; + 1 / &tau;&#8321;) exp(-t / &tau;&#8322;) sin(t / &tau;&#8321;)
+  + f<sub>r</sub> f<sub>b</sub> / (&tau;&#8323;&#178;) exp(-t / &tau;&#8323;) (2 &tau;&#8323; - t)
+  + (1 - f<sub>r</sub>) &delta;(t)
+</span>
+
+Generalized nonlinear Schrödinger equation, with Raman response R(t).
