@@ -317,7 +317,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Chi2SFGOPA.def(
       py::init<double, double, double, double, double, double, double, double, double, const Eigen::Ref<const Arraycd>&,
                int, double, double, double, double, double, double, double, double, double, double, double,
-                double, double, uint, uint, double, double, const Eigen::Ref<const Arrayd>&>(),
+               double, double, uint, uint, double, double, const Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthFh"_a, "nlLengthHh"_a, "nlLengthFf"_a, "nlLengthHf"_a, "beta2F"_a, "beta2H"_a, "beta2h"_a,
       "beta2f"_a, "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0,
       "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0, "diffBeta0SFG"_a = 0, "diffBeta0OPA"_a = 0, "diffBeta0DOPA"_a = 0,
@@ -350,7 +350,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
-  /*
+/*
  * Chi2ASHG
  */
 
