@@ -106,6 +106,20 @@ protected:
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
   static Eigen::FFT<double> fftObj; /// fft class object for performing dft
+
+  // DFT Convenience Functions, indexed (for 2D arrays) and regular (for 1D arrays):
+  inline void FFT(Arraycd& output, const Arraycd& input) {
+    fftObj.fwd(output, input, _nFreqs);
+  }
+  inline void IFFT(Arraycd& output, const Arraycd& input) {
+    fftObj.inv(output, input, _nFreqs);
+  }
+  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+    fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
+  }
+  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+    fftObj.inv(output, input, rowOut, rowIn, _nFreqs);
+  }
 };
 
 
@@ -124,19 +138,6 @@ protected: \
      { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, optimized); };
 
 
-// FFT macros for convenience, indexed and regular
-
-#define FFTi(output, input, rowOut, rowIn) { \
-  fftObj.fwd(output, input, rowOut, rowIn, _nFreqs); }
-#define IFFTi(output, input, rowOut, rowIn) { \
-  fftObj.inv(output, input, rowOut, rowIn, _nFreqs); }
-
-#define FFT(output, input) { \
-  fftObj.fwd(output, input, _nFreqs); }
-#define IFFT(output, input) { \
-  fftObj.inv(output, input, _nFreqs); }
-
-
 template<class T>
 void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
@@ -150,12 +151,12 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     for (uint m = 0; m < T::_nSignalModes; m++) {
       if (m == inputMode) {
         signalTime[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        FFTi(signalFreq[m], signalTime[m], 0, 0);
         signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
       }
       else if (inputMode < 1 && m < nInputChannels) {
         signalTime[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        FFTi(signalFreq[m], signalTime[m], 0, 0);
         signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
       }
       else
@@ -172,7 +173,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     }
   for (uint m = 0; m < T::_nSignalModes; m++) {
     if (m == inputMode || m < nInputChannels)
-      IFFTi(signalTime[m], signalFreq[m], 0, 0)
+      IFFTi(signalTime[m], signalFreq[m], 0, 0);
     else
       signalTime[m].row(0) = 0;
   }
@@ -190,9 +191,9 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
         signalTime[m].row(0) += (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
 
         // Dispersion step
-        FFTi(signalFreq[m], signalTime[m], 0, 0)
+        FFTi(signalFreq[m], signalTime[m], 0, 0);
         signalFreq[m].row(0) *= _dispStepSign[m];
-        IFFTi(signalTime[m], signalFreq[m], 0, 0)
+        IFFTi(signalTime[m], signalFreq[m], 0, 0);
       }
     }
   }
@@ -205,16 +206,16 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
         signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
 
         // Dispersion step
-        FFTi(signalFreq[m], signalTime[m], i, i)
+        FFTi(signalFreq[m], signalTime[m], i, i);
         signalFreq[m].row(i) *= _dispStepSign[m];
-        IFFTi(signalTime[m], signalFreq[m], i, i)
+        IFFTi(signalTime[m], signalFreq[m], i, i);
       }
     }
   }
 
   for (uint m = 0; m < T::_nSignalModes; m++) {
     signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
-    IFFTi(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1)
+    IFFTi(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1);
   }
 }
 

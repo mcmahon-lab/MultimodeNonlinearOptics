@@ -176,9 +176,9 @@ void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLe
 
   if (chirpLength != 0 || delayLength != 0) {
     Arraycd fftTemp(_nFreqs);
-    FFT(fftTemp, _envelope[pumpIndex])
+    FFT(fftTemp, _envelope[pumpIndex]);
     fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
-    IFFT(_envelope[pumpIndex], fftTemp)
+    IFFT(_envelope[pumpIndex], fftTemp);
   }
 }
 
@@ -194,21 +194,21 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 
   if (chirpLength != 0 || delayLength != 0) {
     Arraycd fftTemp(_nFreqs);
-    FFT(fftTemp, _envelope[pumpIndex])
+    FFT(fftTemp, _envelope[pumpIndex]);
     fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
-    IFFT(_envelope[pumpIndex], fftTemp)
+    IFFT(_envelope[pumpIndex], fftTemp);
   }
 }
 
 
 void _NonlinearMedium::runPumpSimulation() {
   for (uint m = 0; m < _nPumpModes; m++) {
-    FFTi(pumpFreq[m], _envelope[m], 0, 0)
+    FFTi(pumpFreq[m], _envelope[m], 0, 0);
     pumpTime[m].row(0) = _envelope[m];
 
     for (uint i = 1; i < _nZStepsP; i++) {
       pumpFreq[m].row(i) = pumpFreq[m].row(0) * (1._I * (i * _dzp) * _dispersionPump[m]).exp();
-      IFFTi(pumpTime[m], pumpFreq[m], i, i)
+      IFFTi(pumpTime[m], pumpFreq[m], i, i);
     }
 
     if (_rayleighLength != std::numeric_limits<double>::infinity()) {
@@ -495,10 +495,10 @@ void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, do
     pumpFreq[pumpIndex].row(i) = ((1 - frac) * other.signalFreq[modeIndex].row(j) + frac * other.signalFreq[modeIndex].row(j+1))
         * ((1._I * (i * _dzp)) * _dispersionPump[pumpIndex] - (1._I * (j_ + 0.5) * other._dz) * other._dispersionSign[modeIndex] + delay).exp();
 
-    IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], i, i)
+    IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], i, i);
   }
   pumpFreq[pumpIndex].bottomRows<1>() = other.signalFreq[modeIndex].bottomRows<1>()
       * ((1._I * _z) * _dispersionPump[pumpIndex] - (1._I * other._z) * other._dispersionSign[modeIndex] + delay).exp();
 
-  IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], _nZSteps-1, _nZSteps-1)
+  IFFTi(pumpTime[pumpIndex], pumpFreq[pumpIndex], _nZSteps-1, _nZSteps-1);
 }
