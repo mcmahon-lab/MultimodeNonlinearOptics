@@ -226,7 +226,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
 
-  runSignalSimulation(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, false);
+  dispatchSignalSim(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, false);
 }
 
 
@@ -298,7 +298,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
+      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) += 0.5 * grid[outputs[om]].bottomRows<1>();
@@ -307,7 +307,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1._I;
-      runSignalSimulation(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
+      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) -= 0.5_I * grid[outputs[om]].bottomRows<1>();
@@ -395,7 +395,7 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
-      runSignalSimulation(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, true);
+      dispatchSignalSim(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, true);
       for (uint om = 0; om < nOutputModes; om++)
         outSignals.row(i).segment(om*_nFreqs, _nFreqs) = grid[outputs[om]].bottomRows<1>();
     }

@@ -60,9 +60,9 @@ protected:
   _NonlinearMedium() : _nSignalModes(), _nPumpModes() {};
   _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes), _nPumpModes() {}
 
-  virtual void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                   std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
-                                   bool optimized) = 0;
+  virtual void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
+                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
+                                 bool optimized) = 0;
 
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
@@ -118,9 +118,9 @@ protected: \
   constexpr static uint _nSignalModes = modes; \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
-  void runSignalSimulation(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
-                           std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
-                           bool optimized) override \
+  void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
+                         std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
+                         bool optimized) override \
      { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, optimized); };
 
 
