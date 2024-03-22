@@ -156,7 +156,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
       else if (inputMode < 1 && m < nInputChannels) {
         signalTime[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
         FFTi(signalFreq[m], signalTime[m], 0, 0)
-        signalFreq[m] *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
       }
       else
         signalFreq[m].row(0) = 0;
