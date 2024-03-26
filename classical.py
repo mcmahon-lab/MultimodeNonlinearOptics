@@ -15,10 +15,8 @@ def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
   DS = 1000 * timeScale**2 / abs(beta2)
   if pulseTypeFWHM == "sech":
     DS /= 4 * np.log(1 + np.sqrt(2))**2
-    # DS /= 4 * np.log(2 + np.sqrt(3))**2
   elif pulseTypeFWHM == "gauss":
     DS /= 4 * np.log(2)
-    # DS /= 8 * np.log(2)
   return DS
 
 
