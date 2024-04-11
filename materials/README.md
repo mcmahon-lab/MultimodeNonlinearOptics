@@ -3,7 +3,8 @@
 The purpose of the classes in this directory is to encode the parameters of nonlinear-optical materials.
 Most importantly we use these to evaluate Sellmeier equations as a function of wavelength, temperature and angle.
 These values may then be used in simulations, or for temperature or angle tuning.
-This module is built using Symbolic Python ([Symengine](https://symengine.org/) or [SymPy](https://www.sympy.org/)).
+This module is built using Symbolic Python, and will run with either [Symengine](https://symengine.org/) or [SymPy](https://www.sympy.org/).
+(Note: Symengine is preferable as Sympy can be fairly slow for this application).
 
 A material must include `ind` as a class variable, which must be a Sellmeier equation written in symbolic Python, as a function of:
 - `l0`, the free space wavelength (&lambda;&#8320;),
