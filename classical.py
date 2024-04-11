@@ -20,7 +20,7 @@ def calculateDispLength(beta2, timeScale, pulseTypeFWHM=None):
   return DS
 
 
-def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
+def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS, gaussianBeam=False):
   """
   Return nonlinear length (meters).
   d: nonlinear coefficient (pm / V)
@@ -29,24 +29,30 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS):
   indexP: refractive index at the pump frequency
   indexS: refractive index at the signal frequency
   freqS:  frequency of the signal (2 pi GHz)
+  gaussianBeam: if true, scales the peak field by a factor of sqrt(2)
+   (in a spatially Gaussian beam the peak intensity is twice the intensity divided by area as defined by the beam waist)
   """
   c = 299792458 # m / s
   e0 = 1 / (4e-7 * np.pi * c**2) # F / m
   peakField = np.sqrt(2 * peakPower / (np.pi * beamRadius**2) / (indexP * e0 * c)) # V / m
+  if gaussianBeam: peakField *= np.sqrt(2)
   NL = 1 / ((d * 1e-12 * freqS * 1e9 * peakField) / (2 * indexS * c))
   return NL
 
 
-def calculateChi3NlLength(n2, wavelength, peakPower, beamRadius):
+def calculateChi3NlLength(n2, wavelength, peakPower, beamRadius, gaussianBeam=False):
   """
   Return nonlinear length (meters).
   n2: nonlinear index in (cm^2 W^-1)
   wavelength: in nm
   peakPower: pulse peak power (W)
   beamRadius: effective radius of the beam, to calculate intensity (m)
+  gaussianBeam: if true, scales the peak intensity by a factor of 2
+   (in a spatially Gaussian beam the peak intensity is twice the intensity divided by area as defined by the beam waist)
   """
   gamma = 2 * np.pi * n2 / (wavelength * np.pi * beamRadius**2)
   NL = 1e-5 / (peakPower * gamma)
+  if gaussianBeam: NL /= 2
   return NL
 
 
