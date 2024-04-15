@@ -28,7 +28,7 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS, gauss
   beamRadius: effective radius of the beam, to calculate intensity (m)
   indexP: refractive index at the pump frequency
   indexS: refractive index at the signal frequency
-  freqS:  frequency of the signal (2 pi GHz)
+  freqS:  frequency of the signal (2 pi THz)
   gaussianBeam: if true, scales the peak field by a factor of sqrt(2)
    (in a spatially Gaussian beam the peak intensity is twice the intensity divided by area as defined by the beam waist)
   """
@@ -36,7 +36,7 @@ def calculateChi2NlLength(d, peakPower, beamRadius, indexP, indexS, freqS, gauss
   e0 = 1 / (4e-7 * np.pi * c**2) # F / m
   peakField = np.sqrt(2 * peakPower / (np.pi * beamRadius**2) / (indexP * e0 * c)) # V / m
   if gaussianBeam: peakField *= np.sqrt(2)
-  NL = 1 / ((d * 1e-12 * freqS * 1e9 * peakField) / (2 * indexS * c))
+  NL = 1 / ((d * freqS * peakField) / (2 * indexS * c))
   return NL
 
 
