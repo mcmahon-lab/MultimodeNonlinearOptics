@@ -29,6 +29,50 @@ def linearPoling(k0, kf, L, dL):
   return polingProfile.ravel() * dL
 
 
+def linearPolingContinuous(k0, kf, L):
+  """
+  Create a poling design that has linearly varying phase matching, with unlimited resolution.
+  This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
+  The variables define the curve such that k(z) = a z + b, k(0) = k0 and k(L) = kf.
+  """
+  # Need to solve the equation: (kf-ki) / (2 L) z^2 + ki z = n pi for some n
+  nFinal = int((kf + k0) * L / (2 * np.pi)) # n at the endpoint
+  switches = False # whether n changes monotonically or reverts
+  zSwitch = -k0 * L / (kf - k0) # point at which n changes direction
+  if 0 < zSwitch < L:
+    switches = True
+    nSwitch = int(k0 * zSwitch / np.pi + (kf - k0) * zSwitch**2 / (2 * np.pi * L)) # value of n at switching
+  else:
+    nSwitch = None
+
+  if switches:
+    # find the point where direction of n switches, ie where n passes through zero again
+    direction1 = np.sign(nSwitch) if np.sign(nSwitch) != 0 else 1
+    direction2 = 1 if nFinal > nSwitch else -1
+    #degenerateSol = True # TODO/CHECKME not sure if degeneracy exists/how to determine
+    additionalDoms = (2 if direction2 == np.sign(nFinal) else 1)
+    nTimes2Pi = (2 * np.pi) * np.concatenate([np.arange(0, nSwitch, direction1),# degenerateSol * [nSwitch],
+                                              np.arange(nSwitch, nFinal + additionalDoms * direction2, direction2)])
+    nSwitch = abs(nSwitch)
+  else:
+    direction = np.sign(nFinal) if np.sign(nFinal) != 0 else 1
+    additionalDoms = (2 if direction == np.sign(nFinal) else 1)
+    nTimes2Pi = (2 * np.pi) * np.arange(0, nFinal + additionalDoms * np.sign(nFinal), direction)
+
+  # discriminant
+  pmFactor = np.sqrt((L * k0)**2 + nTimes2Pi * (L * (kf - k0)))
+  if k0 < 0: # CHECKME
+    pmFactor[:nSwitch] *= -1
+  elif switches:
+    pmFactor[nSwitch:] *= -1
+  #if switches and degenerateSol: pmFactor[nSwitch] *= -1
+  # quadratic equation
+  z = (pmFactor - L * k0) / (kf - k0)
+  z[-1] = L
+
+  return np.diff(z)
+
+
 def detunePoling(kMin, kMax, k0, ka, L, dL):
   """
   Create a poling design that nonlinearly varies the phase matching, up to a given resolution, following an arctanh curve.
