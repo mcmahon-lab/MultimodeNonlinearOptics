@@ -14,14 +14,14 @@ def periodicPoling(deltaBeta0, L):
   return poling
 
 
-def linearPoling(kMin, kMax, L, dL):
+def linearPoling(k0, kf, L, dL):
   """
-  Create a poling design that has linearly varying phase matching, up to a given resolution.
+  Create a poling design that has linearly varying phase matching, up to a given resolution dL.
   This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
-  The variables define the curve such that k(z) = a z + b, k(0) = kMin and k(L) = kMax.
+  The variables define the curve such that k(z) = a z + b, k(0) = k0 and k(L) = kf.
   """
   z = np.linspace(0, L, int(round(L / dL)))
-  polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
+  polingDirection = np.sign(np.sin(0.5 * (kf - k0) * z**2 / L + k0 * z))
   polingDirection[polingDirection == 0.] = 1. # slight hack for the very unlikely case besides z=0
 
   p = np.concatenate([[0.], polingDirection, [0.]])
@@ -121,7 +121,7 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
   or smoother discretization of the PMF function.
   However, both are not possible simultaneously, since the largest value of the function cannot exceed
   the effective nonlinearity due to a change in duty cycle.
-  (This can be overriden with override for specfic cases, but the function is not guaranteed to be optimal.)
+  (This can be overridden with override for specific cases, but the function is not guaranteed to be optimal.)
   """
   if 0 >= dutyCycle or dutyCycle >= 1:
     raise ValueError("Duty cycle not in the open interval (0, 1)")
