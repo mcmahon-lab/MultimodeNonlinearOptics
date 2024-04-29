@@ -130,6 +130,9 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
     dcPoling[-1] = poling[-1]
   else:
     dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
+    if dcPoling[-1] < 0: # in case using a duty cycle >0.5
+      dcPoling[-2] += dcPoling[-1]
+      dcPoling = dcPoling[:-1]
 
   # remove empty domains and combine adjacent ones
   iAccum = 0
@@ -179,10 +182,16 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
   nDomainPairs = poling.size // 2
 
   if dutyCycle != 0.5:
+    if not hasSingleDomain: lastDomainLength = poling[-1]
     poling[0:2*nDomainPairs:2] *= 2 * dutyCycle
     poling[1:2*nDomainPairs:2] *= 2 * (1 - dutyCycle)
-    if not hasSingleDomain:
-      poling[-1] = halfPeriod + poling[-1] - poling[-2]
+    if not hasSingleDomain: # calculate the remaining length for the last domain
+      poling[-1] = lastDomainLength + halfPeriod - poling[-2]
+      if poling[-1] < 0: # in case using a duty cycle >0.5
+        poling[-2] += poling[-1]
+        poling = poling[:-1]
+        hasSingleDomain = True
+        nDomainPairs -= 1
     # check if the duty cycle reduces the last domain enough to fit another domain
     elif 2 * dutyCycle * halfPeriod < poling[-1]: # and hasSingleDomain
       # Note poling[0] = 2 * dutyCycle * halfPeriod
