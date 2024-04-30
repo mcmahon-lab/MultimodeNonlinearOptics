@@ -109,8 +109,9 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
 
   if minSize > poling[0]: raise ValueError("minSize larger than half period.")
   minDuty = 0.5 * minSize / poling[0]
+  hasSingleDomain = poling.size % 2
 
-  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2), nDomainPairs))
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * hasSingleDomain, nDomainPairs))
   if normalize:
     relativeNL *= 1 / np.max(np.abs(relativeNL))
   elif np.any(np.abs(relativeNL) > 1):
@@ -119,20 +120,38 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
   dutyCycle = np.arcsin(relativeNL) / np.pi
 
   dutyCycle[np.abs(dutyCycle) < minDuty] = 0
+  dutyCycle[np.abs(1 - dutyCycle) < minDuty] = 1
   dutyCycle[dutyCycle < 0] += 1 # Note negative values affects duty cycle but not effective nonlinearity
 
   # Split poling into pairs of domains and vary their width according to the PMF
   dcPoling = np.empty_like(poling)
   dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
   dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
+
   # Fix the last domain
-  if poling.size % 2:
+  if hasSingleDomain:
+    dutyCycleEnd = np.arcsin(nlf(L)) / np.pi
+    if dutyCycleEnd >= minDuty and poling[-1] > dutyCycleEnd * poling[0]:
+      dcPoling[-1] = dutyCycleEnd * poling[0]
+      dcPoling = np.concatenate([dcPoling, [poling[-1] - dcPoling[-1]]])
     dcPoling[-1] = poling[-1]
   else:
     dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
     if dcPoling[-1] < 0: # in case using a duty cycle >0.5
       dcPoling[-2] += dcPoling[-1]
       dcPoling = dcPoling[:-1]
+
+  # Fix the phase for the varying duty cycle so that the (odd numbered) domains are always centered
+  nonZeroInds = np.argwhere(dutyCycle)
+  initialOffset = halfPeriod * (0.5 - dutyCycle[nonZeroInds[0]])
+  for [i] in nonZeroInds[1:]:
+    offsetDiff = halfPeriod * (0.5 - dutyCycle[i]) - initialOffset
+    dcPoling[2*i-1] += offsetDiff
+    dcPoling[2*i+1] -= offsetDiff
+  # check last domain again
+  while dcPoling[-1] < 0:
+    dcPoling[-2] += dcPoling[-1]
+    dcPoling = dcPoling[:-1]
 
   # remove empty domains and combine adjacent ones
   iAccum = 0
