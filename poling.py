@@ -35,13 +35,15 @@ def linearPolingContinuous(k0, kf, L):
   This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
   The variables define the curve such that k(z) = a z + b, k(0) = k0 and k(L) = kf.
   """
-  # Need to solve the equation: (kf-ki) / (2 L) z^2 + ki z = n pi for some n
+  # Need to solve the equation: (kf-ki) / (2 L) z^2 + ki z = n pi for various values of n that we must find
   nFinal = int((kf + k0) * L / (2 * np.pi)) # n at the endpoint
   switches = False # whether n changes monotonically or reverts
   zSwitch = -k0 * L / (kf - k0) # point at which n changes direction
   if 0 < zSwitch < L:
     switches = True
-    nSwitch = int(k0 * zSwitch / np.pi + (kf - k0) * zSwitch**2 / (2 * np.pi * L)) # value of n at switching
+    nSwitch = int(-k0**2 * L / (2 * np.pi * (kf - k0))) # value of n at switching (expression evaluated at zSwitch)
+    degenerateSol = (nSwitch == -k0**2 * L / (2 * np.pi * (kf - k0))) # if spatial frequency->0 as expr->n pi TODO tolerance
+    print(degenerateSol)
   else:
     nSwitch = None
 
@@ -49,24 +51,27 @@ def linearPolingContinuous(k0, kf, L):
     # find the point where direction of n switches, ie where n passes through zero again
     direction1 = np.sign(nSwitch) if np.sign(nSwitch) != 0 else 1
     direction2 = 1 if nFinal > nSwitch else -1
-    #degenerateSol = True # TODO/CHECKME not sure if degeneracy exists/how to determine
     additionalDoms = (2 if direction2 == np.sign(nFinal) else 1)
-    nTimes2Pi = (2 * np.pi) * np.concatenate([np.arange(0, nSwitch, direction1),# degenerateSol * [nSwitch],
-                                              np.arange(nSwitch, nFinal + additionalDoms * direction2, direction2)])
+    nTimes2Pi = (2 * np.pi) * np.concatenate([np.arange(0, nSwitch, direction1),
+                                              degenerateSol * [nSwitch], [0] * (nSwitch == 0),
+                                              np.arange(nSwitch + direction2 * (nSwitch != 0),
+                                                        nFinal + additionalDoms * direction2, direction2)])
     nSwitch = abs(nSwitch)
+    if nSwitch == 0: nSwitch = 1
   else:
     direction = np.sign(nFinal) if np.sign(nFinal) != 0 else 1
     additionalDoms = (2 if direction == np.sign(nFinal) else 1)
     nTimes2Pi = (2 * np.pi) * np.arange(0, nFinal + additionalDoms * np.sign(nFinal), direction)
 
-  # discriminant
+  # discriminant:
   pmFactor = np.sqrt((L * k0)**2 + nTimes2Pi * (L * (kf - k0)))
-  if k0 < 0: # CHECKME
+  # +/- depending on whether it's a positive or negative spatial frequency
+  if k0 < 0:
     pmFactor[:nSwitch] *= -1
   elif switches:
     pmFactor[nSwitch:] *= -1
-  #if switches and degenerateSol: pmFactor[nSwitch] *= -1
-  # quadratic equation
+  if switches and degenerateSol: pmFactor[nSwitch] = 0
+  # quadratic equation:
   z = (pmFactor - L * k0) / (kf - k0)
   z[-1] = L
 
