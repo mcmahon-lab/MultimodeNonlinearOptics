@@ -139,12 +139,14 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
     if dutyCycleEnd >= minDuty and poling[-1] > dutyCycleEnd * poling[0]:
       dcPoling[-1] = dutyCycleEnd * poling[0]
       dcPoling = np.concatenate([dcPoling, [poling[-1] - dcPoling[-1]]])
+      # Variables not used later, but note nDomainPairs += 1, hasSingleDomain = False
     dcPoling[-1] = poling[-1]
   else:
     dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
     if dcPoling[-1] < 0: # in case using a duty cycle >0.5
       dcPoling[-2] += dcPoling[-1]
       dcPoling = dcPoling[:-1]
+      # Variables not used later, but note nDomainPairs -= 1, hasSingleDomain = True
 
   # Fix the phase for the varying duty cycle so that the (odd numbered) domains are always centered
   nonZeroInds = np.argwhere(dutyCycle)
