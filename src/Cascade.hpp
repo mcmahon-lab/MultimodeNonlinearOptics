@@ -35,7 +35,7 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::getSignalFreq;
   using _NonlinearMedium::getSignalTime;
   using _NonlinearMedium::getPoling;
-  void runSignalSimulation(const Arraycd&, bool, uint, std::vector<Array2Dcd>&, std::vector<Array2Dcd>&, bool) override {};
+  void dispatchSignalSim(const Arraycd&, bool, uint, std::vector<Array2Dcd>&, std::vector<Array2Dcd>&, bool) override {};
 
 protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects

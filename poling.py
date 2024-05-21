@@ -14,19 +14,68 @@ def periodicPoling(deltaBeta0, L):
   return poling
 
 
-def linearPoling(kMin, kMax, L, dL):
+def linearPoling(k0, kf, L, dL):
   """
-  Create a poling design that has linearly varying phase matching, up to a given resolution.
+  Create a poling design that has linearly varying phase matching, up to a given resolution dL.
   This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
-  The variables define the curve such that k(z) = a z + b, k(0) = kMin and k(L) = kMax.
+  The variables define the curve such that k(z) = a z + b, k(0) = k0 and k(L) = kf.
   """
   z = np.linspace(0, L, int(round(L / dL)))
-  polingDirection = np.sign(np.sin(0.5 * (kMax - kMin) * z**2 / L + kMin * z))
+  polingDirection = np.sign(np.sin(0.5 * (kf - k0) * z**2 / L + k0 * z))
   polingDirection[polingDirection == 0.] = 1. # slight hack for the very unlikely case besides z=0
 
   p = np.concatenate([[0.], polingDirection, [0.]])
   polingProfile = np.diff(np.where(p[:-1] != p[1:]))
   return polingProfile.ravel() * dL
+
+
+def linearPolingContinuous(k0, kf, L):
+  """
+  Create a poling design that has linearly varying phase matching, with unlimited resolution.
+  This is done by defining an instantaneous (spatial) frequency that varies linearly in z.
+  The variables define the curve such that k(z) = a z + b, k(0) = k0 and k(L) = kf.
+  """
+  # Need to solve the equation: (kf-ki) / (2 L) z^2 + ki z = n pi for various values of n that we must find
+  nFinal = int((kf + k0) * L / (2 * np.pi)) # n at the endpoint
+  switches = False # whether n changes monotonically or reverts
+  zSwitch = -k0 * L / (kf - k0) # point at which n changes direction
+  if 0 < zSwitch < L:
+    switches = True
+    nSwitch = int(-k0**2 * L / (2 * np.pi * (kf - k0))) # value of n at switching (expression evaluated at zSwitch)
+    degenerateSol = (nSwitch == -k0**2 * L / (2 * np.pi * (kf - k0))) # if spatial frequency->0 as expr->n pi TODO tolerance
+    print(degenerateSol)
+  else:
+    nSwitch = None
+
+  if switches:
+    # find the point where direction of n switches, ie where n passes through zero again
+    direction1 = np.sign(nSwitch) if np.sign(nSwitch) != 0 else 1
+    direction2 = 1 if nFinal > nSwitch else -1
+    additionalDoms = (2 if direction2 == np.sign(nFinal) else 1)
+    nTimes2Pi = (2 * np.pi) * np.concatenate([np.arange(0, nSwitch, direction1),
+                                              degenerateSol * [nSwitch], [0] * (nSwitch == 0),
+                                              np.arange(nSwitch + direction2 * (nSwitch != 0),
+                                                        nFinal + additionalDoms * direction2, direction2)])
+    nSwitch = abs(nSwitch)
+    if nSwitch == 0: nSwitch = 1
+  else:
+    direction = np.sign(nFinal) if np.sign(nFinal) != 0 else 1
+    additionalDoms = (2 if direction == np.sign(nFinal) else 1)
+    nTimes2Pi = (2 * np.pi) * np.arange(0, nFinal + additionalDoms * np.sign(nFinal), direction)
+
+  # discriminant:
+  pmFactor = np.sqrt((L * k0)**2 + nTimes2Pi * (L * (kf - k0)))
+  # +/- depending on whether it's a positive or negative spatial frequency
+  if k0 < 0:
+    pmFactor[:nSwitch] *= -1
+  elif switches:
+    pmFactor[nSwitch:] *= -1
+  if switches and degenerateSol: pmFactor[nSwitch] = 0
+  # quadratic equation:
+  z = (pmFactor - L * k0) / (kf - k0)
+  z[-1] = L
+
+  return np.diff(z)
 
 
 def detunePoling(kMin, kMax, k0, ka, L, dL):
@@ -65,8 +114,9 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
 
   if minSize > poling[0]: raise ValueError("minSize larger than half period.")
   minDuty = 0.5 * minSize / poling[0]
+  hasSingleDomain = poling.size % 2
 
-  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * (poling.size % 2), nDomainPairs))
+  relativeNL = nlf(np.linspace(halfPeriod, L - poling[-1] - halfPeriod * hasSingleDomain, nDomainPairs))
   if normalize:
     relativeNL *= 1 / np.max(np.abs(relativeNL))
   elif np.any(np.abs(relativeNL) > 1):
@@ -75,17 +125,40 @@ def dutyCyclePmf(nlf, deltaBeta0, L, minSize, normalize=True):
   dutyCycle = np.arcsin(relativeNL) / np.pi
 
   dutyCycle[np.abs(dutyCycle) < minDuty] = 0
+  dutyCycle[np.abs(1 - dutyCycle) < minDuty] = 1
   dutyCycle[dutyCycle < 0] += 1 # Note negative values affects duty cycle but not effective nonlinearity
 
   # Split poling into pairs of domains and vary their width according to the PMF
   dcPoling = np.empty_like(poling)
   dcPoling[0:2*nDomainPairs:2] = poling[0:2*nDomainPairs:2] * (2 * dutyCycle)
   dcPoling[1:2*nDomainPairs:2] = poling[1:2*nDomainPairs:2] * (2 * (1 - dutyCycle))
+
   # Fix the last domain
-  if poling.size % 2:
+  if hasSingleDomain:
+    dutyCycleEnd = np.arcsin(nlf(L)) / np.pi
+    if dutyCycleEnd >= minDuty and poling[-1] > dutyCycleEnd * poling[0]:
+      dcPoling[-1] = dutyCycleEnd * poling[0]
+      dcPoling = np.concatenate([dcPoling, [poling[-1] - dcPoling[-1]]])
+      # Variables not used later, but note nDomainPairs += 1, hasSingleDomain = False
     dcPoling[-1] = poling[-1]
   else:
     dcPoling[-1] = halfPeriod + poling[-1] - dcPoling[-2]
+    if dcPoling[-1] < 0: # in case using a duty cycle >0.5
+      dcPoling[-2] += dcPoling[-1]
+      dcPoling = dcPoling[:-1]
+      # Variables not used later, but note nDomainPairs -= 1, hasSingleDomain = True
+
+  # Fix the phase for the varying duty cycle so that the (odd numbered) domains are always centered
+  nonZeroInds = np.argwhere(dutyCycle)
+  initialOffset = halfPeriod * (0.5 - dutyCycle[nonZeroInds[0]])
+  for [i] in nonZeroInds[1:]:
+    offsetDiff = halfPeriod * (0.5 - dutyCycle[i]) - initialOffset
+    dcPoling[2*i-1] += offsetDiff
+    dcPoling[2*i+1] -= offsetDiff
+  # check last domain again
+  while dcPoling[-1] < 0:
+    dcPoling[-2] += dcPoling[-1]
+    dcPoling = dcPoling[:-1]
 
   # remove empty domains and combine adjacent ones
   iAccum = 0
@@ -121,7 +194,7 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
   or smoother discretization of the PMF function.
   However, both are not possible simultaneously, since the largest value of the function cannot exceed
   the effective nonlinearity due to a change in duty cycle.
-  (This can be overriden with override for specfic cases, but the function is not guaranteed to be optimal.)
+  (This can be overridden with override for specific cases, but the function is not guaranteed to be optimal.)
   """
   if 0 >= dutyCycle or dutyCycle >= 1:
     raise ValueError("Duty cycle not in the open interval (0, 1)")
@@ -135,10 +208,16 @@ def deletedDomainPmf(nlf, deltaBeta0, L, dutyCycle=0.5, normalize=True, override
   nDomainPairs = poling.size // 2
 
   if dutyCycle != 0.5:
+    if not hasSingleDomain: lastDomainLength = poling[-1]
     poling[0:2*nDomainPairs:2] *= 2 * dutyCycle
     poling[1:2*nDomainPairs:2] *= 2 * (1 - dutyCycle)
-    if not hasSingleDomain:
-      poling[-1] = halfPeriod + poling[-1] - poling[-2]
+    if not hasSingleDomain: # calculate the remaining length for the last domain
+      poling[-1] = lastDomainLength + halfPeriod - poling[-2]
+      if poling[-1] < 0: # in case using a duty cycle >0.5
+        poling[-2] += poling[-1]
+        poling = poling[:-1]
+        hasSingleDomain = True
+        nDomainPairs -= 1
     # check if the duty cycle reduces the last domain enough to fit another domain
     elif 2 * dutyCycle * halfPeriod < poling[-1]: # and hasSingleDomain
       # Note poling[0] = 2 * dutyCycle * halfPeriod

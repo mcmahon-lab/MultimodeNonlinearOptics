@@ -6,7 +6,6 @@
 class Chi2SHGXPM : public _FullyNonlinearMedium {
   NLM(Chi2SHGXPM, 2)
 public:
-  using _NonlinearMedium::runSignalSimulation;
   Chi2SHGXPM(double relativeLength, double nlLength, double nlLengthP, double nlLengthChi3, double beta2, double beta2s,
              double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
              double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
