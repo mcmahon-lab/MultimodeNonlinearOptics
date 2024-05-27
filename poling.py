@@ -320,57 +320,111 @@ def threeWaveMismatchRange(omega, domega, dbeta0, sign1, sign2,
 
 def combinePoling(polingA, polingB, minLength, tol):
   """
-  Combine poling structures by flipping the sign each time either structure flips (multiplying).
+  Combine poling structures polingA and polingB by multiplication.
   polingA and polingB must contain the lengths of each domain.
-  Note: to combine two structures you need to start with the sum and difference of spatial frequencies.
+  Note: to simultaneously include two spatial frequencies, one first needs their sum and difference.
+  Ie use that: sin(a) + sin(b) = 2 sin [(a+b)/2] cos[(a-b)/2], or a similar identity.
   minLength is the minimum domain length. tol is the allowable error tolerance in the domain lengths.
+  If one pattern is longer than the other, the shorter pattern will be considered constant after it ends.
   """
-  if abs(np.sum(polingA) - np.sum(polingB)) > tol:
-   raise ValueError("Patterns A and B different lengths")
+  combinedDomains = [0]
+  indexA = 0
+  indexB = 0
+  remainingA = polingA[0]
+  remainingB = polingB[0]
+  signA = True
+  signB = True
+  prevSign = False
 
-  combinedDomains = []
-  indexA = -1
-  indexB = -1
-  remainingA = 0
-  remainingB = 0
+  def update(index, sign, poling):
+    index += 1
+    if index < poling.size:
+      sign ^= True
+      remaining = poling[index]
+    else:
+      remaining = 0
+    return index, sign, remaining
 
-  while indexA < polingA.size and indexB < polingB.size:
-    if abs(remainingA - remainingB) < tol:
-      cumulative = 0
-      while abs(remainingA - remainingB) < tol and (indexA < polingA.size-1 and indexB < polingB.size-1):
-        cumulative += remainingA
-        indexA += 1
-        indexB += 1
-        if polingA[indexA] > polingB[indexB]:
-          remainingA = polingA[indexA] - polingB[indexB]
-          cumulative += polingB[indexB]
-          indexB += 1
-          remainingB = polingB[indexB % polingB.size]
-        else:
-          remainingB = polingB[indexB] - polingA[indexA]
-          cumulative += polingA[indexA]
-          indexA += 1
-          remainingA = polingA[indexA % polingA.size]
-      if cumulative > 0: combinedDomains.append(cumulative)
+  def addDomain(remaining):
+    if signA ^ signB == prevSign:
+      combinedDomains[-1] += remaining
+    else:
+      combinedDomains.append(remaining)
+      return signA ^ signB
 
-    if remainingA > remainingB and remainingB > minLength:
-      combinedDomains.append(remainingB)
+  # iterate through both domain length lists simultaneously. Five cases:
+  # if both are approximately same length (within tolerance)
+  # if one is larger than the other and vice versa, and both >minlength
+  # if one is larger but other is > minlength
+  # if both are smaller than < minlength
+  # if one is zero
+  while remainingA > 0 and remainingB > 0:
+
+    if 0 < remainingA < minLength and 0 < remainingB < minLength:
+      prevSign = addDomain(max(remainingA, remainingB)) # add the entire amount
+      difference = abs(remainingA - remainingB)
+      combinedDomains[-1] += difference
+      addToA = (remainingA > remainingB)
+      indexA, signA, remainingA = update(indexA, signA, polingA)
+      indexB, signB, remainingB = update(indexB, signB, polingB)
+      if addToA:
+        remainingA += difference
+      else:
+        remainingB += difference
+
+    elif abs(remainingA - remainingB) < tol and remainingA > 0 and remainingB > 0:
+      prevSign = addDomain(min(remainingA, remainingB))
+      difference = abs(remainingA - remainingB)
+      addToA = (remainingA > remainingB)
+      indexA, signA, remainingA = update(indexA, signA, polingA)
+      indexB, signB, remainingB = update(indexB, signB, polingB)
+      if addToA:
+        remainingA += difference
+      else:
+        remainingB += difference
+
+    elif 0 < remainingA < minLength:
+      if remainingB >= 0.5 * remainingA + minLength: #split the difference
+        halfLen = 0.5 * remainingA
+        combinedDomains[-1] += halfLen
+        remainingB -= halfLen
+        indexA, signA, remainingA = update(indexA, signA, polingA)
+        remainingA += halfLen
+      else: # skip
+        combinedDomains[-1] += remainingA
+        remainingB -= remainingA
+        indexA, signA, remainingA = update(indexA, signA, polingA)
+    elif 0 < remainingB < minLength:
+      if remainingA >= 0.5 * remainingB + minLength:
+        halfLen = 0.5 * remainingB
+        combinedDomains[-1] += halfLen
+        remainingA -= halfLen
+        indexB, signB, remainingB = update(indexB, signB, polingB)
+        remainingB += halfLen
+      else:
+        combinedDomains[-1] += remainingB
+        remainingA -= remainingB
+        indexB, signB, remainingB = update(indexB, signB, polingB)
+
+    elif remainingA >= remainingB >= minLength:
+      prevSign = addDomain(remainingB)
       remainingA -= remainingB
-      indexB += 1
-      remainingB = polingB[indexB % polingB.size]
-    elif remainingB > remainingA and remainingA > minLength:
-      combinedDomains.append(remainingA)
-      remainingB -= remainingA
-      indexA += 1
-      remainingA = polingA[indexA % polingA.size]
-    else: # remainingA, remainingB < minLength
-      indexA += 1
-      indexB += 1
-      combinedDomains.append(remainingA)
-      remainingA += polingA[indexA % polingA.size]
-      remainingB += polingB[indexB % polingB.size]
+      indexB, signB, remainingB = update(indexB, signB, polingB)
 
-  if min(remainingA, remainingB) > 0: combinedDomains.append(min(remainingA, remainingB))
+    elif remainingB > remainingA >= minLength:
+      prevSign = addDomain(remainingA)
+      remainingB -= remainingA
+      indexA, signA, remainingA = update(indexA, signA, polingA)
+
+    elif remainingA == 0:
+      prevSign = addDomain(remainingB)
+      indexB, signB, remainingB = update(indexB, signB, polingB)
+    elif remainingB == 0:
+      prevSign = addDomain(remainingA)
+      indexA, signA, remainingA = update(indexA, signA, polingA)
+
+    else:
+      raise RuntimeError(f"No case applies. remaining A: {remainingA} remaining B: {remainingB} minLength: {minLength}")
 
   if indexA < polingA.size-1:
     for i in range(indexA, polingA.size):
