@@ -121,16 +121,16 @@ protected:
   static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 
   // DFT Convenience Functions, indexed (for 2D arrays) and regular (for 1D arrays):
-  inline void FFT(Arraycd& output, const Arraycd& input) {
+  inline void FFT(Arraycd& output, const Arraycd& input) const {
     fftObj.fwd(output, input, _nFreqs);
   }
-  inline void IFFT(Arraycd& output, const Arraycd& input) {
+  inline void IFFT(Arraycd& output, const Arraycd& input) const {
     fftObj.inv(output, input, _nFreqs);
   }
-  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
   }
-  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.inv(output, input, rowOut, rowIn, _nFreqs);
   }
 };
