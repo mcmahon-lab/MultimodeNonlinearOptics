@@ -151,12 +151,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
                                  "Read-only array of the domain poling along the length of a Chi(2) medium.");
 
-  py::enum_<_NonlinearMedium::PulseType>(_NLMBase, "PulseType")
+  py::enum_<_NonlinearMedium::PulseType>(m, "PulseType")
       .value("Gaussian", _NonlinearMedium::PulseType::Gaussian)
       .value("Sech", _NonlinearMedium::PulseType::Sech)
       .value("Sinc", _NonlinearMedium::PulseType::Sinc)
       .export_values();
-  py::enum_<_NonlinearMedium::IntensityProfile>(_NLMBase, "IntensityProfile")
+  py::enum_<_NonlinearMedium::IntensityProfile>(m, "IntensityProfile")
       .value("GaussianBeam", _NonlinearMedium::IntensityProfile::GaussianBeam)
       .value("Constant", _NonlinearMedium::IntensityProfile::Constant)
       .value("GaussianApodization", _NonlinearMedium::IntensityProfile::GaussianApodization)
