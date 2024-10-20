@@ -15,6 +15,8 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
                                    const Eigen::Ref<const Arrayd>& poling) :
   _nSignalModes(nSignalModes), _nPumpModes(nPumpModes)
 {
+  if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
+
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
   resetGrids(tPrecision, tMax);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
@@ -22,8 +24,8 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
   if (canBePoled)
     setPoling(poling);
 
-  _intensityProfile = _rayleighLength != std::numeric_limits<double>::infinity() ?
-      intensityProfile : IntensityProfile::Constant;
+  _intensityProfile = (_rayleighLength != std::numeric_limits<double>::infinity() ?
+      intensityProfile : IntensityProfile::Constant);
   _envelope.resize(_nPumpModes);
   if (customPump.size() != 0)
     setPump(customPump, chirp, delay);
@@ -61,6 +63,9 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 
   for (double nl : nlLength)
     allNonUnit &= (nl != 1);
+
+  allNonUnit &= (relativeLength != 1);
+  allNonUnit &= (rayleighLength != 1);
 
   if (allNonUnit) throw std::invalid_argument("No unit length scale provided: please normalize variables");
 
