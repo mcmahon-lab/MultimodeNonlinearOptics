@@ -11,7 +11,7 @@ public:
              double beta1p=0, double beta1sh=0, double beta1pa1=0, double beta1pa2=0,
              double beta3p=0, double beta3sh=0, double beta3pa1=0, double beta3pa2=0,
              double diffBeta0shg=0, double diffBeta0opa=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-             double tMax=10, uint tPrecision=512, uint zPrecision=100,
+             double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{},
              const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -21,11 +21,12 @@ Chi2SHGOPA::Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthS
                        double beta1p, double beta1sh, double beta1pa1, double beta1pa2,
                        double beta3p, double beta3sh, double beta3pa1, double beta3pa2,
                        double diffBeta0shg, double diffBeta0opa, double rayleighLength,
-                       double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+                       double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+                       const Eigen::Ref<const Arrayd>& poling) :
   _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthSH, nlLengthPA1, nlLengthPA2},
                         {beta2p, beta2sh, beta2pa1, beta2pa2}, {beta1p, beta1sh, beta1pa1, beta1pa2},
                         {beta3p, beta3sh, beta3pa1, beta3pa2}, {diffBeta0shg, diffBeta0opa},
-                        rayleighLength, tMax, tPrecision, zPrecision, poling) {}
+                        rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling) {}
 
 
 void Chi2SHGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

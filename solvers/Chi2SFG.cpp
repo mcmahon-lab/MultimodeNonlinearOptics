@@ -7,21 +7,22 @@ class Chi2SFG : public _NonlinearMedium {
   NLM(Chi2SFG, 2)
 public:
   Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
-          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double diffBeta0=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
-          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{},
+          double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
-                 const Eigen::Ref<const Arraycd>& customPump, int pulseType, double beta1, double beta1s, double beta1o,
+                 const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType, double beta1, double beta1s, double beta1o,
                  double beta3, double beta3s, double beta3o, double diffBeta0, double rayleighLength,
-                 double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+                 double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay,
+                 const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength, nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0},
-                   rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
+                   rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2SFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

@@ -9,16 +9,16 @@ public:
   Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0=0,
           double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
-          const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+          IntensityProfile intensityProfile=IntensityProfile{}, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                  double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
                  double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
-                 const Eigen::Ref<const Arrayd>& poling) :
+                 IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
   _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
-                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, poling)
+                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling)
 {}
 
 
