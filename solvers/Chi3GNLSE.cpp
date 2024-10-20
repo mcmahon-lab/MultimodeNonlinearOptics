@@ -40,9 +40,9 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
                        std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
   const auto& prev = signal[0].row(iPrevSig);
 
-  const double relIntPrv = 1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength);
-  const double relIntInt = 1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength);
-  const double relIntCur = 1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength);
+  const double relIntPrv = relativeIntensity(i- 1);
+  const double relIntInt = relativeIntensity(i-.5);
+  const double relIntCur = relativeIntensity(i);
 
   // Need a temporary, thread safe storage array. Hack (Caution) to avoid allocating each time:
   if (i == 1) {k1.emplace_back(_nFreqs);}

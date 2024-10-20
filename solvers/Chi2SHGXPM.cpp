@@ -31,9 +31,9 @@ void Chi2SHGXPM::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::ve
   const double currPolDir = _poling(i);
   const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntPrv = relativeAmplitude(i- 1);
+  const double relIntInt = relativeAmplitude(i-.5);
+  const double relIntCur = relativeAmplitude(i);
 
   const double prevRelNL = prevPolDir * relIntPrv;
   const double intmRelNL = intmPolDir * relIntInt;
