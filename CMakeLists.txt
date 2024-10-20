@@ -27,7 +27,7 @@ pybind11_add_module(nonlinearmedium ${sourceFiles})
 
 # Compile options for optimization
 set(COMPILE_FLAGS -Wall)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -fvisibility=hidden -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -march=native -fvisibility=hidden -flto -fno-math-errno")
 
 # Check what is/is not inlined
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Winline")
