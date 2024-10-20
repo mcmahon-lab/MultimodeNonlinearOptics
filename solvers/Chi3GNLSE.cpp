@@ -8,7 +8,7 @@ class Chi3GNLSE : public _FullyNonlinearMedium {
 public:
   Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
             double beta2, double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100);
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{});
 
   const Arraycd& getRamanResponse() {return ramanResponse;};
 
@@ -18,9 +18,9 @@ private:
 
 
 Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
-                     double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
+                     double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
   _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
-                        rayleighLength, tMax, tPrecision, zPrecision)
+                        rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {
   // Precompute Raman response for the convolution
   double coeff1 = fr * (1. - fb) * (tau1 / (tau2*tau2) + 1. / tau1);

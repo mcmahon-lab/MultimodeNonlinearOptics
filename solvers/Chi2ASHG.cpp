@@ -7,16 +7,17 @@ class Chi2ASHG : public _FullyNonlinearMedium {
   NLM(Chi2ASHG, 2)
 public:
   Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
-           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0Start=0, double diffBeta0End=0,
-           double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100);
+           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0Start=0,
+           double diffBeta0End=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+           double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{});
 };
 
 
 Chi2ASHG::Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                    double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0Start, double diffBeta0End,
-                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
+                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
     _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
-                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision)
+                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {}
 
 

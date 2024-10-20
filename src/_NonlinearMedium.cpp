@@ -8,10 +8,11 @@ Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength,
                                    std::initializer_list<double> nlLength, std::initializer_list<double> beta2,
                                    std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   int pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
+                                   PulseType pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
                                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
-                                   uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+                                   uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay,
+                                   const Eigen::Ref<const Arrayd>& poling) :
   _nSignalModes(nSignalModes), _nPumpModes(nPumpModes)
 {
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
@@ -21,6 +22,8 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
   if (canBePoled)
     setPoling(poling);
 
+  _intensityProfile = _rayleighLength != std::numeric_limits<double>::infinity() ?
+      intensityProfile : IntensityProfile::Constant;
   _envelope.resize(_nPumpModes);
   if (customPump.size() != 0)
     setPump(customPump, chirp, delay);
@@ -160,19 +163,23 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
 }
 
 
-void _NonlinearMedium::setPump(int pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) {
   if (pumpIndex >= _nPumpModes)
     throw std::invalid_argument("Invalid pump index");
 
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
-  if (pulseType == 1)
-    _envelope[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
-  else if (pulseType == 2) {
-    _envelope[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
-    _envelope[pumpIndex](0) = 1;
+  switch (pulseType) {
+    default:
+    case PulseType::Gaussian:
+      _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
+      break;
+    case PulseType::Sech:
+      _envelope[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
+      break;
+    case PulseType::Sinc:
+      _envelope[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
+      _envelope[pumpIndex](0) = 1;
   }
-  else
-    _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
 
   if (chirpLength != 0 || delayLength != 0) {
     Arraycd fftTemp(_nFreqs);
@@ -211,8 +218,17 @@ void _NonlinearMedium::runPumpSimulation() {
       IFFTi(pumpTime[m], pumpFreq[m], i, i);
     }
 
-    if (_rayleighLength != std::numeric_limits<double>::infinity()) {
-      Eigen::VectorXd relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+    if (_intensityProfile != IntensityProfile::Constant) {
+      Eigen::VectorXd relativeStrength;
+      switch (_intensityProfile) {
+        case IntensityProfile::GaussianBeam:
+        default:
+          relativeStrength = 1 / (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).sqrt();
+          break;
+        case IntensityProfile::GaussianApodization:
+          relativeStrength = (-0.5 * (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).exp();
+      }
+
       pumpFreq[m].colwise() *= relativeStrength.array();
       pumpTime[m].colwise() *= relativeStrength.array();
     }

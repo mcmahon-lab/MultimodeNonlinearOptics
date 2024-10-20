@@ -7,20 +7,20 @@ class Chi2AFC : public _NonlinearMedium {
   NLM(Chi2AFC, 2)
 public:
   Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
-          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
           double diffBeta0Start=0, double diffBeta0End=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0);
+          double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0, double delay=0);
 };
 
 
 Chi2AFC::Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
-                 const Eigen::Ref<const Arraycd>& customPump, int pulseType, double beta1, double beta1s, double beta1o,
+                 const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType, double beta1, double beta1s, double beta1o,
                  double beta3, double beta3s, double beta3o, double diffBeta0Start, double diffBeta0End, double rayleighLength,
-                 double tMax, uint tPrecision, uint zPrecision, double chirp, double delay) :
+                 double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay) :
   _NonlinearMedium(_nSignalModes, 1, false, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0Start, diffBeta0End},
-                   rayleighLength, tMax, tPrecision, zPrecision, chirp, delay) {}
+                   rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay) {}
 
 
 void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

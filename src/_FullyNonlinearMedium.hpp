@@ -10,7 +10,7 @@ public:
     return _NonlinearMedium::batchSignalSimulation(inputProfs, inTimeDomain, false, nThreads, inputMode, useOutput);
   }
 
-  void setPump(int pulseType, double chirpLength, double delayLength, uint pumpIndex) override {
+  void setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
   void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) override {
@@ -32,7 +32,7 @@ protected:
   _FullyNonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
                         std::initializer_list<double> beta2s, std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                         std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
-                        const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+                        IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   // Same as _NonlinearMedium except that no pump variables are set
   inline void setDispersion(const std::vector<double>& beta2s, const std::vector<double>& beta1s,

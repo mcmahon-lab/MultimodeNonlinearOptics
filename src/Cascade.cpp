@@ -52,7 +52,7 @@ void Cascade::addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& co
 }
 
 
-void Cascade::setPump(int pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+void Cascade::setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) {
   if (sharedPump)
     media[0].get().setPump(pulseType, chirpLength, delayLength, pumpIndex);
   else {

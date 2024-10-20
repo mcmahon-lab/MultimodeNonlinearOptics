@@ -7,21 +7,21 @@ class Chi2PDC : public _NonlinearMedium {
   NLM(Chi2PDC, 1)
 public:
   Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
-          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+          const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-          double rayleighLength=std::numeric_limits<double>::infinity(),
-          double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
+          double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0, double delay=0,
           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2PDC::Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
-                 const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                 const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                  double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
-                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
-                 const Eigen::Ref<const Arrayd>& poling) :
+                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                 IntensityProfile intensityProfile, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength}, {beta2}, {beta2s}, customPump, pulseType, {beta1}, {beta1s},
-                   {beta3}, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
+                   {beta3}, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2PDC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
