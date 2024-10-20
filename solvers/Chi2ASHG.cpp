@@ -26,9 +26,9 @@ void Chi2ASHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 
-  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntPrv = relativeAmplitude(i- 1);
+  const double relIntInt = relativeAmplitude(i-.5);
+  const double relIntCur = relativeAmplitude(i);
 
   const double arg = 0.5 * (_diffBeta0[1] - _diffBeta0[0]) / _z;
   const std::complex<double> prevMismatch = std::exp(0.5_I * ((_diffBeta0[0] + (i- 1) * _dz * arg) * (i- 1) * _dz));

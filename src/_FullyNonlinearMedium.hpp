@@ -38,6 +38,27 @@ protected:
   inline void setDispersion(const std::vector<double>& beta2s, const std::vector<double>& beta1s,
                             const std::vector<double>& beta3s, std::initializer_list<double> diffBeta0);
 
+  inline double relativeAmplitude(double i) const {
+    switch (_intensityProfile) {
+      case IntensityProfile::GaussianBeam:
+        return sqrt(1 / (1 + std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2)));
+      case IntensityProfile::Constant:
+        return 1.;
+      case IntensityProfile::GaussianApodization:
+        return exp(-0.5 * std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2));
+    }
+  }
+  inline double relativeIntensity(double i) const {
+    switch (_intensityProfile) {
+      case IntensityProfile::GaussianBeam:
+        return 1 / (1 + std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2));
+      case IntensityProfile::Constant:
+        return 1.;
+      case IntensityProfile::GaussianApodization:
+        return exp(-std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2));
+    }
+  }
+
 private:
   using _NonlinearMedium::getPumpFreq;
   using _NonlinearMedium::getPumpTime;
