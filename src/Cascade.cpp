@@ -107,17 +107,19 @@ Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, b
   if (runPump) runPumpSimulation();
 
   // Green function matrices
-  Array2Dcd greenC;
-  Array2Dcd greenS;
-  greenC = Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>::Identity(_nFreqs, _nFreqs);
-  greenS.setZero(_nFreqs, _nFreqs);
-
-  Array2Dcd tempC, tempS;
-  for (auto& medium : media) {
-    // TODO useInput and useOutput need to be defined based on connections
-    auto CandS = medium.get().computeGreensFunction(inTimeDomain, false, nThreads, normalize);
-    tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
-    tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
+  Array2Dcd greenC, greenS;
+  {
+    auto CandS = media[0].get().computeGreensFunction(inTimeDomain, false, nThreads, normalize, useInput,
+                                                      (media.size() == 1? useOutput : std::vector<uint8_t>{}));
+    greenC.swap(std::get<0>(CandS));
+    greenS.swap(std::get<1>(CandS));
+  }
+  for (uint i = 1; i < media.size(); i++) {
+    // TODO matrix multiplication needs to be performed based on connections
+    auto CandS = media[i].get().computeGreensFunction(inTimeDomain, false, nThreads, normalize, std::vector<uint8_t>{},
+                                                      (i == media.size()-1? useOutput : std::vector<uint8_t>{}));
+    Array2Dcd tempC = std::get<0>(CandS).matrix() * greenC.matrix() + std::get<1>(CandS).matrix() * greenS.conjugate().matrix();
+    Array2Dcd tempS = std::get<0>(CandS).matrix() * greenS.matrix() + std::get<1>(CandS).matrix() * greenC.conjugate().matrix();
     greenC.swap(tempC);
     greenS.swap(tempS);
   }

@@ -264,18 +264,18 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
   if (!useInput.empty()) {
     for (auto value : useInput)
-      nInputModes += (value != 0);
+      nInputModes += (value < _nSignalModes);
     if (nInputModes == 0)
-      throw std::invalid_argument("Requested no inputs!");
+      throw std::invalid_argument("Requested no valid inputs!");
   }
   else
     nInputModes = _nSignalModes;
 
   if (!useOutput.empty()) {
     for (auto value : useOutput)
-      nOutputModes += (value != 0);
+      nOutputModes += (value < _nSignalModes);
     if (nOutputModes == 0)
-      throw std::invalid_argument("Requested no outputs!");
+      throw std::invalid_argument("Requested no valid outputs!");
   }
   else
     nOutputModes = _nSignalModes;
