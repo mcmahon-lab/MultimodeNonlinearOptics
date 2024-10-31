@@ -102,7 +102,7 @@ void Cascade::runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bo
 
 std::pair<Array2Dcd, Array2Dcd>
 Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
-                               const std::vector<char>& useInput, const std::vector<char>& useOutput) {
+                               const std::vector<uint8_t>& useInput, const std::vector<uint8_t>& useOutput) {
 
   if (runPump) runPumpSimulation();
 
@@ -128,7 +128,7 @@ Cascade::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, b
 
 Array2Dcd Cascade::batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs,
                                          bool inTimeDomain, bool runPump, uint nThreads,
-                                         uint inputMode, const std::vector<char>& useOutput) {
+                                         uint inputMode, const std::vector<uint8_t>& useOutput) {
   if (runPump) runPumpSimulation();
 
   Array2Dcd outSignals = media[0].get().batchSignalSimulation(inputProfs, inTimeDomain, false, nThreads);

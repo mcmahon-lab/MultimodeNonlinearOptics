@@ -54,7 +54,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
   Eigen::Ref<const Arrayd>  defArrayf  = Eigen::Ref<const Arrayd>(Arrayd{});
-  const std::vector<char> defCharVec = {};
+  const std::vector<uint8_t> defCharVec = {};
   constexpr double infinity = std::numeric_limits<double>::infinity();
 
 /*
@@ -167,7 +167,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   _FNLMBase.def("batchSignalSimulation",
-                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<char>&>(
+                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<uint8_t>&>(
                     &_FullyNonlinearMedium::batchSignalSimulation),
                 py::return_value_policy::move,
                 "Run multiple signal simulations.\n"

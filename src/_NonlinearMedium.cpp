@@ -253,7 +253,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
 
 std::pair<Array2Dcd, Array2Dcd>
 _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
-                                        const std::vector<char>& useInput, const std::vector<char>& useOutput) {
+                                        const std::vector<uint8_t>& useInput, const std::vector<uint8_t>& useOutput) {
   // Determine which input and output modes to compute. If no input/output modes specified, computes all modes.
   uint nInputModes = 0, nOutputModes = 0;
   std::vector<uint> inputs, outputs;
@@ -367,7 +367,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
 
 Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain,
-                                                  bool runPump, uint nThreads, uint inputMode, const std::vector<char>& useOutput) {
+                                                  bool runPump, uint nThreads, uint inputMode, const std::vector<uint8_t>& useOutput) {
 
   auto nInputs = inputProfs.rows();
   auto inCols  = inputProfs.cols();

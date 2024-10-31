@@ -41,9 +41,9 @@ public:
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
   virtual std::pair<Array2Dcd, Array2Dcd>
       computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
-                            const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
+                            const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
   virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
-                                          bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={});
+                                          bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<uint8_t>& useOutput={});
 
   const Array2Dcd& getPumpFreq(uint i=0) {return pumpFreq.at(i);};
   const Array2Dcd& getPumpTime(uint i=0) {return pumpTime.at(i);};

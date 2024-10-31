@@ -6,7 +6,7 @@
 class _FullyNonlinearMedium : public _NonlinearMedium {
 public:
   inline Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
-                                         uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={}) {
+                                         uint nThreads=1, uint inputMode=0, const std::vector<uint8_t>& useOutput={}) {
     return _NonlinearMedium::batchSignalSimulation(inputProfs, inTimeDomain, false, nThreads, inputMode, useOutput);
   }
 
@@ -24,7 +24,7 @@ public:
   }
   std::pair<Array2Dcd, Array2Dcd>
       computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
-                            const std::vector<char>& useInput, const std::vector<char>& useOutput) override {
+                            const std::vector<uint8_t>& useInput, const std::vector<uint8_t>& useOutput) override {
     throw std::runtime_error("Object does not have this method.");
   }
 
