@@ -39,7 +39,7 @@ private: // Disable functions (note: still accessible from base class)
 
 protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects
-  std::vector<std::map<uint, uint>> connections;
+  std::vector<std::map<uint, uint>> connections; /// connections between subsequent media. The map keys (unique) represents the input mode (to the nth medium) and the map values the output mode (from the n-1th medium)
   bool sharedPump; /// is the pump shared across media or are they independently pumped
 };
 
