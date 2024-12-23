@@ -90,3 +90,18 @@ void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
 }
 
 #endif //CHI2SFGII
+
+#ifdef NLMMODULE
+py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
+Chi2SFGII.def(
+    py::init<double, double, /*double, double,*/ double, double, double, double, double, double, Eigen::Ref<const Arraycd>&,
+             _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double,
+             double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double,
+             Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthZY"_a, "nlLengthZZ"_a, //"nlLengthSignZ"_a, "nlLengthSignY"_a, "nlLengthOrigZ"_a, "nlLengthOrigY"_a,
+    "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+    "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0, "beta3sz"_a = 0,
+    "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0, "diffBeta0"_a = 0,
+    "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+#endif

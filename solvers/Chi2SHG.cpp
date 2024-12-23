@@ -60,3 +60,13 @@ void Chi2SHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
 }
 
 #endif //CHI2SHG
+
+#ifdef NLMMODULE
+py::class_<Chi2SHG, _FullyNonlinearMedium> Chi2SHG(m, "Chi2SHG", "Fully nonlinear second harmonic generation");
+Chi2SHG.def(
+    py::init<double, double, double, double, double, double, double, double, double, double,
+             double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+    "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
+    "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
+#endif

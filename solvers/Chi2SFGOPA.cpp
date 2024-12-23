@@ -77,3 +77,16 @@ void Chi2SFGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::ve
 }
 
 #endif //CHI2SFGOPA
+
+#ifdef NLMMODULE
+py::class_<Chi2SFGOPA, _NonlinearMedium> Chi2SFGOPA(m, "Chi2SFGOPA", "Simultaneous sum frequency generation and non-degenerate optical parametric amplification with two pumps");
+Chi2SFGOPA.def(
+    py::init<double, double, double, double, double, double, double, double, double, const Eigen::Ref<const Arraycd>&,
+             _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double,
+             double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double, const Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthSFGh"_a, "nlLengthSFGf"_a, "nlLengthDOPAh"_a, "nlLengthDOPAf"_a,
+    "beta2F"_a, "beta2H"_a, "beta2h"_a, "beta2f"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+    "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0, "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0,
+    "diffBeta0SFG"_a = 0, "diffBeta0DOPA"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+#endif

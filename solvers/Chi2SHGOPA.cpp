@@ -84,3 +84,16 @@ void Chi2SHGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::ve
 }
 
 #endif //CHI2SHGOPA
+
+#ifdef NLMMODULE
+py::class_<Chi2SHGOPA, _FullyNonlinearMedium> Chi2SHGOPA(m, "Chi2SHGOPA", "Fully nonlinear OPA driven by the second harmonic of the pump");
+Chi2SHGOPA.def(
+    py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
+             double, double, double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile,
+             const Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthP"_a, "nlLengthSH"_a, "nlLengthPA1"_a, "nlLengthPA2"_a,
+    "beta2p"_a, "beta2sh"_a, "beta2pa1"_a, "beta2pa2"_a, "beta1p"_a = 0, "beta1sh"_a = 0, "beta1pa1"_a = 0,
+    "beta1pa2"_a = 0, "beta3p"_a = 0, "beta3sh"_a = 0, "beta3pa1"_a = 0, "beta3pa2"_a = 0, "diffBeta0shg"_a = 0,
+    "diffBeta0opa"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
+#endif

@@ -67,3 +67,14 @@ void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
 }
 
 #endif //CHI2DSFG
+
+#ifdef NLMMODULE
+py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
+Chi2DSFG.def(
+    py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
+             double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthP"_a, "nlLengthS"_a, "nlLengthD"_a, "beta2p"_a, "beta2s"_a, "beta2d"_a,
+    "beta1p"_a = 0, "beta1s"_a = 0, "beta1d"_a = 0, "beta3p"_a = 0, "beta3s"_a = 0, "beta3d"_a = 0, "diffBeta0"_a = 0,
+    "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
+#endif

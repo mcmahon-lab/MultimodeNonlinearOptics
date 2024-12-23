@@ -51,3 +51,16 @@ void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
 }
 
 #endif //CHI2AFC
+
+#ifdef NLMMODULE
+py::class_<Chi2AFC, _NonlinearMedium> Chi2AFC(m, "Chi2AFC", "Adiabatic sum (or difference) frequency generation, in a rotating frame with linearly varying poling frequency built into the solver");
+Chi2AFC.def(
+    py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+             double, double, double, double, double, double, double, double, double, double, uint, uint,
+             _NonlinearMedium::IntensityProfile, double, double>(),
+    "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+    "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+    "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "chirp"_a = 0, "delay"_a = 0);
+#endif

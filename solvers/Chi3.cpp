@@ -69,3 +69,14 @@ void Chi3::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<A
 }
 
 #endif //CHI3
+
+#ifdef NLMMODULE
+py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3", "Single mode self phase modulation");
+Chi3.def(
+    py::init<double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType, double, double, double,
+             uint, uint, _NonlinearMedium::IntensityProfile, double>(),
+    "relativeLength"_a, "nlLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+    "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0);
+Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation, "Simulate propagation of the pump field");
+#endif

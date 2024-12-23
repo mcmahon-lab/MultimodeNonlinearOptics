@@ -92,3 +92,15 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
 }
 
 #endif //CHI3GNLSE
+
+#ifdef NLMMODULE
+py::class_<Chi3GNLSE, _FullyNonlinearMedium> Chi3GNLSE(m, "Chi3GNLSE", "Fully nonlinear general nonlinear Schrodinger equation");
+Chi3GNLSE.def(
+    py::init<double, double, double, double, double, double, double, double, double, double, double, double,
+             uint, uint, _NonlinearMedium::IntensityProfile>(),
+    "relativeLength"_a, "nlLength"_a, "selfSteepLength"_a,  "fr"_a, "fb"_a, "tau1"_a, "tau2"_a, "tau3"_a,
+    "beta2"_a, "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
+Chi3GNLSE.def_property_readonly("ramanResponse", &Chi3GNLSE::getRamanResponse, py::return_value_policy::reference,
+                                "Read-only array of the Raman response function in the frequency domain.");
+#endif

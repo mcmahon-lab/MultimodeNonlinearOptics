@@ -47,3 +47,15 @@ void Chi2PDC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
 }
 
 #endif //CHI2PDC
+
+#ifdef NLMMODULE
+py::class_<Chi2PDC, _NonlinearMedium> Chi2PDC(m, "Chi2PDC", "Degenerate optical parametric amplification");
+Chi2PDC.def(
+    py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+             double, double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile,
+             double, double, Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+    "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+#endif
