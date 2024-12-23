@@ -46,6 +46,8 @@ protected:
         return 1.;
       case IntensityProfile::GaussianApodization:
         return exp(-0.5 * std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2));
+      default:
+        return 0; // should not get here
     }
   }
   inline double relativeIntensity(double i) const {
@@ -56,6 +58,8 @@ protected:
         return 1.;
       case IntensityProfile::GaussianApodization:
         return exp(-std::pow((i * _dz - 0.5 * _z) / _rayleighLength, 2));
+      default:
+        return 0; // should not get here
     }
   }
 
