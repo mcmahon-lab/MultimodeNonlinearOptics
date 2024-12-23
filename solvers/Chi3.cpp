@@ -17,7 +17,7 @@ public:
 
 Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
            double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp) :
-  _NonlinearMedium(_nSignalModes, 1, false, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
+  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
                    {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, 0)
 {}
 

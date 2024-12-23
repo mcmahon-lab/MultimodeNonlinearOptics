@@ -20,7 +20,7 @@ Chi2PDC::Chi2PDC(double relativeLength, double nlLength, double beta2, double be
                  double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                  double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                  IntensityProfile intensityProfile, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength}, {beta2}, {beta2s}, customPump, pulseType, {beta1}, {beta1s},
+  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength}, {beta2}, {beta2s}, customPump, pulseType, {beta1}, {beta1s},
                    {beta3}, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
 

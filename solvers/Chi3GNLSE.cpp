@@ -19,7 +19,7 @@ private:
 
 Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
                      double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
-  _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
+  _FullyNonlinearMedium(_nSignalModes, false, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
                         rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {
   // Precompute Raman response for the convolution

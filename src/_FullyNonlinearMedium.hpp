@@ -29,7 +29,7 @@ public:
   }
 
 protected:
-  _FullyNonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
+  _FullyNonlinearMedium(uint nSignalModes, bool canBePoled, uint nFieldModes, double relativeLength, std::initializer_list<double> nlLength,
                         std::initializer_list<double> beta2s, std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                         std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                         IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));

@@ -5,15 +5,16 @@
 
 Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 
-_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength,
-                                   std::initializer_list<double> nlLength, std::initializer_list<double> beta2,
-                                   std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                                   PulseType pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
+_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
+                                   double relativeLength, std::initializer_list<double> nlLength,
+                                   std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
+                                   const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
+                                   std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
                                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
                                    uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay,
                                    const Eigen::Ref<const Arrayd>& poling) :
-  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes)
+  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes)
 {
   if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
 
@@ -125,6 +126,11 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   for (uint m = 0; m < _nPumpModes; m++) {
     pumpFreq[m].setZero(_nZStepsP, _nFreqs);
     pumpTime[m].setZero(_nZStepsP, _nFreqs);
+  }
+
+  field.resize(_nFieldModes);
+  for (uint m = 0; m < _nFieldModes; m++) {
+    field[m].setZero(_nZStepsP, _nFreqs);
   }
 
   signalFreq.resize(_nSignalModes);
