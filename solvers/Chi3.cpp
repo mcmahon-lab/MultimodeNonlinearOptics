@@ -7,18 +7,18 @@ class Chi3 : public _NonlinearMedium {
   NLM(Chi3, 1)
 public:
   Chi3(double relativeLength, double nlLength, double beta2,
-       const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+       const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
        double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-       double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0);
+       double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0);
 
   void runPumpSimulation() override;
 };
 
 
-Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, int pulseType,
-           double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp) :
+Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
+           double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp) :
   _NonlinearMedium(_nSignalModes, 1, false, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
-                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, chirp, 0)
+                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, 0)
 {}
 
 
@@ -27,8 +27,20 @@ void Chi3::runPumpSimulation() {
   pumpFreq[0].row(0) *= ((0.5_I * _dzp) * _dispersionPump[0]).exp();
   IFFTi(pumpTime[0], pumpFreq[0], 0, 0);
 
-  Eigen::VectorXcd relativeIntensity = (_dzp / _dz * _nlStep[0]) /
-      (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square());
+  Eigen::VectorXcd relativeIntensity;
+  switch (_intensityProfile) {
+    default:
+    case IntensityProfile::Constant:
+      relativeIntensity = (_dzp / _dz * _nlStep[0]) * Eigen::VectorXcd::Ones(_nZStepsP);
+      break;
+    case IntensityProfile::GaussianBeam:
+      relativeIntensity = (_dzp / _dz * _nlStep[0]) /
+                          (1 + (Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square());
+      break;
+    case IntensityProfile::GaussianApodization:
+      relativeIntensity = (_dzp / _dz * _nlStep[0]) *
+                          (-(Arrayd::LinSpaced(_nZStepsP, -0.5 * _z, 0.5 * _z) / _rayleighLength).square()).exp();
+  }
 
   for (uint i = 1; i < _nZStepsP; i++) {
     pumpTime[0].row(i) = pumpTime[0].row(i-1) * (relativeIntensity(i-1) * pumpTime[0].row(i-1).abs2()).exp();

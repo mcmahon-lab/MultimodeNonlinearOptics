@@ -21,7 +21,19 @@ class _NonlinearMedium {
 friend class Cascade;
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  virtual void setPump(int pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
+
+  enum class PulseType : int {
+    Gaussian = 0,
+    Sech = 1,
+    Sinc = 2,
+  };
+  enum class IntensityProfile : int {
+    GaussianBeam = 0,
+    Constant = 1,
+    GaussianApodization = 2,
+  };
+
+  virtual void setPump(PulseType pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
   virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
   virtual void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength=0, uint pumpIndex=0);
 
@@ -29,9 +41,9 @@ public:
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
   virtual std::pair<Array2Dcd, Array2Dcd>
       computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
-                            const std::vector<char>& useInput={}, const std::vector<char>& useOutput={});
+                            const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
   virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
-                                          bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<char>& useOutput={});
+                                          bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<uint8_t>& useOutput={});
 
   const Array2Dcd& getPumpFreq(uint i=0) {return pumpFreq.at(i);};
   const Array2Dcd& getPumpTime(uint i=0) {return pumpTime.at(i);};
@@ -45,10 +57,10 @@ public:
 protected:
   _NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                   int pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
+                   PulseType pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
-                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, double chirp, double delay,
-                   const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
                   const std::vector<double>& beta2, const std::vector<double>& beta2s, const std::vector<double>& beta1,
@@ -82,7 +94,8 @@ protected:
   uint _nZStepsP; /// number of length steps in simulating the pump, larger to calculate values at RK4 intermediate steps
   uint _nFreqs;   /// number of frequency/time bins in the simulating the PDE
   double _tMax;   /// positive and negative extent of the simulation window in time
-  double _rayleighLength; /// Rayleigh length of propagation, assumes focused at medium's center
+  double _rayleighLength; /// Rayleigh length of propagation (or characteristic length of intensity profile), assumes focused at medium's center
+  IntensityProfile _intensityProfile; /// Encodes the intensity profile type, if not Gaussian beam propagation
   std::vector<double> _beta2;  /// second order dispersion of the pump
   std::vector<double> _beta1;  /// relative group velocity of the pump
 
@@ -108,16 +121,16 @@ protected:
   static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 
   // DFT Convenience Functions, indexed (for 2D arrays) and regular (for 1D arrays):
-  inline void FFT(Arraycd& output, const Arraycd& input) {
+  inline void FFT(Arraycd& output, const Arraycd& input) const {
     fftObj.fwd(output, input, _nFreqs);
   }
-  inline void IFFT(Arraycd& output, const Arraycd& input) {
+  inline void IFFT(Arraycd& output, const Arraycd& input) const {
     fftObj.inv(output, input, _nFreqs);
   }
-  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
   }
-  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) {
+  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.inv(output, input, rowOut, rowIn, _nFreqs);
   }
 };

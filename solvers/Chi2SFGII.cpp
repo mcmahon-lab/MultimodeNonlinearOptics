@@ -8,26 +8,27 @@ class Chi2SFGII : public _NonlinearMedium {
 public:
   Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY,
             double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
-            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), int pulseType=0,
+            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
             double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
-            double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0,
-            double diffBeta0z=0, double diffBeta0y=0, double diffBeta0s=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100, double chirp=0, double delay=0,
-            const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+            double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0, double diffBeta0z=0,
+            double diffBeta0y=0, double diffBeta0s=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{},
+            double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthSignZ, double nlLengthSignY, double nlLengthOrigZ, double nlLengthOrigY,
                      double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
-                     const Eigen::Ref<const Arraycd>& customPump, int pulseType,
+                     const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                      double beta1, double beta1sz, double beta1sy, double beta1oz, double beta1oy,
                      double beta3, double beta3sz, double beta3sy, double beta3oz, double beta3oy,
                      double diffBeta0z, double diffBeta0y, double diffBeta0s, double rayleighLength,
-                     double tMax, uint tPrecision, uint zPrecision, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+                     double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+                     double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLengthSignZ, nlLengthSignY, nlLengthOrigZ, nlLengthOrigY},
                    {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
                    {beta3}, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0s},
-                   rayleighLength, tMax, tPrecision, zPrecision, chirp, delay, poling) {}
+                   rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

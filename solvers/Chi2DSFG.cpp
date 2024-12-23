@@ -10,17 +10,18 @@ public:
            double beta2p, double beta2s, double beta2d, double beta1p=0, double beta1s=0, double beta1d=0,
            double beta3p=0, double beta3s=0, double beta3d=0, double diffBeta0=0,
            double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512,
-           uint zPrecision=100, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+           uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{},
+           const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, double nlLengthD,
                    double beta2p, double beta2s, double beta2d, double beta1p, double beta1s, double beta1d,
-                   double beta3p, double beta3s, double beta3d, double diffBeta0, double rayleighLength,
-                   double tMax, uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+                   double beta3p, double beta3s, double beta3d, double diffBeta0, double rayleighLength, double tMax,
+                   uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
   _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
                         {beta1p, beta1s, beta1d}, {beta3p, beta3s, beta3d}, {diffBeta0}, rayleighLength, tMax,
-                        tPrecision, zPrecision, poling) {}
+                        tPrecision, zPrecision, intensityProfile, poling) {}
 
 
 void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
@@ -33,9 +34,9 @@ void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
   const double currPolDir = _poling(i);
   const double intmPolDir = 0.5 * (prevPolDir + currPolDir);
 
-  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntPrv = relativeAmplitude(i- 1);
+  const double relIntInt = relativeAmplitude(i-.5);
+  const double relIntCur = relativeAmplitude(i);
 
   const double prevRelNL = prevPolDir * relIntPrv;
   const double intmRelNL = intmPolDir * relIntInt;

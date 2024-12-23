@@ -4,12 +4,15 @@ _FullyNonlinearMedium::_FullyNonlinearMedium(uint nSignalmodes, bool canBePoled,
                                              std::initializer_list<double> nlLength, std::initializer_list<double> beta2s,
                                              std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                                              std::initializer_list<double> diffBeta0, double rayleighLength, double tMax,
-                                             uint tPrecision, uint zPrecision, const Eigen::Ref<const Arrayd>& poling) :
+                                             uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+                                             const Eigen::Ref<const Arrayd>& poling) :
   _NonlinearMedium(nSignalmodes)
 {
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, {0}, beta2s, {0}, beta1s, {0}, beta3s);
   _dzp = _nZStepsP = 0;
   resetGrids(tPrecision, tMax);
+  _intensityProfile = _rayleighLength != std::numeric_limits<double>::infinity() ?
+                      intensityProfile : IntensityProfile::Constant;
   _FullyNonlinearMedium::setDispersion(beta2s, beta1s, beta3s, diffBeta0);
   if (canBePoled)
     setPoling(poling);

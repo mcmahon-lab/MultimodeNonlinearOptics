@@ -54,7 +54,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   // default arguments for Python, including initialization of empty arrays
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
   Eigen::Ref<const Arrayd>  defArrayf  = Eigen::Ref<const Arrayd>(Arrayd{});
-  const std::vector<char> defCharVec = {};
+  const std::vector<uint8_t> defCharVec = {};
   constexpr double infinity = std::numeric_limits<double>::infinity();
 
 /*
@@ -62,7 +62,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   _NLMBase.def("setPump",
-               py::overload_cast<int, double, double, uint>(&_NonlinearMedium::setPump),
+               py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&_NonlinearMedium::setPump),
                "Set the input shape of the pump\n"
                "pulseType Gaussian, Sech or Sinc profile; 0, 1, 2 respectively.\n"
                "chirp     Initial chirp of the pump, specified in dispersion lengths.\n"
@@ -151,13 +151,23 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
                                  "Read-only array of the domain poling along the length of a Chi(2) medium.");
 
+  py::enum_<_NonlinearMedium::PulseType>(m, "PulseType")
+      .value("Gaussian", _NonlinearMedium::PulseType::Gaussian)
+      .value("Sech", _NonlinearMedium::PulseType::Sech)
+      .value("Sinc", _NonlinearMedium::PulseType::Sinc)
+      .export_values();
+  py::enum_<_NonlinearMedium::IntensityProfile>(m, "IntensityProfile")
+      .value("GaussianBeam", _NonlinearMedium::IntensityProfile::GaussianBeam)
+      .value("Constant", _NonlinearMedium::IntensityProfile::Constant)
+      .value("GaussianApodization", _NonlinearMedium::IntensityProfile::GaussianApodization)
+      .export_values();
 
 /*
  * _FullyNonlinearMedium
  */
 
   _FNLMBase.def("batchSignalSimulation",
-                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<char>&>(
+                py::overload_cast<const Eigen::Ref<const Array2Dcd>&, bool, uint, uint, const std::vector<uint8_t>&>(
                     &_FullyNonlinearMedium::batchSignalSimulation),
                 py::return_value_policy::move,
                 "Run multiple signal simulations.\n"
@@ -171,7 +181,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                 "inputProfs"_a, "inTimeDomain"_a = false, "nThreads"_a = 1,
                 "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
-  _FNLMBase.def("setPump", py::overload_cast<int, double, double, uint>(&_FullyNonlinearMedium::setPump),
+  _FNLMBase.def("setPump", py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&_FullyNonlinearMedium::setPump),
                 "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
   _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double, uint>(&_FullyNonlinearMedium::setPump),
                 "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
@@ -188,9 +198,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi3.def(
-      py::init<double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double, uint, uint, double>(),
-      "relativeLength"_a, "nlLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0);
+      py::init<double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType, double, double, double,
+               uint, uint, _NonlinearMedium::IntensityProfile, double>(),
+      "relativeLength"_a, "nlLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+      "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0);
 
   Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation,
            "Simulate propagation the of pump field");
@@ -201,11 +213,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2PDC.def(
-      py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, int,
-               double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
+      py::init<double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+               double, double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile,
+               double, double, Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLength"_a, "beta2"_a, "beta2s"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
       "beta1"_a = 0, "beta1s"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -214,10 +228,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SHG.def(
       py::init<double, double, double, double, double, double, double, double, double, double,
-               double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+               double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
-      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
+      "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
 
 
 /*
@@ -226,10 +240,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SHGXPM.def(
       py::init<double, double, double, double, double, double, double, double, double, double, double,
-          double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+          double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "nlLengthChi3"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
       "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "poling"_a = defArrayf);
 
 
 /*
@@ -238,10 +253,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2DSFG.def(
       py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
-               double, double, double, uint, uint, const Eigen::Ref<const Arrayd>&>(),
+               double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthP"_a, "nlLengthS"_a, "nlLengthD"_a, "beta2p"_a, "beta2s"_a, "beta2d"_a,
       "beta1p"_a = 0, "beta1s"_a = 0, "beta1d"_a = 0, "beta3p"_a = 0, "beta3s"_a = 0, "beta3d"_a = 0, "diffBeta0"_a = 0,
-      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "poling"_a = defArrayf);
 
 
 /*
@@ -249,12 +265,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SFGPDC.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-          double, double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+          double, double, double, double, double, double, double, double, double, double, uint, uint,
+          _NonlinearMedium::IntensityProfile, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a, "customPump"_a = defArraycd,
-      "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0,
+      "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0,
       "diffBeta0"_a = 0, "diffBeta0o"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
-      "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+      "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -262,11 +279,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SFG.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-               double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType, double, double, double,
+               double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
-      "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+      "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
@@ -275,12 +293,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2AFC.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-               double, double, double, double, double, double, double, uint, uint, double, double>(),
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+               double, double, double, double, double, double, double, double, double, double, uint, uint,
+               _NonlinearMedium::IntensityProfile, double, double>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
+      "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
       "beta3o"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
-      "chirp"_a = 0, "delay"_a = 0);
+      "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0, "delay"_a = 0);
 
 
 /*
@@ -288,12 +307,14 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2PDCII.def(
-      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-               double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+               double, double, double, double, double, double, double, double, double, uint, uint,
+               _NonlinearMedium::IntensityProfile, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthI"_a, "nlLengthII"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0,
-      "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+      "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+      "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -302,14 +323,14 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFGII.def(
       py::init<double, double, double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&,
-               int, double, double, double, double, double, double, double, double, double, double, double, double,
-               double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+               _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double, double, double,
+               double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthSignZ"_a, "nlLengthSignY"_a, "nlLengthOrigZ"_a, "nlLengthOrigY"_a,
-      "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "customPump"_a = defArraycd, "pulseType"_a = 0,
-      "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0,
-      "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0,
-      "diffBeta0s"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
-      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+      "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
+      "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0, "beta3sz"_a = 0,
+      "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0, "diffBeta0s"_a = 0,
+      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -318,12 +339,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SFGOPA.def(
       py::init<double, double, double, double, double, double, double, double, double, const Eigen::Ref<const Arraycd>&,
-               int, double, double, double, double, double, double, double, double, double, double, double,
-               double, double, uint, uint, double, double, const Eigen::Ref<const Arrayd>&>(),
-      "relativeLength"_a, "nlLengthFh"_a, "nlLengthHh"_a, "nlLengthFf"_a, "nlLengthHf"_a, "beta2F"_a, "beta2H"_a, "beta2h"_a,
-      "beta2f"_a, "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0,
-      "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0, "diffBeta0SFG"_a = 0, "diffBeta0OPA"_a = 0, "diffBeta0DOPA"_a = 0,
-      "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+               _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double, double,
+               double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double, const Eigen::Ref<const Arrayd>&>(),
+      "relativeLength"_a, "nlLengthFh"_a, "nlLengthHh"_a, "nlLengthFf"_a, "nlLengthHf"_a, "beta2F"_a, "beta2H"_a, "beta2h"_a, "beta2f"_a,
+      "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0,
+      "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0, "diffBeta0SFG"_a = 0, "diffBeta0OPA"_a = 0, "diffBeta0DOPA"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+      "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
 /*
@@ -332,11 +354,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2SHGOPA.def(
       py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
-          double, double, double, double, double, double, double, double, uint , uint , const Eigen::Ref<const Arrayd>& >(),
+               double, double, double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile,
+               const Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLengthP"_a, "nlLengthSH"_a, "nlLengthPA1"_a, "nlLengthPA2"_a,
       "beta2p"_a, "beta2sh"_a, "beta2pa1"_a, "beta2pa2"_a, "beta1p"_a = 0, "beta1sh"_a = 0, "beta1pa1"_a = 0,
       "beta1pa2"_a = 0, "beta3p"_a = 0, "beta3sh"_a = 0, "beta3pa1"_a = 0, "beta3pa2"_a = 0, "diffBeta0shg"_a = 0,
-      "diffBeta0opa"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "poling"_a = defArrayf);
+      "diffBeta0opa"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
 
 
 /*
@@ -344,11 +368,13 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   Chi2SFGXPM.def(
-      py::init<double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, int, double, double, double,
-          double, double, double, double, double, double, uint, uint, double, double, Eigen::Ref<const Arrayd>&>(),
+      py::init<double, double, double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+               double, double, double, double, double, double, double, double, double, uint, uint, _NonlinearMedium::IntensityProfile,
+               double, double, Eigen::Ref<const Arrayd>&>(),
       "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "nlLengthChi3"_a, "nlLengthChi3Orig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
-      "customPump"_a = defArraycd, "pulseType"_a = 0, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0, "beta3"_a = 0, "beta3s"_a = 0,
-      "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+      "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
       "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 
 
@@ -358,10 +384,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi2ASHG.def(
       py::init<double, double, double, double, double, double, double, double, double, double, double,
-          double, double, uint, uint>(),
+          double, double, uint, uint, _NonlinearMedium::IntensityProfile>(),
       "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
       "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
-      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100);
+      "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
 
 
 /*
@@ -370,9 +396,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Chi3GNLSE.def(
       py::init<double, double, double, double, double, double, double, double, double, double, double, double,
-          uint, uint>(),
+          uint, uint, _NonlinearMedium::IntensityProfile>(),
       "relativeLength"_a, "nlLength"_a, "selfSteepLength"_a,  "fr"_a, "fb"_a, "tau1"_a, "tau2"_a, "tau3"_a,
-      "beta2"_a, "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,"zPrecision"_a = 100);
+      "beta2"_a, "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+      "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
 
   Chi3GNLSE.def_property_readonly("ramanResponse", &Chi3GNLSE::getRamanResponse, py::return_value_policy::reference,
                                   "Read-only array of the Raman response function in the frequency domain.");
@@ -387,7 +414,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               py::keep_alive<1, 2>());
 
   Cascade.def("setPump",
-              py::overload_cast<int, double, double, uint>(&Cascade::setPump),
+              py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&Cascade::setPump),
               "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("setPump",

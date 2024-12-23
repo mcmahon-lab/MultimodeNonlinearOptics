@@ -7,16 +7,17 @@ class Chi2ASHG : public _FullyNonlinearMedium {
   NLM(Chi2ASHG, 2)
 public:
   Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
-           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0Start=0, double diffBeta0End=0,
-           double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100);
+           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0Start=0,
+           double diffBeta0End=0, double rayleighLength=std::numeric_limits<double>::infinity(),
+           double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{});
 };
 
 
 Chi2ASHG::Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                    double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0Start, double diffBeta0End,
-                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision) :
+                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
     _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
-                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision)
+                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {}
 
 
@@ -25,9 +26,9 @@ void Chi2ASHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 
-  const double relIntPrv = sqrt(1 / (1 + std::pow(((i- 1) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntInt = sqrt(1 / (1 + std::pow(((i-.5) * _dz - 0.5 * _z), 2) / _rayleighLength));
-  const double relIntCur = sqrt(1 / (1 + std::pow(( i     * _dz - 0.5 * _z), 2) / _rayleighLength));
+  const double relIntPrv = relativeAmplitude(i- 1);
+  const double relIntInt = relativeAmplitude(i-.5);
+  const double relIntCur = relativeAmplitude(i);
 
   const double arg = 0.5 * (_diffBeta0[1] - _diffBeta0[0]) / _z;
   const std::complex<double> prevMismatch = std::exp(0.5_I * ((_diffBeta0[0] + (i- 1) * _dz * arg) * (i- 1) * _dz));
