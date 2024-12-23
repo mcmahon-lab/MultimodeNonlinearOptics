@@ -17,7 +17,7 @@ Chi2SHGXPM::Chi2SHGXPM(double relativeLength, double nlLengthH, double nlLengthP
                double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
                double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
                const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
+  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
                         {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling)
 {}
 

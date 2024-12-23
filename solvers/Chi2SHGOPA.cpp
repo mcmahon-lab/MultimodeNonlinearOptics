@@ -23,7 +23,7 @@ Chi2SHGOPA::Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthS
                        double diffBeta0shg, double diffBeta0opa, double rayleighLength,
                        double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
                        const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthSH, nlLengthPA1, nlLengthPA2},
+  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthSH, nlLengthPA1, nlLengthPA2},
                         {beta2p, beta2sh, beta2pa1, beta2pa2}, {beta1p, beta1sh, beta1pa1, beta1pa2},
                         {beta3p, beta3sh, beta3pa1, beta3pa2}, {diffBeta0shg, diffBeta0opa},
                         rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling) {}

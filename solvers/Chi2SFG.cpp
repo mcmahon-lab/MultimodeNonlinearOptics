@@ -20,7 +20,7 @@ Chi2SFG::Chi2SFG(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta3, double beta3s, double beta3o, double diffBeta0, double rayleighLength,
                  double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay,
                  const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength, nlLengthOrig}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength, nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0},
                    rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 

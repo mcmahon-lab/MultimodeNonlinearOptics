@@ -119,6 +119,8 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "Read-only array of a pump time profile along the length of the medium.", "i"_a = 0);
   _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
                                  "Read-only array of the domain poling along the length of a Chi(2) medium.");
+  _NLMBase.def("field", &_NonlinearMedium::getField, py::return_value_policy::reference,
+               "Writeable array for some arbitrary field profile. Has the same shape as the pump arrays.", "i"_a = 0);
 
   py::enum_<_NonlinearMedium::PulseType>(m, "PulseType")
       .value("Gaussian", _NonlinearMedium::PulseType::Gaussian)

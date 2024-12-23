@@ -1,12 +1,12 @@
 #include "_FullyNonlinearMedium.hpp"
 
-_FullyNonlinearMedium::_FullyNonlinearMedium(uint nSignalmodes, bool canBePoled, double relativeLength,
+_FullyNonlinearMedium::_FullyNonlinearMedium(uint nSignalModes, bool canBePoled, uint nFieldModes, double relativeLength,
                                              std::initializer_list<double> nlLength, std::initializer_list<double> beta2s,
                                              std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                                              std::initializer_list<double> diffBeta0, double rayleighLength, double tMax,
                                              uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
                                              const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(nSignalmodes)
+  _NonlinearMedium(nSignalModes, nFieldModes)
 {
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, {0}, beta2s, {0}, beta1s, {0}, beta3s);
   _dzp = _nZStepsP = 0;

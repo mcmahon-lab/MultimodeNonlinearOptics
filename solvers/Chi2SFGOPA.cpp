@@ -23,7 +23,7 @@ Chi2SFGOPA::Chi2SFGOPA(double relativeLength, double nlLengthSFGh, double nlLeng
                        double beta3h, double beta3f, double diffBeta0SFG, double diffBeta0DOPA,
                        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
                        double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-    _NonlinearMedium(_nSignalModes, 2, true, relativeLength, {nlLengthSFGh, nlLengthSFGf, nlLengthDOPAh, nlLengthDOPAf}, {beta2F, beta2H},
+    _NonlinearMedium(_nSignalModes, 2, true, 0, relativeLength, {nlLengthSFGh, nlLengthSFGf, nlLengthDOPAh, nlLengthDOPAf}, {beta2F, beta2H},
                      {beta2h, beta2f}, customPump, pulseType, {beta1F, beta1H}, {beta1h, beta1f}, {beta3F, beta3H}, {beta3h, beta3f},
                      {diffBeta0SFG, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 

@@ -19,7 +19,7 @@ Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, do
                    double beta2p, double beta2s, double beta2d, double beta1p, double beta1s, double beta1d,
                    double beta3p, double beta3s, double beta3d, double diffBeta0, double rayleighLength, double tMax,
                    uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
+  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
                         {beta1p, beta1s, beta1d}, {beta3p, beta3s, beta3d}, {diffBeta0}, rayleighLength, tMax,
                         tPrecision, zPrecision, intensityProfile, poling) {}
 

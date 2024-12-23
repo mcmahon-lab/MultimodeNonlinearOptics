@@ -18,7 +18,7 @@ Chi2AFC::Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, do
                  const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType, double beta1, double beta1s, double beta1o,
                  double beta3, double beta3s, double beta3o, double diffBeta0Start, double diffBeta0End, double rayleighLength,
                  double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay) :
-  _NonlinearMedium(_nSignalModes, 1, false, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0Start, diffBeta0End},
                    rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay) {}
 

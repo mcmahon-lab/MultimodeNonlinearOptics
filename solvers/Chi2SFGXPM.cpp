@@ -21,7 +21,7 @@ Chi2SFGXPM::Chi2SFGXPM(double relativeLength, double nlLength, double nlLengthOr
                        double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o, double diffBeta0,
                        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp,
                        double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
+  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
                    {beta2}, {beta2s, beta2o}, customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o},
                    {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
