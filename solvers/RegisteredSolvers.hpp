@@ -8,6 +8,7 @@
 #include "Chi2PDCII.cpp"
 #include "Chi2SFGOPA.cpp"
 #include "Chi2SFGXPM.cpp"
+#include "Chi2SFGRandom.cpp"
 
 #include "Chi2SHG.cpp"
 #include "Chi2SHGOPA.cpp"
