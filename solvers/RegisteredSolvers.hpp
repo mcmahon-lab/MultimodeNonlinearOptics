@@ -10,6 +10,7 @@
 #include "Chi2SFGXPM.cpp"
 
 #include "Chi2SHG.cpp"
+#include "Chi3THG.cpp"
 #include "Chi2SHGOPA.cpp"
 #include "Chi2DSFG.cpp"
 #include "Chi2SHGXPM.cpp"

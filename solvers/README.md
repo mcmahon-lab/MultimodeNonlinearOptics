@@ -185,6 +185,17 @@ Second harmonic generation.
 Adiabatic second harmonic generation, in a rotating frame with a linearly varying poling frequency built-in to the solver.
 Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SHG applied to the adiabatic case.
 
+###### Chi3THG
+<span>
+A&#8320;'(z, t) = D&#770; A&#8320; +
+<i>i L</i><sub>NL0</sub><sup>-1</sup> A&#8321; A&#8320;<sup>&#178&#8224;</sup>
+e<sup><i>i</i> &#916;<i>k z</i></sup>
+<br>
+A&#8321;'(z, t) = D&#770; A&#8321; +
+&frac14 <i>i L</i><sub>NL1</sub><sup>-1</sup> A&#8320;&#179;
+e<sup>-<i>i</i> &#916;<i>k z</i></sup>
+</span>
+
 ###### Chi2SHGOPA
 <span>
 A&#8320;'(z, t) = D&#770; A&#8320; +
