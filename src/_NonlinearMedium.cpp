@@ -27,13 +27,16 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
 
   _intensityProfile = (_rayleighLength != std::numeric_limits<double>::infinity() ?
       intensityProfile : IntensityProfile::Constant);
-  _envelope.resize(_nPumpModes);
-  if (customPump.size() != 0)
-    setPump(customPump, chirp, delay);
-  else
-    setPump(pulseType, chirp, delay);
-  for (uint m = 1; m < _nPumpModes; m++)
-    _envelope[m].setZero(_nFreqs);
+
+  if (_nPumpModes > 0) {
+    _envelope.resize(_nPumpModes);
+    if (customPump.size() != 0)
+      setPump(customPump, chirp, delay);
+    else
+      setPump(pulseType, chirp, delay);
+    for (uint m = 1; m < _nPumpModes; m++)
+      _envelope[m].setZero(_nFreqs);
+  }
 }
 
 
@@ -73,16 +76,16 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
   _z = relativeLength;
 
   auto absComp = [](double a, double b) {return (std::abs(a) < std::abs(b));};
-  double minDispLength = 1 / std::abs(std::max({*std::max_element(beta2.begin(),  beta2.end(),  absComp),
-                                                *std::max_element(beta2s.begin(), beta2s.end(), absComp),
-                                                *std::max_element(beta1.begin(),  beta1.end(),  absComp),
-                                                *std::max_element(beta1s.begin(), beta1s.end(), absComp),
-                                                *std::max_element(beta3.begin(),  beta3.end(),  absComp),
-                                                *std::max_element(beta3s.begin(), beta3s.end(), absComp)}, absComp));
+  double minDispLength = 1 / std::abs(std::max({(beta2.empty() ? 0 : *std::max_element(beta2.begin(),  beta2.end(),  absComp)),
+                                                (beta2s.empty()? 0 : *std::max_element(beta2s.begin(), beta2s.end(), absComp)),
+                                                (beta1.empty() ? 0 : *std::max_element(beta1.begin(),  beta1.end(),  absComp)),
+                                                (beta1s.empty()? 0 : *std::max_element(beta1s.begin(), beta1s.end(), absComp)),
+                                                (beta3.empty() ? 0 : *std::max_element(beta3.begin(),  beta3.end(),  absComp)),
+                                                (beta3s.empty()? 0 : *std::max_element(beta3s.begin(), beta3s.end(), absComp))}, absComp));
 
   // space resolution. Note: pump step is smaller to calculate the value for intermediate RK4 steps
   _nZSteps = static_cast<uint>(zPrecision * _z / std::min({1., minDispLength, rayleighLength,
-                                                           *std::min_element(nlLength.begin(), nlLength.end())}));
+                                                           (nlLength.empty()? 0 : *std::min_element(nlLength.begin(), nlLength.end()))}));
   _nZStepsP = 2 * _nZSteps - 1;
   _dz = _z / (_nZSteps - 1);
   _dzp = _z / (_nZStepsP - 1);
@@ -151,7 +154,7 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   _beta2 = beta2;
   _beta1 = beta1;
 
-  // signal phase mis-match
+  // signal phase mismatch
   _diffBeta0 = diffBeta0;
 
   // dispersion profile
@@ -166,11 +169,11 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   // incremental phases for each simulation step
   _dispStepPump.resize(_nPumpModes);
   for (uint m = 0; m < _nPumpModes; m++)
-    _dispStepPump[m] = (1._I * _dispersionPump[m] * _dzp).exp();
+    _dispStepPump[m] = ((1._I * _dzp) * _dispersionPump[m]).exp();
 
   _dispStepSign.resize(_nSignalModes);
   for (uint m = 0; m < _nSignalModes; m++)
-    _dispStepSign[m] = (1._I * _dispersionSign[m] * _dz).exp();
+    _dispStepSign[m] = ((1._I * _dz) * _dispersionSign[m]).exp();
 }
 
 

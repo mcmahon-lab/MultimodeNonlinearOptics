@@ -74,7 +74,6 @@ protected:
                      const std::vector<double>& beta1s, const std::vector<double>& beta3, const std::vector<double>& beta3s,
                      std::initializer_list<double> diffBeta0);
   _NonlinearMedium() : _nSignalModes(), _nPumpModes(), _nFieldModes() {};
-  _NonlinearMedium(uint nSignalModes, uint nFieldModes) : _nSignalModes(nSignalModes), _nPumpModes(), _nFieldModes(nFieldModes) {}
 
   virtual void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                  std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
