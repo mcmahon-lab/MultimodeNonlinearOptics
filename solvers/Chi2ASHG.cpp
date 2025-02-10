@@ -16,7 +16,7 @@ public:
 Chi2ASHG::Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                    double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0Start, double diffBeta0End,
                    double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
-    _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
+    _FullyNonlinearMedium(_nSignalModes, false, 0, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
                           {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {}
 
@@ -56,3 +56,13 @@ void Chi2ASHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
 }
 
 #endif //CHI2ASHG
+
+#ifdef NLMMODULE
+py::class_<Chi2ASHG, _FullyNonlinearMedium> Chi2ASHG(m, "Chi2ASHG", "Fully nonlinear adiabatic second harmonic generation");
+Chi2ASHG.def(
+    py::init<double, double, double, double, double, double, double, double, double, double, double,
+             double, double, uint, uint, _NonlinearMedium::IntensityProfile>(),
+    "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
+    "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
+#endif

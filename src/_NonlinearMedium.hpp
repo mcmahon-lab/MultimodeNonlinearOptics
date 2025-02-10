@@ -52,13 +52,17 @@ public:
   const Arrayd& getTime()      {return _tau;};
   const Arrayd& getFrequency() {return _omega;};
 
+  Array2Dcd& getField(uint i=0) {return field.at(i);};
   const Arrayd& getPoling() {return _poling;};
 
 protected:
-  _NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, double relativeLength, std::initializer_list<double> nlLength,
-                   std::initializer_list<double> beta2, std::initializer_list<double> beta2s, const Eigen::Ref<const Arraycd>& customPump,
-                   PulseType pulseType, std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
-                   std::initializer_list<double> beta3, std::initializer_list<double> beta3s, std::initializer_list<double> diffBeta0,
+  _NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
+                   double relativeLength, std::initializer_list<double> nlLength,
+                   std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
+                   const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
+                   std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
+                   std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
+                   std::initializer_list<double> diffBeta0,
                    double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
                    double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
@@ -69,8 +73,7 @@ protected:
   void setDispersion(const std::vector<double>& beta2, const std::vector<double>& beta2s, const std::vector<double>& beta1,
                      const std::vector<double>& beta1s, const std::vector<double>& beta3, const std::vector<double>& beta3s,
                      std::initializer_list<double> diffBeta0);
-  _NonlinearMedium() : _nSignalModes(), _nPumpModes() {};
-  _NonlinearMedium(uint nSignalModes) : _nSignalModes(nSignalModes), _nPumpModes() {}
+  _NonlinearMedium() : _nSignalModes(), _nPumpModes(), _nFieldModes() {};
 
   virtual void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                  std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
@@ -85,8 +88,9 @@ protected:
   static inline Arrayd fftshift(const Arrayd& input);
   static inline Array2Dcd fftshift2(const Array2Dcd& input);
 
-  const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, frequencies, etc)
-  const uint _nPumpModes;   /// Number of separate pump modes (eg polarizations, frequencies, etc)
+  const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, wavelengths, etc)
+  const uint _nPumpModes;   /// Number of separate pump modes (eg polarizations, wavelengths, etc)
+  const uint _nFieldModes;   /// Number of separate field modes (eg index variation, 2D poling, etc)
   double _z;      /// length of medium
   double _dz;     /// length increment of the signal simulation
   double _dzp;    /// length increment of the pump simulation
@@ -117,6 +121,8 @@ protected:
   std::vector<Array2Dcd> pumpTime; /// grid for numerically solving PDE, representing pump propagation in time domain
   std::vector<Array2Dcd> signalFreq; /// grid for numerically solving PDE, representing signal propagation in frequency domain
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
+
+  std::vector<Array2Dcd> field; /// grid for a user-defined field to include in the PDE
 
   static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 

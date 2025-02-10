@@ -19,7 +19,7 @@ private:
 
 Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
                      double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
-  _FullyNonlinearMedium(_nSignalModes, false, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
+  _FullyNonlinearMedium(_nSignalModes, false, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
                         rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
 {
   // Precompute Raman response for the convolution
@@ -92,3 +92,15 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
 }
 
 #endif //CHI3GNLSE
+
+#ifdef NLMMODULE
+py::class_<Chi3GNLSE, _FullyNonlinearMedium> Chi3GNLSE(m, "Chi3GNLSE", "Fully nonlinear general nonlinear Schrodinger equation");
+Chi3GNLSE.def(
+    py::init<double, double, double, double, double, double, double, double, double, double, double, double,
+             uint, uint, _NonlinearMedium::IntensityProfile>(),
+    "relativeLength"_a, "nlLength"_a, "selfSteepLength"_a,  "fr"_a, "fb"_a, "tau1"_a, "tau2"_a, "tau3"_a,
+    "beta2"_a, "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
+Chi3GNLSE.def_property_readonly("ramanResponse", &Chi3GNLSE::getRamanResponse, py::return_value_policy::reference,
+                                "Read-only array of the Raman response function in the frequency domain.");
+#endif

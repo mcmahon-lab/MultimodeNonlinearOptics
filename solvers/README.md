@@ -66,24 +66,24 @@ Same equation as above, but poling is disabled; intended as a faster, approximat
 ###### Chi2SFGII
 <span>
 A&#8320;'(z, t) = D&#770; A&#8320; +
-<i>i L</i><sub>NL0</sub><sup>-1</sup> A<sub>p</sub> A&#8323;
-e<sup><i>i</i> &#916;<i>k&#8320; z</i></sup>
+<i>i </i> A<sub>p</sub>
+(<i>L</i><sub>NL0</sub><sup>-1</sup> A&#8323; e<sup><i>i</i> &#916;<i>k&#8320; z</i></sup> +
+<i>L</i><sub>NL1</sub><sup>-1</sup> A&#8322; e<sup><i>i</i> &#916;<i>k&#8322; z</i></sup>)
 <br>
 A&#8321;'(z, t) = D&#770; A&#8321; +
-<i>i L</i><sub>NL1</sub><sup>-1</sup> A<sub>p</sub> A&#8322;
+<i>i L</i><sub>NL0</sub><sup>-1</sup> A<sub>p</sub> A&#8322;
 e<sup><i>i</i> &#916;<i>k&#8321; z</i></sup>
 <br>
-A&#8322;'(z, t) = D&#770; A&#8322; + <i>i L</i><sub>NL2</sub><sup>-1</sup>
-(A<sub>p</sub><sup>&#8224;</sup> A&#8321; e<sup>-<i>i</i> &#916;<i>k&#8321; z</i></sup> +
- A<sub>p</sub> A&#8323;<sup>&#8224;</sup> e<sup><i>i</i> &#916;<i>k&#8322; z</i></sup>)
+A&#8322;'(z, t) = D&#770; A&#8322; + <i>i</i> A<sub>p</sub><sup>&#8224;</sup>
+(<i>L</i><sub>NL0</sub><sup>-1</sup> A&#8321; e<sup>-<i>i</i> &#916;<i>k&#8321; z</i></sup> +
+ <i>L</i><sub>NL1</sub><sup>-1</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8322; z</i></sup>)
 <br>
-A&#8323;'(z, t) = D&#770; A&#8323; + <i>i L</i><sub>NL3</sub><sup>-1</sup>
-(A<sub>p</sub><sup>&#8224;</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8320; z</i></sup> +
- A<sub>p</sub> A&#8322;<sup>&#8224;</sup> e<sup><i>i</i> &#916;<i>k&#8322; z</i></sup>)
+A&#8323;'(z, t) = D&#770; A&#8323; + <i>i L</i><sub>NL0</sub><sup>-1</sup>
+A<sub>p</sub><sup>&#8224;</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8320; z</i></sup>
 </span>
 
 
-Simultaneous sum frequency generation and non-degenerate parametric amplification.
+Three simultaneous sum frequency generation processes with one pump among four modes (e.g. of different polarizations).
 
 ###### Chi2SFGPDC
 <span>
@@ -136,10 +136,9 @@ e<sup><i>i</i> &#916;<i>k&#8320; z</i></sup> +
 <i>i L</i><sub>NL2</sub><sup>-1</sup> A<sub>p1</sub> A&#8321;<sup>&#8224;</sup>
 e<sup><i>i</i> &#916;<i>k&#8321; z</i></sup>
 <br>
-A&#8321;'(z, t) = D&#770; A&#8321; + 
+A&#8321;'(z, t) = D&#770; A&#8321; +
 <i>i L</i><sub>NL1</sub><sup>-1</sup>
-(A<sub>p0</sub><sup>&#8224;</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8320; z</i></sup> +
- A<sub>p0</sub> A&#8321;<sup>&#8224;</sup> e<sup><i>i</i> &#916;<i>k&#8322; z</i></sup>) +
+A<sub>p0</sub><sup>&#8224;</sup> A&#8320; e<sup>-<i>i</i> &#916;<i>k&#8320; z</i></sup> +
 <i>i L</i><sub>NL3</sub><sup>-1</sup> A<sub>p1</sub> A&#8320;<sup>&#8224;</sup>
 e<sup><i>i</i> &#916;<i>k&#8321; z</i></sup>
 </span>
@@ -182,6 +181,10 @@ e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 
 Second harmonic generation.
 
+###### Chi2ASHG
+Adiabatic second harmonic generation, in a rotating frame with a linearly varying poling frequency built-in to the solver.
+Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SHG applied to the adiabatic case.
+
 ###### Chi2SHGOPA
 <span>
 A&#8320;'(z, t) = D&#770; A&#8320; +
@@ -217,10 +220,6 @@ e<sup>-<i>i</i> &#916;<i>k z</i></sup>
 </span>
 
 Second harmonic generation with self and cross phase modulation.
-
-###### Chi2ASHG
-Adiabatic second harmonic generation, in a rotating frame with a linearly varying poling frequency built-in to the solver.
-Same equation as above, but poling is disabled; intended as a faster, approximate version of Chi2SHG applied to the adiabatic case.
 
 ###### Chi3GNLSE
 <span>

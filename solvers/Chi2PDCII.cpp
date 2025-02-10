@@ -21,7 +21,7 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLengthI, double nlLengthII,
                      double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                      double diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                      IntensityProfile intensityProfile, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, relativeLength, {nlLengthI, nlLengthII}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLengthI, nlLengthII}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0},
                    rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
 
@@ -55,3 +55,16 @@ void Chi2PDCII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
 }
 
 #endif //CHI2PDCII
+
+#ifdef NLMMODULE
+py::class_<Chi2PDCII, _NonlinearMedium> Chi2PDCII(m, "Chi2PDCII", "Type II or nondegenerate optical parametric amplification");
+Chi2PDCII.def(
+    py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+             double, double, double, double, double, double, double, double, double, uint, uint,
+             _NonlinearMedium::IntensityProfile, double, double, Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthI"_a, "nlLengthII"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+    "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+    "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+#endif

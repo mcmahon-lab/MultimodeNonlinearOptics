@@ -18,7 +18,7 @@ Chi2AFC::Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, do
                  const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType, double beta1, double beta1s, double beta1o,
                  double beta3, double beta3s, double beta3o, double diffBeta0Start, double diffBeta0End, double rayleighLength,
                  double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay) :
-  _NonlinearMedium(_nSignalModes, 1, false, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0Start, diffBeta0End},
                    rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay) {}
 
@@ -51,3 +51,16 @@ void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
 }
 
 #endif //CHI2AFC
+
+#ifdef NLMMODULE
+py::class_<Chi2AFC, _NonlinearMedium> Chi2AFC(m, "Chi2AFC", "Adiabatic sum (or difference) frequency generation, in a rotating frame with linearly varying poling frequency built into the solver");
+Chi2AFC.def(
+    py::init<double, double, double, double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType,
+             double, double, double, double, double, double, double, double, double, double, uint, uint,
+             _NonlinearMedium::IntensityProfile, double, double>(),
+    "relativeLength"_a, "nlLength"_a, "nlLengthOrig"_a, "beta2"_a, "beta2s"_a, "beta2o"_a,
+    "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{}, "beta1"_a = 0, "beta1s"_a = 0, "beta1o"_a = 0,
+    "beta3"_a = 0, "beta3s"_a = 0, "beta3o"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "chirp"_a = 0, "delay"_a = 0);
+#endif
