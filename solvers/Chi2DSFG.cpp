@@ -25,7 +25,7 @@ Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, do
 
 
 void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                      std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq) {
   const auto& prvP = signal[0].row(iPrevSig);
   const auto& prvS = signal[1].row(iPrevSig);
   const auto& prvD = signal[2].row(iPrevSig);

@@ -150,7 +150,7 @@ protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
+                     std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
                          std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
                          bool optimized) override \
@@ -204,7 +204,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   if (optimized) { // for batchSignalSimulation or computeGreensFunction, where we use a single row instead of a grid
     for (uint i = 1; i < _nZSteps; i++) {
       // Do a Runge-Kutta step for the non-linear propagation
-      static_cast<T*>(this)->DiffEq(i, 0, k1, k2, k3, k4, signalTime);
+      static_cast<T*>(this)->DiffEq(i, 0, k1, k2, k3, k4, signalTime, signalFreq);
 
       for (uint m = 0; m < T::_nSignalModes; m++) {
         signalTime[m].row(0) += (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
@@ -219,7 +219,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   else { // for the regular case of filling in the PDE grids
     for (uint i = 1; i < _nZSteps; i++) {
       // Do a Runge-Kutta step for the non-linear propagation
-      static_cast<T*>(this)->DiffEq(i, i-1, k1, k2, k3, k4, signalTime);
+      static_cast<T*>(this)->DiffEq(i, i-1, k1, k2, k3, k4, signalTime, signalFreq);
 
       for (uint m = 0; m < T::_nSignalModes; m++) {
         signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);

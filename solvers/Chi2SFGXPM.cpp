@@ -27,7 +27,7 @@ Chi2SFGXPM::Chi2SFGXPM(double relativeLength, double nlLength, double nlLengthOr
 
 
 void Chi2SFGXPM::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                        std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                        std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq) {
   const auto& prevS = signal[0].row(iPrevSig);
   const auto& prevO = signal[1].row(iPrevSig);
 

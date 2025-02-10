@@ -30,7 +30,7 @@ Chi2SHGOPA::Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthS
 
 
 void Chi2SHGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                        std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                        std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq) {
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
   const auto& prvA1 = signal[2].row(iPrevSig);

@@ -24,7 +24,7 @@ Chi2AFC::Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, do
 
 
 void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                     std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq) {
   const auto& prevS = signal[0].row(iPrevSig);
   const auto& prevO = signal[1].row(iPrevSig);
 

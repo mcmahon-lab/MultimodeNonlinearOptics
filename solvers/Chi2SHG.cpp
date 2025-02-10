@@ -23,7 +23,7 @@ Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, doub
 
 
 void Chi2SHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                     std::vector<Arraycd>& k4, std::vector<Array2Dcd>& signal, std::vector<Array2Dcd>& freq) {
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 
