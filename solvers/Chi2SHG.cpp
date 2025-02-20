@@ -8,17 +8,17 @@ class Chi2SHG : public _FullyNonlinearMedium {
 public:
   Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0=0,
-          double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
+          double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1,
           IntensityProfile intensityProfile=IntensityProfile{}, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                  double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
-                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                 double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord,
                  IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
   _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
-                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling)
+                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling)
 {}
 
 
@@ -65,8 +65,8 @@ void Chi2SHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vecto
 py::class_<Chi2SHG, _FullyNonlinearMedium> Chi2SHG(m, "Chi2SHG", "Fully nonlinear second harmonic generation");
 Chi2SHG.def(
     py::init<double, double, double, double, double, double, double, double, double, double,
-             double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
+             double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
     "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
     "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512,
-    "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
+    "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
 #endif

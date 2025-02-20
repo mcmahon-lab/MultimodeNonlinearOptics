@@ -12,7 +12,7 @@ public:
              double beta1F=0, double beta1H=0, double beta1h=0, double beta1f=0, double beta3F=0, double beta3H=0,
              double beta3h=0, double beta3f=0, double diffBeta0SFG=0, double diffBeta0DOPA=0,
              double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512,
-             uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0, double delay=0,
+             uint zPrecision=100, uint ratioStepsToRecord=1, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0, double delay=0,
              const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -21,11 +21,11 @@ Chi2SFGOPA::Chi2SFGOPA(double relativeLength, double nlLengthSFGh, double nlLeng
                        double beta2F, double beta2H, double beta2h, double beta2f, const Eigen::Ref<const Arraycd>& customPump,
                        PulseType pulseType, double beta1F, double beta1H, double beta1h, double beta1f, double beta3F, double beta3H,
                        double beta3h, double beta3f, double diffBeta0SFG, double diffBeta0DOPA,
-                       double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+                       double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                        double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
     _NonlinearMedium(_nSignalModes, 2, true, 0, relativeLength, {nlLengthSFGh, nlLengthSFGf, nlLengthDOPAh, nlLengthDOPAf}, {beta2F, beta2H},
                      {beta2h, beta2f}, customPump, pulseType, {beta1F, beta1H}, {beta1h, beta1f}, {beta3F, beta3H}, {beta3h, beta3f},
-                     {diffBeta0SFG, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, delay, poling) {}
+                     {diffBeta0SFG, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2SFGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
@@ -83,10 +83,10 @@ py::class_<Chi2SFGOPA, _NonlinearMedium> Chi2SFGOPA(m, "Chi2SFGOPA", "Simultaneo
 Chi2SFGOPA.def(
     py::init<double, double, double, double, double, double, double, double, double, const Eigen::Ref<const Arraycd>&,
              _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double,
-             double, double, uint, uint, _NonlinearMedium::IntensityProfile, double, double, const Eigen::Ref<const Arrayd>&>(),
+             double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile, double, double, const Eigen::Ref<const Arrayd>&>(),
     "relativeLength"_a, "nlLengthSFGh"_a, "nlLengthSFGf"_a, "nlLengthDOPAh"_a, "nlLengthDOPAf"_a,
     "beta2F"_a, "beta2H"_a, "beta2h"_a, "beta2f"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
     "beta1F"_a = 0, "beta1H"_a = 0, "beta1h"_a = 0, "beta1f"_a = 0, "beta3F"_a = 0, "beta3H"_a = 0, "beta3h"_a = 0, "beta3f"_a = 0,
-    "diffBeta0SFG"_a = 0, "diffBeta0DOPA"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "diffBeta0SFG"_a = 0, "diffBeta0DOPA"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1,
     "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
 #endif

@@ -9,16 +9,16 @@ public:
   Chi3(double relativeLength, double nlLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
        double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-       double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0);
+       double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1, IntensityProfile intensityProfile=IntensityProfile{}, double chirp=0);
 
   void runPumpSimulation() override;
 };
 
 
 Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
-           double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, double chirp) :
+           double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile, double chirp) :
   _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
-                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, chirp, 0)
+                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, 0)
 {}
 
 
@@ -74,9 +74,9 @@ void Chi3::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<A
 py::class_<Chi3, _NonlinearMedium> Chi3(m, "Chi3", "Single mode self phase modulation");
 Chi3.def(
     py::init<double, double, double, Eigen::Ref<const Arraycd>&, _NonlinearMedium::PulseType, double, double, double,
-             uint, uint, _NonlinearMedium::IntensityProfile, double>(),
+             uint, uint, uint, _NonlinearMedium::IntensityProfile, double>(),
     "relativeLength"_a, "nlLength"_a, "beta2"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
-    "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "beta3"_a = 0, "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1,
     "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0);
 Chi3.def("runPumpSimulation", &Chi3::runPumpSimulation, "Simulate propagation of the pump field");
 #endif

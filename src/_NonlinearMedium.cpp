@@ -12,14 +12,14 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
                                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
                                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
-                                   uint zPrecision, IntensityProfile intensityProfile, double chirp, double delay,
-                                   const Eigen::Ref<const Arrayd>& poling) :
+                                   uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
+                                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
   _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes)
 {
   if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
 
   setLengths(relativeLength, nlLength, zPrecision, rayleighLength, beta2, beta2s, beta1, beta1s, beta3, beta3s);
-  resetGrids(tPrecision, tMax);
+  resetGrids(tPrecision, tMax, ratioStepsToRecord);
   setDispersion(beta2, beta2s, beta1, beta1s, beta3, beta3s, diffBeta0);
 
   if (canBePoled)
@@ -102,7 +102,7 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 }
 
 
-void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
+void _NonlinearMedium::resetGrids(uint nFreqs, double tMax, uint ratioStepsToRecord) {
 
   // time windowing and resolution
   if (nFreqs % 2 != 0 || nFreqs == 0)
@@ -123,6 +123,8 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
   _omega = -M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
   _omega = fftshift(_omega);
 
+  _ratioStepsToRecord = ratioStepsToRecord;
+
   // Grids for PDE propagation
   pumpFreq.resize(_nPumpModes);
   pumpTime.resize(_nPumpModes);
@@ -138,9 +140,11 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax) {
 
   signalFreq.resize(_nSignalModes);
   signalTime.resize(_nSignalModes);
+  uint gridSize = _nZSteps / _ratioStepsToRecord;
+  gridSize += (_nZSteps % _ratioStepsToRecord? 1 : 0);
   for (uint m = 0; m < _nSignalModes; m++) {
-    signalFreq[m].resize(_nZSteps, _nFreqs);
-    signalTime[m].resize(_nZSteps, _nFreqs);
+    signalFreq[m].resize(gridSize, _nFreqs);
+    signalTime[m].resize(gridSize, _nFreqs);
   }
 }
 
@@ -256,7 +260,7 @@ void _NonlinearMedium::runSignalSimulation(const Eigen::Ref<const Arraycd>& inpu
   if (inputMode >= _nSignalModes)
     throw std::invalid_argument("inputModes does not match any mode in the system");
 
-  dispatchSignalSim(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, false);
+  dispatchSignalSim(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, _ratioStepsToRecord);
 }
 
 
@@ -328,7 +332,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1;
-      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
+      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, _nZSteps);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) += 0.5 * grid[outputs[om]].bottomRows<1>();
@@ -337,7 +341,7 @@ _NonlinearMedium::computeGreensFunction(bool inTimeDomain, bool runPump, uint nT
 
       grid[inputs[im]].row(0) = 0;
       grid[inputs[im]](0, i % _nFreqs) = 1._I;
-      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, true);
+      dispatchSignalSim(grid[inputs[im]].row(0), inTimeDomain, inputs[im], gridFreq, gridTime, _nZSteps);
 
       for (uint om = 0; om < nOutputModes; om++) {
         greenC.row(i).segment(om*_nFreqs, _nFreqs) -= 0.5_I * grid[outputs[om]].bottomRows<1>();
@@ -425,7 +429,7 @@ Array2Dcd _NonlinearMedium::batchSignalSimulation(const Eigen::Ref<const Array2D
     auto& grid = inTimeDomain ? gridTime : gridFreq;
 
     for (uint i = start; i < stop; i++) {
-      dispatchSignalSim(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, true);
+      dispatchSignalSim(inputProfs.row(i), inTimeDomain, inputMode, gridFreq, gridTime, _nZSteps);
       for (uint om = 0; om < nOutputModes; om++)
         outSignals.row(i).segment(om*_nFreqs, _nFreqs) = grid[outputs[om]].bottomRows<1>();
     }
