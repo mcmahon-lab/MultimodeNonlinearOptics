@@ -166,7 +166,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
   uint nInputChannels = inputProf.size() / _nFreqs;
   if (nInputChannels > 1) inputMode = 0;
-  if (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
+  if constexpr (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
 
   if (inTimeDomain)
     for (uint m = 0; m < T::_nSignalModes; m++) {
