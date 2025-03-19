@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2SFGOPA : public _NonlinearMedium {
-  NLM(Chi2SFGOPA, 2)
+  NLM(Chi2SFGOPA, 2, 1)
 public:
   Chi2SFGOPA(double relativeLength, double nlLengthSFGh, double nlLengthSFGf, double nlLengthDOPAh, double nlLengthDOPAf,
              double beta2F, double beta2H, double beta2h, double beta2f,
@@ -23,9 +23,9 @@ Chi2SFGOPA::Chi2SFGOPA(double relativeLength, double nlLengthSFGh, double nlLeng
                        double beta3h, double beta3f, double diffBeta0SFG, double diffBeta0DOPA,
                        double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                        double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-    _NonlinearMedium(_nSignalModes, 2, true, 0, relativeLength, {nlLengthSFGh, nlLengthSFGf, nlLengthDOPAh, nlLengthDOPAf}, {beta2F, beta2H},
+    _NonlinearMedium(_nSignalModes, _nDimensions, 2, true, 0, relativeLength, {nlLengthSFGh, nlLengthSFGf, nlLengthDOPAh, nlLengthDOPAf}, {beta2F, beta2H},
                      {beta2h, beta2f}, customPump, pulseType, {beta1F, beta1H}, {beta1h, beta1f}, {beta3F, beta3H}, {beta3h, beta3f},
-                     {diffBeta0SFG, diffBeta0DOPA}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
+                     {diffBeta0SFG, diffBeta0DOPA}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2SFGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

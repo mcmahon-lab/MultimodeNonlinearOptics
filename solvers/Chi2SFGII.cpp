@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2SFGII : public _NonlinearMedium {
-  NLM(Chi2SFGII, 4)
+  NLM(Chi2SFGII, 4, 1)
 public:
   Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ,
             double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
@@ -25,10 +25,10 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ
                      double diffBeta0z, double diffBeta0y, double diffBeta0, double rayleighLength,
                      double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                      double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-    _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLengthZY, nlLengthZZ},
+    _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLengthZY, nlLengthZZ},
                      {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
                      {beta3}, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0},
-                     rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
+                     rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

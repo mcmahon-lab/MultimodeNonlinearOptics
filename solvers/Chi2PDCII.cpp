@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2PDCII : public _NonlinearMedium {
-  NLM(Chi2PDCII, 2)
+  NLM(Chi2PDCII, 2, 1)
 public:
   Chi2PDCII(double relativeLength, double nlLengthI, double nlLengthII,
             double beta2, double beta2s, double beta2o,
@@ -21,9 +21,9 @@ Chi2PDCII::Chi2PDCII(double relativeLength, double nlLengthI, double nlLengthII,
                      double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                      double diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord,
                      IntensityProfile intensityProfile, double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLengthI, nlLengthII}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLengthI, nlLengthII}, {beta2}, {beta2s, beta2o},
                    customPump, pulseType, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0},
-                   rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
+                   rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
 
 
 void Chi2PDCII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi3GNLSE : public _FullyNonlinearMedium {
-  NLM(Chi3GNLSE, 1)
+  NLM(Chi3GNLSE, 1, 1)
 public:
   Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
             double beta2, double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
@@ -19,8 +19,8 @@ private:
 
 Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
                      double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
-  _FullyNonlinearMedium(_nSignalModes, false, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
-                        rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile)
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, false, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
+                        rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile)
 {
   // Precompute Raman response for the convolution
   double coeff1 = fr * (1. - fb) * (tau1 / (tau2*tau2) + 1. / tau1);
@@ -28,8 +28,8 @@ Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLen
   Arraycd ramanResponseTime = Arrayd::Zero(_nFreqs);
   // As given by Agrawal Nonlinear Fiber Optics
   ramanResponseTime.leftCols(_nFreqs/2) = // Only assign values for t >= 0, by causality R(t < 0) = 0
-      coeff1 * (-_tau.leftCols(_nFreqs/2) / tau2).exp() * (_tau.leftCols(_nFreqs/2) / tau1).sin() // Delayed Raman response
-    + coeff2 * (-_tau.leftCols(_nFreqs/2) / tau3).exp() * (2 * tau3 - _tau.leftCols(_nFreqs/2)); // Boson peak
+      coeff1 * (-_tau[0].leftCols(_nFreqs/2) / tau2).exp() * (_tau[0].leftCols(_nFreqs/2) / tau1).sin() // Delayed Raman response
+    + coeff2 * (-_tau[0].leftCols(_nFreqs/2) / tau3).exp() * (2 * tau3 - _tau[0].leftCols(_nFreqs/2)); // Boson peak
   ramanResponseTime(0) += 1. - fr; // delta function
   ramanResponse = Arraycd(_nFreqs);
   FFT(ramanResponse, ramanResponseTime);
@@ -57,7 +57,7 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
   k1[0] *= prev;
   // take derivative, ie i (gamma + i gamma' d/dt) (A (R * |A|^2)) = i IF[(gamma + omega gamma') F[A (R * |A|^2)]]
   FFT(temp, k1[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega;
+  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
   IFFT(k1[0], temp);
 
   // Repeat for k2
@@ -67,7 +67,7 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
   IFFT(k2[0], temp);
   k2[0] *= prev + 0.5 * k1[0];
   FFT(temp, k2[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega;
+  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
   IFFT(k2[0], temp);
 
   // Repeat for k3
@@ -77,7 +77,7 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
   IFFT(k3[0], temp);
   k3[0] *= prev + 0.5 * k2[0];
   FFT(temp, k3[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega;
+  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
   IFFT(k3[0], temp);
 
   // Repeat for k4
@@ -87,7 +87,7 @@ void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
   IFFT(k4[0], temp);
   k4[0] *= prev + k3[0];
   FFT(temp, k4[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega;
+  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
   IFFT(k4[0], temp);
 }
 

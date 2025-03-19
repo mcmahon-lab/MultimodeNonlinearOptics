@@ -7,11 +7,12 @@ Cascade::Cascade(const std::vector<std::reference_wrapper<_NonlinearMedium>>& in
     throw std::invalid_argument("Cascade must contain at least one medium");
 
   _nFreqs = inputMedia[0].get()._nFreqs;
+  _nFreqsPerDim = inputMedia[0].get()._nFreqsPerDim;
   _tMax = inputMedia[0].get()._tMax;
 
   media.reserve(inputMedia.size());
   for (auto& medium : inputMedia) {
-    if (medium.get()._nFreqs != _nFreqs or medium.get()._tMax != _tMax)
+    if (medium.get()._nFreqsPerDim != _nFreqsPerDim or medium.get()._tMax != _tMax)
       throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
     media.emplace_back(medium);
     _nZSteps += medium.get()._nZSteps;
@@ -37,7 +38,7 @@ Cascade::Cascade(const std::vector<std::reference_wrapper<_NonlinearMedium>>& in
 
 
 void Cascade::addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection) {
-  if (medium._nFreqs != _nFreqs or medium._tMax != _tMax)
+  if (medium._nFreqsPerDim != _nFreqsPerDim or medium._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as the first");
 
   if (connection.empty())

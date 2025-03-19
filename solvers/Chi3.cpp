@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi3 : public _NonlinearMedium {
-  NLM(Chi3, 1)
+  NLM(Chi3, 1, 1)
 public:
   Chi3(double relativeLength, double nlLength, double beta2,
        const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
@@ -17,8 +17,8 @@ public:
 
 Chi3::Chi3(double relativeLength, double nlLength, double beta2, const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
            double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile, double chirp) :
-  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
-                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, 0)
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, customPump, pulseType,
+                   {0}, {0}, {beta3}, {beta3}, {}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, chirp, 0)
 {}
 
 

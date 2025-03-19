@@ -97,10 +97,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1,
                "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
-  _NLMBase.def_property_readonly("omega", &_NonlinearMedium::getFrequency, py::return_value_policy::reference,
-                                 "Read-only frequency axis of the system.");
-  _NLMBase.def_property_readonly("tau", &_NonlinearMedium::getTime, py::return_value_policy::reference,
-                                 "Read-only time axis of the system");
+  _NLMBase.def("omega", &_NonlinearMedium::getFrequency, py::return_value_policy::reference,
+               "Read-only frequency axis of the system.", "i"_a = 0);
+  _NLMBase.def("tau", &_NonlinearMedium::getTime, py::return_value_policy::reference,
+               "Read-only time axis of the system", "i"_a = 0);
   _NLMBase.def_property_readonly("signalFreq", [](_NonlinearMedium& nlm){return nlm.getSignalFreq();}, py::return_value_policy::reference,
                                  "Read-only array of the signal frequency profile along the length of the medium.");
   _NLMBase.def_property_readonly("signalTime", [](_NonlinearMedium& nlm){return nlm.getSignalTime();}, py::return_value_policy::reference,

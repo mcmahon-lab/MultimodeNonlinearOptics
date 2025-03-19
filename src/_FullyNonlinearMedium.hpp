@@ -29,11 +29,11 @@ public:
   }
 
 protected:
-  _FullyNonlinearMedium(uint nSignalModes, bool canBePoled, uint nFieldModes, double relativeLength, std::initializer_list<double> nlLength,
+  _FullyNonlinearMedium(uint nSignalModes, uint nDimensions, bool canBePoled, uint nFieldModes, double relativeLength, std::initializer_list<double> nlLength,
                         std::initializer_list<double> beta2s, std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
-                        std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
+                        std::initializer_list<double> diffBeta0, double rayleighLength, std::initializer_list<double> tMax, std::initializer_list<uint> tPrecision, uint zPrecision,
                         uint _ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{})) :
-  _NonlinearMedium(nSignalModes, 0, canBePoled, nFieldModes, relativeLength, nlLength, {}, beta2s, Eigen::Ref<const Arraycd>(Arraycd{}),
+  _NonlinearMedium(nSignalModes, nDimensions, 0, canBePoled, nFieldModes, relativeLength, nlLength, {}, beta2s, Eigen::Ref<const Arraycd>(Arraycd{}),
                    PulseType{}, {}, beta1s, {}, beta3s, diffBeta0, rayleighLength, tMax, tPrecision, zPrecision, _ratioStepsToRecord, intensityProfile, 0, 0, poling)
   {_dzp = _nZStepsP = 0;};
 

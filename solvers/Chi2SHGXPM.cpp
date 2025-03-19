@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2SHGXPM : public _FullyNonlinearMedium {
-  NLM(Chi2SHGXPM, 2)
+  NLM(Chi2SHGXPM, 2, 1)
 public:
   Chi2SHGXPM(double relativeLength, double nlLength, double nlLengthP, double nlLengthChi3, double beta2, double beta2s,
              double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
@@ -17,8 +17,8 @@ Chi2SHGXPM::Chi2SHGXPM(double relativeLength, double nlLengthH, double nlLengthP
                double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0, double rayleighLength,
                double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
-                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling)
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, 0, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
+                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling)
 {}
 
 
