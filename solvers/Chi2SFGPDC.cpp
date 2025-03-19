@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2SFGPDC : public _NonlinearMedium {
-  NLM(Chi2SFGPDC, 2)
+  NLM(Chi2SFGPDC, 2, 1)
 public:
   Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
              double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
@@ -18,9 +18,9 @@ Chi2SFGPDC::Chi2SFGPDC(double relativeLength, double nlLength, double nlLengthOr
                        double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                        double diffBeta0, double diffBeta0o, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                        uint ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength, nlLengthOrig}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLength, nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0, diffBeta0o},
-                   rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
+                   rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2SFGPDC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

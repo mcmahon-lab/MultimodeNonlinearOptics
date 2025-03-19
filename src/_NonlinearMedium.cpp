@@ -5,15 +5,16 @@
 
 Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 
-_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
+_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPumpModes, bool canBePoled, uint nFieldModes,
                                    double relativeLength, std::initializer_list<double> nlLength,
                                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
                                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
-                                   std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
+                                   std::initializer_list<double> diffBeta0, double rayleighLength,
+                                   std::initializer_list<double> tMax, std::initializer_list<uint> tPrecision,
                                    uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                                    const Eigen::Ref<const Arrayd>& poling) :
-  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes)
+  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes), _nDimensions(nDimensions)
 {
   if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
 
@@ -97,26 +98,36 @@ void _NonlinearMedium::setLengths(double relativeLength, const std::vector<doubl
 }
 
 
-void _NonlinearMedium::resetGrids(uint nFreqs, double tMax, uint ratioStepsToRecord) {
+void _NonlinearMedium::resetGrids(const std::vector<uint>& nFreqs, const std::vector<double>& tMax, uint ratioStepsToRecord) {
 
   // time windowing and resolution
-  if (nFreqs % 2 != 0 || nFreqs == 0)
-    throw std::invalid_argument("Invalid number of Frequencies");
+  for (auto f : nFreqs)
+    if (f % 2 != 0 || f == 0)
+      throw std::invalid_argument("Invalid number of Frequencies");
   if (_nZSteps == 0)
     throw std::invalid_argument("Zero steps");
-  if (tMax <= 0)
-    throw std::invalid_argument("Negative time span");
+  for (auto t : tMax)
+    if (t <= 0)
+      throw std::invalid_argument("Negative time span");
 
-  _nFreqs = nFreqs;
+  _nFreqsPerDim = nFreqs;
+  _nFreqs = 1; // _nFreqs is the total number of points for >1D simulations
+  for (auto nF : nFreqs) {
+    _nFreqs *= nF;
+  }
   _tMax = tMax;
 
-  int Nt = static_cast<int>(_nFreqs);
-
   // time and frequency axes
-  _tau = 2 * tMax / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
-  _tau = fftshift(_tau);
-  _omega = -M_PI / _tMax * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
-  _omega = fftshift(_omega);
+  _tau.resize(_nDimensions);
+  _omega.resize(_nDimensions);
+  for (uint d = 0; d < _nDimensions; d++) {
+    int Nt = static_cast<int>(nFreqs[d]);
+
+    _tau[d] = 2 * tMax[d] / Nt * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _tau[d] = fftshift(_tau[d]);
+    _omega[d] = -M_PI / tMax[d] * Arrayd::LinSpaced(Nt, -Nt / 2, Nt / 2 - 1);
+    _omega[d] = fftshift(_omega[d]);
+  }
 
   _ratioStepsToRecord = ratioStepsToRecord;
 
@@ -143,11 +154,50 @@ void _NonlinearMedium::resetGrids(uint nFreqs, double tMax, uint ratioStepsToRec
   }
 }
 
+template<typename ArrayType, bool doMultiply>
+inline void _NonlinearMedium::multiDimensionalArithmetic(ArrayType& ndArray, const std::vector<ArrayType>& factor) {
+
+  auto incrementIndex = [&](std::vector<uint>& index) {
+    index[_nDimensions - 1] += 1;
+    for (uint d = _nDimensions - 1; d > 0; d--) {
+      if (index[d] == _nFreqsPerDim[d]) {
+        index[d] = 0;
+        index[d-1] += 1;
+      } else break;
+    }
+  };
+
+  // compute the strides needed across each dimension
+  std::vector<uint> strides(_nDimensions);
+  strides[0] = _nFreqs / _nFreqsPerDim[0];
+  for (uint d = 1; d < _nDimensions; d++) strides[d] = strides[d-1] / _nFreqsPerDim[d];
+
+  std::vector<uint> index(_nDimensions); // represents the multidimensional index
+
+  // iterate over each pixel: if it is on the boundary of some dimension(s), apply corresponding dispersion profile
+  for (uint i = 0; i < _nFreqs; i++) {
+    for (uint d = 0; d < _nDimensions; d++) {
+      if (index[d] == 0) {
+        Eigen::Map<ArrayType, 0, Eigen::InnerStride<Eigen::Dynamic>>
+            stridedView(ndArray.data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
+        if constexpr (doMultiply) stridedView *= factor[d];
+        else                      stridedView += factor[d];
+      }
+    }
+    incrementIndex(index);
+  }
+}
 
 void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std::vector<double>& beta2s,
                                      const std::vector<double>& beta1, const std::vector<double>& beta1s,
                                      const std::vector<double>& beta3, const std::vector<double>& beta3s,
                                      std::initializer_list<double> diffBeta0) {
+  uint expectedSize = _nSignalModes * _nDimensions;
+  if (beta1s.size() != expectedSize || beta2s.size() != expectedSize || beta3s.size() != expectedSize)
+    throw std::invalid_argument("Incorrect number of parameters for given number of signal modes");
+  expectedSize = _nPumpModes * _nDimensions;
+  if (beta1.size() != expectedSize || beta2.size() != expectedSize || beta3.size() != expectedSize)
+    throw std::invalid_argument("Incorrect number of parameters for given number of pump modes");
 
   // Pump group velocity dispersion
   _beta2 = beta2;
@@ -157,53 +207,91 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   _diffBeta0 = diffBeta0;
 
   // dispersion profile
-  _dispersionPump.resize(_nPumpModes);
-  for (uint m = 0; m < _nPumpModes; m++)
-    _dispersionPump[m] = _omega * (beta1[m] + _omega * (0.5 * beta2[m] + _omega * beta3[m] / 6));
+  std::vector<Arrayd> dispersionProfile(_nDimensions);
 
+  _dispersionPump.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++) { // iterate over the modes
+    _dispersionPump[m].setZero(_nFreqs);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * m + d;
+      dispersionProfile[d] = _omega[d] * (beta1[betaInd] + _omega[d] * (0.5 * beta2[betaInd] + _omega[d] * beta3[betaInd] / 6));
+    }
+    multiDimensionalArithmetic<Arrayd, false>(_dispersionPump[m], dispersionProfile);
+  }
   _dispersionSign.resize(_nSignalModes);
-  for (uint m = 0; m < _nSignalModes; m++)
-    _dispersionSign[m] = _omega * (beta1s[m] + _omega * (0.5 * beta2s[m] + _omega * beta3s[m] / 6));
+  for (uint m = 0; m < _nSignalModes; m++) { // iterate over the modes
+    _dispersionSign[m].setZero(_nFreqs);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * m + d;
+      dispersionProfile[d] = _omega[d] * (beta1s[betaInd] + _omega[d] * (0.5 * beta2s[betaInd] + _omega[d] * beta3s[betaInd] / 6));
+    }
+    multiDimensionalArithmetic<Arrayd, false>(_dispersionSign[m], dispersionProfile);
+  }
 
   // incremental phases for each simulation step
   _dispStepPump.resize(_nPumpModes);
-  for (uint m = 0; m < _nPumpModes; m++)
+  for (uint m = 0; m < _nPumpModes; m++) {
     _dispStepPump[m] = ((1._I * _dzp) * _dispersionPump[m]).exp();
+  }
 
   _dispStepSign.resize(_nSignalModes);
-  for (uint m = 0; m < _nSignalModes; m++)
+  for (uint m = 0; m < _nSignalModes; m++) {
     _dispStepSign[m] = ((1._I * _dz) * _dispersionSign[m]).exp();
+  }
 }
 
+auto anyNonzero = [](const std::vector<double>& vec) {return std::any_of(vec.begin(), vec.end(), [](double d){return d != 0.;});};
 
-void _NonlinearMedium::setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(PulseType pulseType, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   if (pumpIndex >= _nPumpModes)
     throw std::invalid_argument("Invalid pump index");
 
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
-  switch (pulseType) {
-    default:
-    case PulseType::Gaussian:
-      _envelope[pumpIndex] = (-0.5 * _tau.square()).exp().cast<std::complex<double>>();
-      break;
-    case PulseType::Sech:
-      _envelope[pumpIndex] = (1 / _tau.cosh()).cast<std::complex<double>>();
-      break;
-    case PulseType::Sinc:
-      _envelope[pumpIndex] = (_tau.sin() / _tau).cast<std::complex<double>>();
-      _envelope[pumpIndex](0) = 1;
-  }
+  _envelope[pumpIndex] = Arraycd::Ones(_nFreqs);
+  std::vector<Arraycd> pumpProfiles(_nDimensions);
 
-  if (chirpLength != 0 || delayLength != 0) {
+  for (uint d = 0; d < _nDimensions; d++) {
+    switch (pulseType) {
+      default:
+      case PulseType::Gaussian:
+        pumpProfiles[d] = (-0.5 * _tau[d].square()).exp().cast<std::complex<double>>();
+        break;
+      case PulseType::Sech:
+        pumpProfiles[d] = (1 / _tau[d].cosh()).cast<std::complex<double>>();
+        break;
+      case PulseType::Sinc:
+        pumpProfiles[d] = (_tau[d].sin() / _tau[d]).cast<std::complex<double>>();
+        pumpProfiles[d](0) = 1;
+        break;
+    }
+  }
+  multiDimensionalArithmetic<Arraycd, true>(_envelope[pumpIndex], pumpProfiles);
+
+  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
+
     Arraycd fftTemp(_nFreqs);
-    FFT(fftTemp, _envelope[pumpIndex]);
-    fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
-    IFFT(_envelope[pumpIndex], fftTemp);
+    if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
+    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
+
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (chirpLength.size() > d && chirpLength[d] != 0)
+        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
+      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
+    }
+   multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
+
+    if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
+    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
   }
 }
 
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
@@ -212,11 +300,26 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 
   _envelope[pumpIndex] = customPump;
 
-  if (chirpLength != 0 || delayLength != 0) {
+  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
+
     Arraycd fftTemp(_nFreqs);
-    FFT(fftTemp, _envelope[pumpIndex]);
-    fftTemp *= (1._I * (_beta1[pumpIndex] * delayLength + 0.5 * _beta2[pumpIndex] * chirpLength * _omega) * _omega).exp();
-    IFFT(_envelope[pumpIndex], fftTemp);
+    if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
+    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
+
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (chirpLength.size() > d && chirpLength[d] != 0)
+        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
+      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
+    }
+    multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
+
+    if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
+    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
   }
 }
 
@@ -502,8 +605,8 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 }
 
 
-void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, double delayLength, uint pumpIndex) {
-  if (other._nFreqs != _nFreqs || other._tMax != _tMax)
+void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, const std::vector<double>& delayLength, uint pumpIndex) {
+  if (other._nFreqsPerDim != _nFreqsPerDim || other._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as this one");
 
   if (modeIndex >= _nSignalModes)
@@ -515,7 +618,18 @@ void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, do
   if (other._nZSteps < _nZSteps)
     throw std::invalid_argument("Medium does not have sufficient resolution to be used with this one");
 
-  auto delay = 1._I * _beta1[pumpIndex] * delayLength * _omega;
+  Arraycd delay = Arraycd::Zero(_nFreqs);
+  if (anyNonzero(delayLength)) {
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += 1._I * (_beta1[betaInd] * delayLength[d]) * _omega[d];
+    }
+    multiDimensionalArithmetic<Arraycd, false>(delay, phaseProfiles);
+  }
+
   for (uint i = 0; i < _nZStepsP - 1; i++) {
     double j_ = i * (static_cast<double>(other._nZSteps - 1) / (_nZStepsP - 1)); // integer overflow danger
     uint j = static_cast<uint>(j_);

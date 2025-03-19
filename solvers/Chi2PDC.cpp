@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2PDC : public _NonlinearMedium {
-  NLM(Chi2PDC, 1)
+  NLM(Chi2PDC, 1, 1)
 public:
   Chi2PDC(double relativeLength, double nlLength, double beta2, double beta2s,
           double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
@@ -18,8 +18,8 @@ Chi2PDC::Chi2PDC(double relativeLength, double nlLength, double beta2, double be
                  double beta1, double beta1s, double beta3, double beta3s, double diffBeta0,
                  double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord,
                  IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength}, {beta2}, {beta2s}, {beta1}, {beta1s},
-                   {beta3}, {beta3s}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLength}, {beta2}, {beta2s}, {beta1}, {beta1s},
+                   {beta3}, {beta3s}, {diffBeta0}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2PDC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

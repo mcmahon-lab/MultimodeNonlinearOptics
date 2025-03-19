@@ -127,6 +127,54 @@ namespace Eigen {
       inv(&dst(dstInd, 0), &src(srcInd, 0), nfft);
     }
 
+#ifdef EIGEN_FFTW_DEFAULT
+    inline
+    void fwd2(Complex* dst, const Scalar* src, Index nfft0, Index nfft1) {
+      m_impl.fwd2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+    }
+
+    inline
+    void fwd2(Complex* dst, const Complex* src, Index nfft0, Index nfft1) {
+      m_impl.fwd2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+    }
+
+    template<typename InputDerived, typename ComplexDerived>
+    inline
+    void fwd2(DenseBase<ComplexDerived>& dst, const DenseBase<InputDerived>& src, Index dstInd, Index srcInd, Index nfft0, Index nfft1) {
+      typedef typename ComplexDerived::Scalar dst_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<dst_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(InputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      fwd2(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1);
+    }
+
+    inline
+    void inv2(Complex* dst, const Complex* src, Index nfft0, Index nfft1) {
+      m_impl.inv2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+      scale(dst, Scalar(1. / (nfft0 * nfft1)), nfft0 * nfft1);
+    }
+
+    inline
+    void inv2(Scalar* dst, const Complex* src, Index nfft0, Index nfft1) {
+      m_impl.inv2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+      scale(dst, Scalar(1. / (nfft0 * nfft1)), nfft0 * nfft1);
+    }
+
+    template<typename OutputDerived, typename ComplexDerived>
+    inline
+    void inv2(DenseBase<OutputDerived>& dst, const DenseBase<ComplexDerived>& src, Index dstInd, Index srcInd, Index nfft0, Index nfft1) {
+      typedef typename ComplexDerived::Scalar src_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<src_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(OutputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      inv2(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1);
+    }
+#endif
+
   private:
 
     template <typename T_Data>

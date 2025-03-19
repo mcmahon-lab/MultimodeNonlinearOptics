@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2SFGXPM : public _NonlinearMedium {
-  NLM(Chi2SFGXPM, 2)
+  NLM(Chi2SFGXPM, 2, 1)
 public:
   Chi2SFGXPM(double relativeLength, double nlLength, double nlLengthOrig, double nlLengthChi3, double nlLengthChi3Orig,
              double beta2, double beta2s, double beta2o, double beta1=0, double beta1s=0, double beta1o=0, double beta3=0,
@@ -19,9 +19,9 @@ Chi2SFGXPM::Chi2SFGXPM(double relativeLength, double nlLength, double nlLengthOr
                        double beta3, double beta3s, double beta3o, double diffBeta0, double rayleighLength, double tMax,
                        uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                        const Eigen::Ref<const Arrayd>& poling) :
-  _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLength, nlLengthOrig, nlLengthChi3 / 2, nlLengthChi3Orig / 2},
                    {beta2}, {beta2s, beta2o}, {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o},
-                   {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
+                   {diffBeta0}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2SFGXPM::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

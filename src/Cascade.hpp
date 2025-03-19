@@ -9,9 +9,9 @@ public:
           const std::vector<std::map<uint, uint>>& connections, bool sharePump);
   void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
 
-  void setPump(PulseType pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
-  void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength, uint pumpIndex) override {
+  void setPump(PulseType pulseType, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0) override;
+  void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
 

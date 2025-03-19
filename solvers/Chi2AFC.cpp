@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2AFC : public _NonlinearMedium {
-  NLM(Chi2AFC, 2)
+  NLM(Chi2AFC, 2, 1)
 public:
   Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, double beta2, double beta2s, double beta2o,
           double beta1=0, double beta1s=0, double beta1o=0, double beta3=0, double beta3s=0, double beta3o=0,
@@ -17,9 +17,9 @@ Chi2AFC::Chi2AFC(double relativeLength, double nlLength, double nlLengthOrig, do
                  double beta1, double beta1s, double beta1o, double beta3, double beta3s, double beta3o,
                  double diffBeta0Start, double diffBeta0End, double rayleighLength,
                  double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
-  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, false, 0, relativeLength, {0.5 * M_PI * nlLength, 0.5 * M_PI * nlLengthOrig}, {beta2}, {beta2s, beta2o},
                    {beta1}, {beta1s, beta1o}, {beta3}, {beta3s, beta3o}, {diffBeta0Start, diffBeta0End},
-                   rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile) {}
+                   rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile) {}
 
 
 void Chi2AFC::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,

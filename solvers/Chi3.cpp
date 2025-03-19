@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi3 : public _NonlinearMedium {
-  NLM(Chi3, 1)
+  NLM(Chi3, 1, 1)
 public:
   Chi3(double relativeLength, double nlLength, double beta2, double beta3=0,
        double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
@@ -16,8 +16,8 @@ public:
 
 Chi3::Chi3(double relativeLength, double nlLength, double beta2, double beta3, double rayleighLength, double tMax,
            uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
-  _NonlinearMedium(_nSignalModes, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, {0}, {0}, {beta3}, {beta3},
-                   {}, rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile)
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, {0}, {0}, {beta3}, {beta3},
+                   {}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile)
 {}
 
 

@@ -31,7 +31,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
  */
 
   _NLMBase.def("setPump",
-               py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&_NonlinearMedium::setPump),
+               py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&_NonlinearMedium::setPump),
                "Set the input shape of the pump\n"
                "pulseType Gaussian, Sech or Sinc profile; 0, 1, 2 respectively.\n"
                "chirp     Initial chirp of the pump, specified in dispersion lengths.\n"
@@ -40,7 +40,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   _NLMBase.def("setPump",
-               py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double, uint>(&_NonlinearMedium::setPump),
+               py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&_NonlinearMedium::setPump),
                "Set the input shape of the pump\n"
                "customPump An arbitrary pump shape specified in the time domain, with self.tau as the axis.\n"
                "chirp     Initial chirp of the pump, specified in dispersion lengths.\n"
@@ -49,7 +49,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   _NLMBase.def("setPump",
-               py::overload_cast<const _NonlinearMedium&, uint, double, uint>(&_NonlinearMedium::setPump),
+               py::overload_cast<const _NonlinearMedium&, uint, const std::vector<double>&, uint>(&_NonlinearMedium::setPump),
                "Set the pump over the whole propagation length by copying from another simulation, accounting for the frame of reference\n"
                "Note: do not call runPumpSimulation after this function or the pump simulation will be overwritten.\n"
                "other     A NonlinearMedium instance with the same frequency axis, and resolution greater than or equal to the pump's.\n"
@@ -97,10 +97,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "inputProfs"_a, "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1,
                "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
-  _NLMBase.def_property_readonly("omega", &_NonlinearMedium::getFrequency, py::return_value_policy::reference,
-                                 "Read-only frequency axis of the system.");
-  _NLMBase.def_property_readonly("tau", &_NonlinearMedium::getTime, py::return_value_policy::reference,
-                                 "Read-only time axis of the system");
+  _NLMBase.def("omega", &_NonlinearMedium::getFrequency, py::return_value_policy::reference,
+               "Read-only frequency axis of the system.", "i"_a = 0);
+  _NLMBase.def("tau", &_NonlinearMedium::getTime, py::return_value_policy::reference,
+               "Read-only time axis of the system", "i"_a = 0);
   _NLMBase.def_property_readonly("signalFreq", [](_NonlinearMedium& nlm){return nlm.getSignalFreq();}, py::return_value_policy::reference,
                                  "Read-only array of the signal frequency profile along the length of the medium.");
   _NLMBase.def_property_readonly("signalTime", [](_NonlinearMedium& nlm){return nlm.getSignalTime();}, py::return_value_policy::reference,
@@ -152,11 +152,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                 "inputProfs"_a, "inTimeDomain"_a = false, "nThreads"_a = 1,
                 "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
-  _FNLMBase.def("setPump", py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&_FullyNonlinearMedium::setPump),
+  _FNLMBase.def("setPump", py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
                 "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
-  _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double, uint>(&_FullyNonlinearMedium::setPump),
+  _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
                 "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
-  _FNLMBase.def("setPump", py::overload_cast<const _NonlinearMedium&, uint, double, uint>(&_FullyNonlinearMedium::setPump),
+  _FNLMBase.def("setPump", py::overload_cast<const _NonlinearMedium&, uint, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
                 "other"_a, "signalIndex"_a = 0, "delayLength"_a = 0, "pumpIndex"_a = 0);
   _FNLMBase.def("runPumpSimulation", &_FullyNonlinearMedium::runPumpSimulation);
   _FNLMBase.def("computeGreensFunction", &_FullyNonlinearMedium::computeGreensFunction,
@@ -172,15 +172,15 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               py::keep_alive<1, 2>());
 
   Cascade.def("setPump",
-              py::overload_cast<_NonlinearMedium::PulseType, double, double, uint>(&Cascade::setPump),
+              py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&Cascade::setPump),
               "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("setPump",
-              py::overload_cast<const Eigen::Ref<const Arraycd>&, double, double, uint>(&Cascade::setPump),
+              py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&Cascade::setPump),
                "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("setPump",
-              py::overload_cast<const _NonlinearMedium&, uint, double, uint>(&Cascade::setPump),
+              py::overload_cast<const _NonlinearMedium&, uint, const std::vector<double>&, uint>(&Cascade::setPump),
               "other"_a, "signalIndex"_a = 0, "delayLength"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);

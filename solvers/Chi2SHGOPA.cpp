@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2SHGOPA : public _FullyNonlinearMedium {
-  NLM(Chi2SHGOPA, 4)
+  NLM(Chi2SHGOPA, 4, 1)
 public:
   Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthSH, double nlLengthPA1, double nlLengthPA2,
              double beta2p, double beta2sh, double beta2pa1, double beta2pa2,
@@ -23,10 +23,10 @@ Chi2SHGOPA::Chi2SHGOPA(double relativeLength, double nlLengthP, double nlLengthS
                        double diffBeta0shg, double diffBeta0opa, double rayleighLength,
                        double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                        const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthSH, nlLengthPA1, nlLengthPA2},
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, 0, relativeLength, {nlLengthP, nlLengthSH, nlLengthPA1, nlLengthPA2},
                         {beta2p, beta2sh, beta2pa1, beta2pa2}, {beta1p, beta1sh, beta1pa1, beta1pa2},
                         {beta3p, beta3sh, beta3pa1, beta3pa2}, {diffBeta0shg, diffBeta0opa},
-                        rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
+                        rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2SHGOPA::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
