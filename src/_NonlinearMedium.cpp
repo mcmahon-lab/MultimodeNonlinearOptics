@@ -115,8 +115,8 @@ void _NonlinearMedium::resetGrids(const std::vector<uint>& nFreqs, const std::ve
     if (t <= 0)
       throw std::invalid_argument("Negative time span");
 
-  _nFreqsPerDim = nFreqs; // TODO _nFreqs needs to be the total number of points for >1D simulations. should specify nfreqs for each dimension?
-  _nFreqs = 1;
+  _nFreqsPerDim = nFreqs;
+  _nFreqs = 1; // _nFreqs is the total number of points for >1D simulations
   for (auto nF : nFreqs) {
     _nFreqs *= nF;
   }
@@ -179,34 +179,62 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   _diffBeta0 = diffBeta0;
 
   // dispersion profile
-  _dispersionPump.resize(_nPumpModes * _nDimensions);
-  for (uint m = 0; m < _nPumpModes; m++)
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint ind = _nDimensions * m + d;
-      _dispersionPump[ind] = _omega[d] * (beta1[ind] + _omega[d] * (0.5 * beta2[ind] + _omega[d] * beta3[ind] / 6));
+  auto updateIndex = [&](std::vector<uint>& index) {
+    index[_nDimensions - 1] += 1;
+    for (uint d = _nDimensions - 1; d > 0; d--) {
+      if (index[d] == _nFreqsPerDim[d]) {
+        index[d] = 0;
+        index[d-1] += 1;
+      } else break;
     }
+  };
+  std::vector<uint> strides(_nDimensions);
+  strides[0] = _nFreqs / _nFreqsPerDim[0];
+  for (uint d = 1; d < _nDimensions; d++) strides[d] = strides[d-1] / _nFreqsPerDim[d];
 
-  _dispersionSign.resize(_nSignalModes * _nDimensions);
-  for (uint m = 0; m < _nSignalModes; m++)
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint ind = _nDimensions * m + d;
-      _dispersionSign[ind] = _omega[d] * (beta1s[ind] + _omega[d] * (0.5 * beta2s[ind] + _omega[d] * beta3s[ind] / 6));
+  _dispersionPump.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++) { // iterate over the modes
+    _dispersionPump[m].setZero(_nFreqs);
+    std::vector<uint> index(_nDimensions); // represents the multidimensional index
+    for (uint i = 0; i < _nFreqs; i++) { // iterate over each pixel, if it is on the boundary of some dimension(s), apply corresponding dispersion profile
+      for (uint d = 0; d < _nDimensions; d++) {
+        if (index[d] == 0) {
+          uint betaInd = _nDimensions * m + d;
+          Eigen::Map<Arrayd, 0, Eigen::InnerStride<Eigen::Dynamic>>
+              stridedView(_dispersionPump[m].data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
+          stridedView += _omega[d] * (beta1[betaInd] + _omega[d] * (0.5 * beta2[betaInd] + _omega[d] * beta3[betaInd] / 6));
+        }
+      }
+      updateIndex(index);
     }
+  }
+  _dispersionSign.resize(_nSignalModes);
+  for (uint m = 0; m < _nSignalModes; m++) { // iterate over the modes
+    _dispersionSign[m].setZero(_nFreqs);
+    std::vector<uint> index(_nDimensions); // represents the multidimensional index
+    for (uint i = 0; i < _nFreqs; i++) { // iterate over each pixel, if it is on the boundary of some dimension(s), apply corresponding dispersion profile
+      for (uint d = 0; d < _nDimensions; d++) {
+        if (index[d] == 0) {
+          uint betaInd = _nDimensions * m + d;
+          Eigen::Map<Arrayd, 0, Eigen::InnerStride<Eigen::Dynamic>>
+              stridedView(_dispersionSign[m].data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
+          stridedView += _omega[d] * (beta1s[betaInd] + _omega[d] * (0.5 * beta2s[betaInd] + _omega[d] * beta3s[betaInd] / 6));
+        }
+      }
+      updateIndex(index);
+    }
+  }
 
   // incremental phases for each simulation step
-  _dispStepPump.resize(_nPumpModes * _nDimensions);
-  for (uint m = 0; m < _nPumpModes; m++)
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint ind = _nDimensions * m + d;
-      _dispStepPump[ind] = ((1._I * _dzp) * _dispersionPump[ind]).exp();
-    }
+  _dispStepPump.resize(_nPumpModes);
+  for (uint m = 0; m < _nPumpModes; m++) {
+    _dispStepPump[m] = ((1._I * _dzp) * _dispersionPump[m]).exp();
+  }
 
-  _dispStepSign.resize(_nSignalModes * _nDimensions);
-  for (uint m = 0; m < _nSignalModes; m++)
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint ind = _nDimensions * m + d;
-      _dispStepSign[ind] = ((1._I * _dz) * _dispersionSign[ind]).exp();
-    }
+  _dispStepSign.resize(_nSignalModes);
+  for (uint m = 0; m < _nSignalModes; m++) {
+    _dispStepSign[m] = ((1._I * _dz) * _dispersionSign[m]).exp();
+  }
 }
 
 
