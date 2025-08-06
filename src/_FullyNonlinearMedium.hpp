@@ -10,13 +10,13 @@ public:
     return _NonlinearMedium::batchSignalSimulation(inputProfs, inTimeDomain, false, nThreads, inputMode, useOutput);
   }
 
-  void setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) override {
+  void setPump(PulseType pulseType, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) override {
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
-  void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength, uint pumpIndex) override {
+  void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
   void runPumpSimulation() override {

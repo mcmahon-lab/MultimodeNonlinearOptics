@@ -53,7 +53,7 @@ void Cascade::addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& co
 }
 
 
-void Cascade::setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+void Cascade::setPump(PulseType pulseType, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   if (sharedPump)
     media[0].get().setPump(pulseType, chirpLength, delayLength, pumpIndex);
   else {
@@ -63,7 +63,7 @@ void Cascade::setPump(PulseType pulseType, double chirpLength, double delayLengt
 }
 
 
-void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) {
+void Cascade::setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   if (sharedPump)
     media[0].get().setPump(customPump, chirpLength, delayLength, pumpIndex);
   else {

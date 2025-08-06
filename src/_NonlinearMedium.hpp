@@ -33,9 +33,9 @@ public:
     GaussianApodization = 2,
   };
 
-  virtual void setPump(PulseType pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
-  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
-  virtual void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength=0, uint pumpIndex=0);
+  virtual void setPump(PulseType pulseType, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
+  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
+  virtual void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength={}, uint pumpIndex=0);
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
@@ -88,6 +88,9 @@ protected:
 
   static inline Arrayd fftshift(const Arrayd& input);
   static inline Array2Dcd fftshift2(const Array2Dcd& input);
+
+  template<typename ArrayType, bool doMultiply>
+  void multiDimensionalArithmetic(ArrayType& ndArray, const std::vector<ArrayType>& factor);
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, wavelengths, etc)
   const uint _nPumpModes;   /// Number of separate pump modes (eg polarizations, wavelengths, etc)

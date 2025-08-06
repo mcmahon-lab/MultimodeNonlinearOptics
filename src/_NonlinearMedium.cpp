@@ -159,6 +159,39 @@ void _NonlinearMedium::resetGrids(const std::vector<uint>& nFreqs, const std::ve
   }
 }
 
+template<typename ArrayType, bool doMultiply>
+inline void _NonlinearMedium::multiDimensionalArithmetic(ArrayType& ndArray, const std::vector<ArrayType>& factor) {
+
+  auto incrementIndex = [&](std::vector<uint>& index) {
+    index[_nDimensions - 1] += 1;
+    for (uint d = _nDimensions - 1; d > 0; d--) {
+      if (index[d] == _nFreqsPerDim[d]) {
+        index[d] = 0;
+        index[d-1] += 1;
+      } else break;
+    }
+  };
+
+  // compute the strides needed across each dimension
+  std::vector<uint> strides(_nDimensions);
+  strides[0] = _nFreqs / _nFreqsPerDim[0];
+  for (uint d = 1; d < _nDimensions; d++) strides[d] = strides[d-1] / _nFreqsPerDim[d];
+
+  std::vector<uint> index(_nDimensions); // represents the multidimensional index
+
+  // iterate over each pixel: if it is on the boundary of some dimension(s), apply corresponding dispersion profile
+  for (uint i = 0; i < _nFreqs; i++) {
+    for (uint d = 0; d < _nDimensions; d++) {
+      if (index[d] == 0) {
+        Eigen::Map<ArrayType, 0, Eigen::InnerStride<Eigen::Dynamic>>
+            stridedView(ndArray.data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
+        if constexpr (doMultiply) stridedView *= factor[d];
+        else                      stridedView += factor[d];
+      }
+    }
+    incrementIndex(index);
+  }
+}
 
 void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std::vector<double>& beta2s,
                                      const std::vector<double>& beta1, const std::vector<double>& beta1s,
@@ -179,50 +212,25 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   _diffBeta0 = diffBeta0;
 
   // dispersion profile
-  auto updateIndex = [&](std::vector<uint>& index) {
-    index[_nDimensions - 1] += 1;
-    for (uint d = _nDimensions - 1; d > 0; d--) {
-      if (index[d] == _nFreqsPerDim[d]) {
-        index[d] = 0;
-        index[d-1] += 1;
-      } else break;
-    }
-  };
-  std::vector<uint> strides(_nDimensions);
-  strides[0] = _nFreqs / _nFreqsPerDim[0];
-  for (uint d = 1; d < _nDimensions; d++) strides[d] = strides[d-1] / _nFreqsPerDim[d];
+  std::vector<Arrayd> dispersionProfile(_nDimensions);
 
   _dispersionPump.resize(_nPumpModes);
   for (uint m = 0; m < _nPumpModes; m++) { // iterate over the modes
     _dispersionPump[m].setZero(_nFreqs);
-    std::vector<uint> index(_nDimensions); // represents the multidimensional index
-    for (uint i = 0; i < _nFreqs; i++) { // iterate over each pixel, if it is on the boundary of some dimension(s), apply corresponding dispersion profile
-      for (uint d = 0; d < _nDimensions; d++) {
-        if (index[d] == 0) {
-          uint betaInd = _nDimensions * m + d;
-          Eigen::Map<Arrayd, 0, Eigen::InnerStride<Eigen::Dynamic>>
-              stridedView(_dispersionPump[m].data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
-          stridedView += _omega[d] * (beta1[betaInd] + _omega[d] * (0.5 * beta2[betaInd] + _omega[d] * beta3[betaInd] / 6));
-        }
-      }
-      updateIndex(index);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * m + d;
+      dispersionProfile[d] = _omega[d] * (beta1[betaInd] + _omega[d] * (0.5 * beta2[betaInd] + _omega[d] * beta3[betaInd] / 6));
     }
+    multiDimensionalArithmetic<Arrayd, false>(_dispersionPump[m], dispersionProfile);
   }
   _dispersionSign.resize(_nSignalModes);
   for (uint m = 0; m < _nSignalModes; m++) { // iterate over the modes
     _dispersionSign[m].setZero(_nFreqs);
-    std::vector<uint> index(_nDimensions); // represents the multidimensional index
-    for (uint i = 0; i < _nFreqs; i++) { // iterate over each pixel, if it is on the boundary of some dimension(s), apply corresponding dispersion profile
-      for (uint d = 0; d < _nDimensions; d++) {
-        if (index[d] == 0) {
-          uint betaInd = _nDimensions * m + d;
-          Eigen::Map<Arrayd, 0, Eigen::InnerStride<Eigen::Dynamic>>
-              stridedView(_dispersionSign[m].data() + i, _nFreqsPerDim[d], Eigen::InnerStride(strides[d]));
-          stridedView += _omega[d] * (beta1s[betaInd] + _omega[d] * (0.5 * beta2s[betaInd] + _omega[d] * beta3s[betaInd] / 6));
-        }
-      }
-      updateIndex(index);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * m + d;
+      dispersionProfile[d] = _omega[d] * (beta1s[betaInd] + _omega[d] * (0.5 * beta2s[betaInd] + _omega[d] * beta3s[betaInd] / 6));
     }
+    multiDimensionalArithmetic<Arrayd, false>(_dispersionSign[m], dispersionProfile);
   }
 
   // incremental phases for each simulation step
@@ -237,61 +245,58 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   }
 }
 
+auto anyNonzero = [](const std::vector<double>& vec) {return std::any_of(vec.begin(), vec.end(), [](double d){return d != 0.;});};
 
-void _NonlinearMedium::setPump(PulseType pulseType, double chirpLength, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(PulseType pulseType, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   if (pumpIndex >= _nPumpModes)
     throw std::invalid_argument("Invalid pump index");
 
   // initial time domain envelopes (pick Gaussian, Hyperbolic Secant, Sinc)
   _envelope[pumpIndex] = Arraycd::Ones(_nFreqs);
-  Eigen::Map<Array2Dcd> envMultiDimView(_envelope[pumpIndex].data(), _nFreqsPerDim[0], _envelope[pumpIndex].size() / _nFreqsPerDim[0]);
+  std::vector<Arraycd> pumpProfiles(_nDimensions);
 
-  switch (pulseType) {
-    default:
-    case PulseType::Gaussian:
-      envMultiDimView.rowwise() *= (-0.5 * _tau[0].square()).exp().cast<std::complex<double>>();
-      break;
-    case PulseType::Sech:
-      envMultiDimView.rowwise() *= (1 / _tau[0].cosh()).cast<std::complex<double>>();
-      break;
-    case PulseType::Sinc:
-      envMultiDimView.rowwise() *= (_tau[0].sin() / _tau[0]).cast<std::complex<double>>();
-      envMultiDimView.col(0) = 1;
-      break;
-  }
-
-  if (_nDimensions > 1) {
+  for (uint d = 0; d < _nDimensions; d++) {
     switch (pulseType) {
       default:
       case PulseType::Gaussian:
-        envMultiDimView.colwise() *= (-0.5 * _tau[1].square()).exp().cast<std::complex<double>>().transpose();
+        pumpProfiles[d] = (-0.5 * _tau[d].square()).exp().cast<std::complex<double>>();
         break;
       case PulseType::Sech:
-        envMultiDimView.colwise() *= (1 / _tau[1].cosh()).cast<std::complex<double>>().transpose();
+        pumpProfiles[d] = (1 / _tau[d].cosh()).cast<std::complex<double>>();
         break;
       case PulseType::Sinc:
-        envMultiDimView.colwise() *= (_tau[1].sin() / _tau[1]).cast<std::complex<double>>().transpose();
-        envMultiDimView.row(0) = 1;
+        pumpProfiles[d] = (_tau[d].sin() / _tau[d]).cast<std::complex<double>>();
+        pumpProfiles[d](0) = 1;
         break;
     }
   }
+  multiDimensionalArithmetic<Arraycd, true>(_envelope[pumpIndex], pumpProfiles);
 
-  if (chirpLength != 0 || delayLength != 0) {
+  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
+
     Arraycd fftTemp(_nFreqs);
     if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
-    else if (_nDimensions == 1) FFT2(fftTemp, _envelope[pumpIndex]);
+    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
 
-    fftTemp.rowwise() *= (1._I * (_beta1[_nDimensions*pumpIndex+0] * delayLength + 0.5 * _beta2[_nDimensions*pumpIndex+0] * chirpLength * _omega[0]) * _omega[0]).exp();
-    if (_nDimensions > 1)
-      fftTemp.colwise() *= (1._I * (_beta1[_nDimensions*pumpIndex+1] * delayLength + 0.5 * _beta2[_nDimensions*pumpIndex+1] * chirpLength * _omega[1]) * _omega[1]).exp().transpose();
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (chirpLength.size() > d && chirpLength[d] != 0)
+        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
+      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
+    }
+   multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
 
     if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
-    else if (_nDimensions == 2) IFFT2(fftTemp, fftTemp);
+    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
   }
 }
 
 
-void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   // custom initial time domain envelope
   if (customPump.size() != _nFreqs)
     throw std::invalid_argument("Custom pump array length does not match number of frequency/time bins");
@@ -300,17 +305,26 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, doub
 
   _envelope[pumpIndex] = customPump;
 
-  if (chirpLength != 0 || delayLength != 0) {
+  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
+
     Arraycd fftTemp(_nFreqs);
     if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
-    else if (_nDimensions == 1) FFT2(fftTemp, _envelope[pumpIndex]);
+    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
 
-    fftTemp.rowwise() *= (1._I * (_beta1[_nDimensions*pumpIndex+0] * delayLength + 0.5 * _beta2[_nDimensions*pumpIndex+0] * chirpLength * _omega[0]) * _omega[0]).exp();
-    if (_nDimensions > 1)
-      fftTemp.colwise() *= (1._I * (_beta1[_nDimensions*pumpIndex+1] * delayLength + 0.5 * _beta2[_nDimensions*pumpIndex+1] * chirpLength * _omega[1]) * _omega[1]).exp().transpose();
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (chirpLength.size() > d && chirpLength[d] != 0)
+        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
+      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
+    }
+    multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
 
     if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
-    else if (_nDimensions == 2) IFFT2(fftTemp, fftTemp);
+    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
   }
 }
 
@@ -596,7 +610,7 @@ void _NonlinearMedium::setPoling(const Eigen::Ref<const Arrayd>& poling) {
 }
 
 
-void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, double delayLength, uint pumpIndex) {
+void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, const std::vector<double>& delayLength, uint pumpIndex) {
   if (other._nFreqsPerDim != _nFreqsPerDim || other._tMax != _tMax)
     throw std::invalid_argument("Medium does not have same time and frequency axes as this one");
 
@@ -609,11 +623,16 @@ void _NonlinearMedium::setPump(const _NonlinearMedium& other, uint modeIndex, do
   if (other._nZSteps < _nZSteps)
     throw std::invalid_argument("Medium does not have sufficient resolution to be used with this one");
 
-  Arraycd delay = 1._I * Arraycd::Ones(_nFreqs);
-  delay.rowwise() *= _beta1[pumpIndex * _nDimensions + 0] * delayLength * _omega[0];
-  if (_nDimensions > 1) {
-    Eigen::Map<Array2Dcd> delayMultiDimView(delay.data(), _nFreqsPerDim[0], _nFreqsPerDim[1]);
-    delayMultiDimView.colwise() *= (_beta1[pumpIndex * _nDimensions + 1] * delayLength * _omega[1]).transpose();
+  Arraycd delay = Arraycd::Zero(_nFreqs);
+  if (anyNonzero(delayLength)) {
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += 1._I * (_beta1[betaInd] * delayLength[d]) * _omega[d];
+    }
+    multiDimensionalArithmetic<Arraycd, false>(delay, phaseProfiles);
   }
 
   for (uint i = 0; i < _nZStepsP - 1; i++) {
