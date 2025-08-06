@@ -8,27 +8,25 @@ class Chi2SFGII : public _NonlinearMedium {
 public:
   Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ,
             double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
-            const Eigen::Ref<const Arraycd>& customPump=Eigen::Ref<const Arraycd>(Arraycd{}), PulseType pulseType=PulseType{},
             double beta1=0, double beta1sz=0, double beta1sy=0, double beta1oz=0, double beta1oy=0, double beta3=0,
             double beta3sz=0, double beta3sy=0, double beta3oz=0, double beta3oy=0, double diffBeta0z=0,
             double diffBeta0y=0, double diffBeta0=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-            double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1, IntensityProfile intensityProfile=IntensityProfile{},
-            double chirp=0, double delay=0, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+            double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1,
+            IntensityProfile intensityProfile=IntensityProfile{}, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ,
                      double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
-                     const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                      double beta1, double beta1sz, double beta1sy, double beta1oz, double beta1oy,
                      double beta3, double beta3sz, double beta3sy, double beta3oz, double beta3oy,
                      double diffBeta0z, double diffBeta0y, double diffBeta0, double rayleighLength,
                      double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
-                     double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+                     const Eigen::Ref<const Arrayd>& poling) :
     _NonlinearMedium(_nSignalModes, 1, true, 0, relativeLength, {nlLengthZY, nlLengthZZ},
-                     {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, customPump, pulseType, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
+                     {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
                      {beta3}, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0},
-                     rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, chirp, delay, poling) {}
+                     rayleighLength, tMax, tPrecision, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
@@ -94,14 +92,13 @@ void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
 #ifdef NLMMODULE
 py::class_<Chi2SFGII, _NonlinearMedium> Chi2SFGII(m, "Chi2SFGII", "Type II or simultaneous 2-mode sum frequency generation with parametric amplification");
 Chi2SFGII.def(
-    py::init<double, double, /*double, double,*/ double, double, double, double, double, double, Eigen::Ref<const Arraycd>&,
-             _NonlinearMedium::PulseType, double, double, double, double, double, double, double, double, double, double,
-             double, double, double, double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile, double, double,
-             Eigen::Ref<const Arrayd>&>(),
-    "relativeLength"_a, "nlLengthZY"_a, "nlLengthZZ"_a, //"nlLengthSignZ"_a, "nlLengthSignY"_a, "nlLengthOrigZ"_a, "nlLengthOrigY"_a,
-    "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "customPump"_a = defArraycd, "pulseType"_a = _NonlinearMedium::PulseType{},
-    "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0, "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0, "beta3sz"_a = 0,
-    "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0, "diffBeta0z"_a = 0, "diffBeta0y"_a = 0, "diffBeta0"_a = 0,
-    "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1,
-    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "chirp"_a = 0, "delay"_a = 0, "poling"_a = defArrayf);
+    py::init<double, double, /*double, double,*/ double, double, double, double, double, double, double, double, double,
+             double, double, double, double, double, double, double,double, double, double, double, double, uint, uint,
+             uint, _NonlinearMedium::IntensityProfile, Eigen::Ref<const Arrayd>&>(),
+    "relativeLength"_a, "nlLengthZY"_a, "nlLengthZZ"_a,
+    "beta2"_a, "beta2sz"_a, "beta2sy"_a, "beta2oz"_a, "beta2oy"_a, "beta1"_a = 0, "beta1sz"_a = 0, "beta1sy"_a = 0,
+    "beta1oz"_a = 0, "beta1oy"_a = 0, "beta3"_a = 0, "beta3sz"_a = 0, "beta3sy"_a = 0, "beta3oz"_a = 0, "beta3oy"_a = 0,
+    "diffBeta0z"_a = 0, "diffBeta0y"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1,
+    "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
 #endif

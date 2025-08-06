@@ -59,12 +59,11 @@ protected:
   _NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
                    double relativeLength, std::initializer_list<double> nlLength,
                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
-                   const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
                    std::initializer_list<double> diffBeta0,
                    double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord,
-                   IntensityProfile intensityProfile, double chirp, double delay,
+                   IntensityProfile intensityProfile,
                    const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,

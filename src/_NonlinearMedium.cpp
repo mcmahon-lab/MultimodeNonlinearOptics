@@ -8,12 +8,11 @@ Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
                                    double relativeLength, std::initializer_list<double> nlLength,
                                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
-                                   const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
                                    std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision,
                                    uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
-                                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling) :
+                                   const Eigen::Ref<const Arrayd>& poling) :
   _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes)
 {
   if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
@@ -30,11 +29,7 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canB
 
   if (_nPumpModes > 0) {
     _envelope.resize(_nPumpModes);
-    if (customPump.size() != 0)
-      setPump(customPump, chirp, delay);
-    else
-      setPump(pulseType, chirp, delay);
-    for (uint m = 1; m < _nPumpModes; m++)
+    for (uint m = 0; m < _nPumpModes; m++)
       _envelope[m].setZero(_nFreqs);
   }
 }

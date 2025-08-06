@@ -33,8 +33,8 @@ protected:
                         std::initializer_list<double> beta2s, std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                         std::initializer_list<double> diffBeta0, double rayleighLength, double tMax, uint tPrecision, uint zPrecision,
                         uint _ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{})) :
-  _NonlinearMedium(nSignalModes, 0, canBePoled, nFieldModes, relativeLength, nlLength, {}, beta2s, Eigen::Ref<const Arraycd>(Arraycd{}),
-                   PulseType{}, {}, beta1s, {}, beta3s, diffBeta0, rayleighLength, tMax, tPrecision, zPrecision, _ratioStepsToRecord, intensityProfile, 0, 0, poling)
+  _NonlinearMedium(nSignalModes, 0, canBePoled, nFieldModes, relativeLength, nlLength, {}, beta2s, {}, beta1s, {}, beta3s,
+                   diffBeta0, rayleighLength, tMax, tPrecision, zPrecision, _ratioStepsToRecord, intensityProfile, poling)
   {_dzp = _nZStepsP = 0;};
 
   inline double relativeAmplitude(double i) const {
