@@ -24,6 +24,7 @@ PYBIND11_MODULE(nonlinearmedium, m) {
   Eigen::Ref<const Arraycd> defArraycd = Eigen::Ref<const Arraycd>(Arraycd{});
   Eigen::Ref<const Arrayd>  defArrayf  = Eigen::Ref<const Arrayd>(Arrayd{});
   const std::vector<uint8_t> defCharVec = {};
+  const std::vector<double> defDoubleVec = {};
   constexpr double infinity = std::numeric_limits<double>::infinity();
 
 /*
@@ -32,20 +33,26 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   _NLMBase.def("setPump",
                py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&_NonlinearMedium::setPump),
-               "Set the input shape of the pump\n"
+               "Set the initial shape of the pump based on a function\n"
                "pulseType Gaussian, Sech or Sinc profile; 0, 1, 2 respectively.\n"
                "chirp     Initial chirp of the pump, specified in dispersion lengths.\n"
                "delay     Initial time delay of the pump, specified in walk-off lengths.\n"
                "pumpIndex Index of the pump being set, if applicable.",
+               "pulseType"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
+  _NLMBase.def("setPump",
+               [](_NonlinearMedium& nlm, _NonlinearMedium::PulseType pt, double chirp, double delay, uint pInd){nlm.setPump(pt, {chirp}, {delay}, pInd);},
                "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   _NLMBase.def("setPump",
                py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&_NonlinearMedium::setPump),
-               "Set the input shape of the pump\n"
+               "Set an arbitrary initial pump shape\n"
                "customPump An arbitrary pump shape specified in the time domain, with self.tau as the axis.\n"
                "chirp     Initial chirp of the pump, specified in dispersion lengths.\n"
                "delay     Initial time delay of the pump, specified in walk-off lengths.\n"
                "pumpIndex Index of the pump being set, if applicable.",
+               "customPump"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
+  _NLMBase.def("setPump",
+               [](_NonlinearMedium& nlm, const Eigen::Ref<const Arraycd>& pump, double chirp, double delay, uint pInd){nlm.setPump(pump, {chirp}, {delay}, pInd);},
                "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   _NLMBase.def("setPump",
@@ -56,6 +63,9 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "modeIndex The index of the mode in 'other' to use as pump in this simulation.\n"
                "delay     Initial time delay of the pump, specified in walk-off lengths.\n"
                "pumpIndex Index of the pump being set, if applicable.",
+               "other"_a, "modeIndex"_a = 0, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
+  _NLMBase.def("setPump",
+               [](_NonlinearMedium& nlm, const _NonlinearMedium& other, uint mInd, double delay, uint pInd){nlm.setPump(other, mInd, {delay}, pInd);},
                "other"_a, "modeIndex"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   _NLMBase.def("runPumpSimulation", &_NonlinearMedium::runPumpSimulation,
@@ -153,11 +163,11 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                 "inputMode"_a = 0, "useOutput"_a = defCharVec);
 
   _FNLMBase.def("setPump", py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
-                "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
+                "pulseType"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
   _FNLMBase.def("setPump", py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
-                "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
+                "customPump"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
   _FNLMBase.def("setPump", py::overload_cast<const _NonlinearMedium&, uint, const std::vector<double>&, uint>(&_FullyNonlinearMedium::setPump),
-                "other"_a, "signalIndex"_a = 0, "delayLength"_a = 0, "pumpIndex"_a = 0);
+                "other"_a, "signalIndex"_a = 0, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
   _FNLMBase.def("runPumpSimulation", &_FullyNonlinearMedium::runPumpSimulation);
   _FNLMBase.def("computeGreensFunction", &_FullyNonlinearMedium::computeGreensFunction,
                 "inTimeDomain"_a = false, "runPump"_a = true, "nThreads"_a = 1, "normalize"_a = false,
@@ -173,15 +183,21 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 
   Cascade.def("setPump",
               py::overload_cast<_NonlinearMedium::PulseType, const std::vector<double>&, const std::vector<double>&, uint>(&Cascade::setPump),
+              "pulseType"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
+  Cascade.def("setPump",
+              [](class Cascade& nlm, _NonlinearMedium::PulseType pt, double chirp, double delay, uint pInd){nlm.setPump(pt, {chirp}, {delay}, pInd);},
               "pulseType"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("setPump",
               py::overload_cast<const Eigen::Ref<const Arraycd>&, const std::vector<double>&, const std::vector<double>&, uint>(&Cascade::setPump),
-               "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
+              "customPump"_a, "chirp"_a = defDoubleVec, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
+  Cascade.def("setPump",
+              [](class Cascade& nlm, const Eigen::Ref<const Arraycd>& pump, double chirp, double delay, uint pInd){nlm.setPump(pump, {chirp}, {delay}, pInd);},
+              "customPump"_a, "chirp"_a = 0, "delay"_a = 0, "pumpIndex"_a = 0);
 
   Cascade.def("setPump",
               py::overload_cast<const _NonlinearMedium&, uint, const std::vector<double>&, uint>(&Cascade::setPump),
-              "other"_a, "signalIndex"_a = 0, "delayLength"_a = 0, "pumpIndex"_a = 0);
+              "other"_a, "signalIndex"_a = 0, "delay"_a = defDoubleVec, "pumpIndex"_a = 0);
 
   Cascade.def("runPumpSimulation", &Cascade::runPumpSimulation);
 
