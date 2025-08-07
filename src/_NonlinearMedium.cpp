@@ -231,16 +231,37 @@ void _NonlinearMedium::setDispersion(const std::vector<double>& beta2, const std
   // incremental phases for each simulation step
   _dispStepPump.resize(_nPumpModes);
   for (uint m = 0; m < _nPumpModes; m++) {
-    _dispStepPump[m] = ((1._I * _dzp) * _dispersionPump[m]).exp();
+    _dispStepPump[m] = ((1._I * _dzp) * _dispersionPump[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
   }
 
   _dispStepSign.resize(_nSignalModes);
   for (uint m = 0; m < _nSignalModes; m++) {
-    _dispStepSign[m] = ((1._I * _dz) * _dispersionSign[m]).exp();
+    _dispStepSign[m] = ((1._I * _dz) * _dispersionSign[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
   }
 }
 
 auto anyNonzero = [](const std::vector<double>& vec) {return std::any_of(vec.begin(), vec.end(), [](double d){return d != 0.;});};
+
+void _NonlinearMedium::setPhases(const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
+  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
+    Arraycd fftTemp(_nFreqs);
+    FFT(fftTemp, _envelope[pumpIndex]);
+
+    std::vector<Arraycd> phaseProfiles(_nDimensions);
+    for (uint d = 0; d < _nDimensions; d++) {
+      uint betaInd = _nDimensions * pumpIndex + d;
+      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
+      if (chirpLength.size() > d && chirpLength[d] != 0)
+        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
+      if (delayLength.size() > d && delayLength[d] != 0)
+        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
+      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp() * (1. / _nFreqsPerDim[d]); // note scale factor included for FFT
+    }
+    multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
+
+    IFFT(_envelope[pumpIndex], fftTemp);
+  }
+}
 
 void _NonlinearMedium::setPump(PulseType pulseType, const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex) {
   if (pumpIndex >= _nPumpModes)
@@ -266,28 +287,7 @@ void _NonlinearMedium::setPump(PulseType pulseType, const std::vector<double>& c
     }
   }
   multiDimensionalArithmetic<Arraycd, true>(_envelope[pumpIndex], pumpProfiles);
-
-  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
-
-    Arraycd fftTemp(_nFreqs);
-    if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
-    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
-
-    std::vector<Arraycd> phaseProfiles(_nDimensions);
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint betaInd = _nDimensions * pumpIndex + d;
-      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
-      if (chirpLength.size() > d && chirpLength[d] != 0)
-        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
-      if (delayLength.size() > d && delayLength[d] != 0)
-        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
-      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
-    }
-   multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
-
-    if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
-    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
-  }
+  setPhases(chirpLength, delayLength, pumpIndex);
 }
 
 
@@ -299,34 +299,14 @@ void _NonlinearMedium::setPump(const Eigen::Ref<const Arraycd>& customPump, cons
     throw std::invalid_argument("Invalid pump index");
 
   _envelope[pumpIndex] = customPump;
-
-  if (anyNonzero(chirpLength) || anyNonzero(delayLength)) {
-
-    Arraycd fftTemp(_nFreqs);
-    if (_nDimensions == 1)      FFT(fftTemp, _envelope[pumpIndex]);
-    else if (_nDimensions == 2) FFT2(fftTemp, _envelope[pumpIndex]);
-
-    std::vector<Arraycd> phaseProfiles(_nDimensions);
-    for (uint d = 0; d < _nDimensions; d++) {
-      uint betaInd = _nDimensions * pumpIndex + d;
-      phaseProfiles[d].setZero(_nFreqsPerDim[d]);
-      if (chirpLength.size() > d && chirpLength[d] != 0)
-        phaseProfiles[d] += (0.5 * _beta2[betaInd] * chirpLength[d]) * _omega[d] * _omega[d];
-      if (delayLength.size() > d && delayLength[d] != 0)
-        phaseProfiles[d] += (_beta1[betaInd] * delayLength[d]) * _omega[d];
-      phaseProfiles[d] = (1._I * phaseProfiles[d]).exp();
-    }
-    multiDimensionalArithmetic<Arraycd, true>(fftTemp, phaseProfiles);
-
-    if (_nDimensions == 1)      IFFT(_envelope[pumpIndex], fftTemp);
-    else if (_nDimensions == 2) IFFT2(_envelope[pumpIndex], fftTemp);
-  }
+  setPhases(chirpLength, delayLength, pumpIndex);
 }
 
 
 void _NonlinearMedium::runPumpSimulation() {
   for (uint m = 0; m < _nPumpModes; m++) {
     FFTi(pumpFreq[m], _envelope[m], 0, 0);
+    pumpFreq[m] *= 1. / _nFreqs; // note scale factor included for FFT
     pumpTime[m].row(0) = _envelope[m];
 
     for (uint i = 1; i < _nZStepsP; i++) {

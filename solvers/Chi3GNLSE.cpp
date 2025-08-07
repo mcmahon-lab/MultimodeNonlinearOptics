@@ -33,6 +33,11 @@ Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLen
   ramanResponseTime(0) += 1. - fr; // delta function
   ramanResponse = Arraycd(_nFreqs);
   FFT(ramanResponse, ramanResponseTime);
+
+  // account for FFT scaling
+  _nlStep[0] /= _nFreqs;
+  _nlStep[1] /= _nFreqs;
+  ramanResponse *= std::pow(1. / _nFreqs, 3./2.);
 }
 
 

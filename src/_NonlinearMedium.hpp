@@ -90,6 +90,7 @@ protected:
 
   template<typename ArrayType, bool doMultiply>
   void multiDimensionalArithmetic(ArrayType& ndArray, const std::vector<ArrayType>& factor);
+  void setPhases(const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex);
 
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, wavelengths, etc)
   const uint _nPumpModes;   /// Number of separate pump modes (eg polarizations, wavelengths, etc)
@@ -134,16 +135,32 @@ protected:
 
   // DFT Convenience Functions, indexed (for 2D arrays) and regular (for 1D arrays):
   inline void FFT(Arraycd& output, const Arraycd& input) const {
-    fftObj.fwd(output, input, _nFreqs);
+    switch (_nDimensions) {
+      default:
+      case 1:
+        fftObj.fwd(output, input, _nFreqs);
+        break;
+      case 2:
+        fftObj.fwd2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+        break;
+      case 3:
+        fftObj.fwd3(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+        break;
+    }
   }
   inline void IFFT(Arraycd& output, const Arraycd& input) const {
-    fftObj.inv(output, input, _nFreqs);
-  }
-  inline void FFT2(Arraycd& output, const Arraycd& input) const {
-    fftObj.fwd2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
-  }
-  inline void IFFT2(Arraycd& output, const Arraycd& input) const {
-    fftObj.inv2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+    switch (_nDimensions) {
+      default:
+      case 1:
+        fftObj.inv(output, input, _nFreqs);
+        break;
+      case 2:
+        fftObj.inv2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+        break;
+      case 3:
+        fftObj.inv3(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+        break;
+    }
   }
   inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
@@ -157,6 +174,12 @@ protected:
   inline void IFFT2i(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.inv2(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1]);
   }
+  inline void FFT3i(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.fwd3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+  }
+  inline void IFFT3i(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.inv3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2]);
+  }
 };
 
 
@@ -168,7 +191,7 @@ protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
   constexpr static uint _nDimensions = dimensions; \
-  static_assert(_nDimensions <= 2, "Only up to 2 dimensions currently supported"); \
+  static_assert(_nDimensions <= 3, "Only up to 3 dimensions currently supported"); \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
@@ -189,10 +212,12 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j){
     if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
   };
   auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j){
     if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
   };
 
   if (inTimeDomain)
@@ -200,12 +225,12 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
       if (m == inputMode) {
         signalTime[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
         fft(signalFreq[m], signalTime[m], 0, 0);
-        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
       }
       else if (inputMode < 1 && m < nInputChannels) {
         signalTime[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
         fft(signalFreq[m], signalTime[m], 0, 0);
-        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
       }
       else
         signalFreq[m].row(0) = 0;
@@ -249,7 +274,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   }
 
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
+    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp(); // note *no* scale factor included for FFT
     ifft(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1);
   }
 }

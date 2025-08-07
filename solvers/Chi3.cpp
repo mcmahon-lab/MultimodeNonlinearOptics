@@ -23,7 +23,7 @@ Chi3::Chi3(double relativeLength, double nlLength, double beta2, double beta3, d
 
 void Chi3::runPumpSimulation() {
   FFTi(pumpFreq[0], _envelope[0], 0, 0);
-  pumpFreq[0].row(0) *= ((0.5_I * _dzp) * _dispersionPump[0]).exp();
+  pumpFreq[0].row(0) *= ((0.5_I * _dzp) * _dispersionPump[0]).exp() * (1. / _nFreqs); // note scale factor included for FFT
   IFFTi(pumpTime[0], pumpFreq[0], 0, 0);
 
   Eigen::VectorXcd relativeIntensity;
@@ -48,7 +48,7 @@ void Chi3::runPumpSimulation() {
     IFFTi(pumpTime[0], pumpFreq[0], i, i);
   }
 
-  pumpFreq[0].row(_nZStepsP-1) *= ((-0.5_I * _dzp) * _dispersionPump[0]).exp();
+  pumpFreq[0].row(_nZStepsP-1) *= ((-0.5_I * _dzp) * _dispersionPump[0]).exp(); // note *no* scale factor included for FFT
   IFFTi(pumpTime[0], pumpFreq[0], _nZStepsP-1, _nZStepsP-1);
 }
 

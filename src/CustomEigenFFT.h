@@ -16,8 +16,9 @@
 
 #ifdef EIGEN_FFTW_DEFAULT
 // FFTW: faster, GPL -- incompatible with Eigen in LGPL form, bigger code size
-#  include <fftw3.h>
-#  include "unsupported/Eigen/src/FFT/ei_fftw_impl.h"
+#include <fftw3.h>
+//#include "unsupported/Eigen/src/FFT/ei_fftw_impl.h"
+#include "eigen_fftw.h" // use custom interface
 namespace Eigen {
   //template <typename T> typedef struct internal::fftw_impl  default_fft_impl; this does not work
   template <typename T> struct default_fft_impl : public internal::fftw_impl<T> {};
@@ -91,13 +92,13 @@ namespace Eigen {
     inline
     void inv(Complex* dst, const Complex* src, Index nfft) {
       m_impl.inv(dst, src, static_cast<int>(nfft));
-      scale(dst, Scalar(1. / nfft), nfft);
+      //scale(dst, Scalar(1. / nfft), nfft);
     }
 
     inline
     void inv(Scalar* dst, const Complex* src, Index nfft) {
       m_impl.inv(dst, src, static_cast<int>(nfft));
-      scale(dst, Scalar(1. / nfft), nfft);
+      //scale(dst, Scalar(1. / nfft), nfft);
     }
 
     template<typename OutputDerived, typename ComplexDerived>
@@ -130,12 +131,12 @@ namespace Eigen {
 #ifdef EIGEN_FFTW_DEFAULT
     inline
     void fwd2(Complex* dst, const Scalar* src, Index nfft0, Index nfft1) {
-      m_impl.fwd2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
     }
 
     inline
     void fwd2(Complex* dst, const Complex* src, Index nfft0, Index nfft1) {
-      m_impl.fwd2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
     }
 
     template<typename InputDerived, typename ComplexDerived>
@@ -152,14 +153,12 @@ namespace Eigen {
 
     inline
     void inv2(Complex* dst, const Complex* src, Index nfft0, Index nfft1) {
-      m_impl.inv2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
-      scale(dst, Scalar(1. / (nfft0 * nfft1)), nfft0 * nfft1);
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
     }
 
     inline
     void inv2(Scalar* dst, const Complex* src, Index nfft0, Index nfft1) {
-      m_impl.inv2(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
-      scale(dst, Scalar(1. / (nfft0 * nfft1)), nfft0 * nfft1);
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1));
     }
 
     template<typename OutputDerived, typename ComplexDerived>
@@ -172,6 +171,50 @@ namespace Eigen {
                           THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
 
       inv2(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1);
+    }
+
+    inline
+    void fwd3(Complex* dst, const Scalar* src, Index nfft0, Index nfft1, Index nfft2) {
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2));
+    }
+
+    inline
+    void fwd3(Complex* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2) {
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2));
+    }
+
+    template<typename InputDerived, typename ComplexDerived>
+    inline
+    void fwd3(DenseBase<ComplexDerived>& dst, const DenseBase<InputDerived>& src, Index dstInd, Index srcInd, Index nfft0, Index nfft1, Index nfft2) {
+      typedef typename ComplexDerived::Scalar dst_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<dst_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(InputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      fwd3(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1, nfft2);
+    }
+
+    inline
+    void inv3(Complex* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2) {
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2));
+    }
+
+    inline
+    void inv3(Scalar* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2) {
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2));
+    }
+
+    template<typename OutputDerived, typename ComplexDerived>
+    inline
+    void inv3(DenseBase<OutputDerived>& dst, const DenseBase<ComplexDerived>& src, Index dstInd, Index srcInd, Index nfft0, Index nfft1, Index nfft2) {
+      typedef typename ComplexDerived::Scalar src_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<src_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(OutputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      inv3(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1, nfft2);
     }
 #endif
 
