@@ -110,7 +110,10 @@ void _NonlinearMedium::resetGrids(const std::vector<uint>& nFreqs, const std::ve
     if (t <= 0)
       throw std::invalid_argument("Negative time span");
 
-  _nFreqsPerDim = nFreqs;
+  _nFreqsPerDim.reserve(maxDimensions);
+  for (auto n : nFreqs) _nFreqsPerDim.emplace_back(n);
+  for (uint i = 0; i < maxDimensions - _nDimensions; i++) _nFreqsPerDim.emplace_back(1);
+
   _nFreqs = 1; // _nFreqs is the total number of points for >1D simulations
   for (auto nF : nFreqs) {
     _nFreqs *= nF;

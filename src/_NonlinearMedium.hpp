@@ -33,6 +33,8 @@ public:
     GaussianApodization = 2,
   };
 
+  static constexpr uint maxDimensions = 3;
+
   virtual void setPump(PulseType pulseType, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
   virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
   virtual void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength={}, uint pumpIndex=0);
@@ -162,6 +164,14 @@ protected:
         break;
     }
   }
+  inline void FFTp(Arraycd& output, const Arraycd& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.fwdPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
+  inline void IFFTp(Arraycd& output, const Arraycd& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.invPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
   inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
   }
@@ -178,7 +188,7 @@ protected:
     fftObj.fwd3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
   }
   inline void IFFT3i(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
-    fftObj.inv3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2]);
+    fftObj.inv3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
   }
 };
 
@@ -191,7 +201,7 @@ protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
   constexpr static uint _nDimensions = dimensions; \
-  static_assert(_nDimensions <= 3, "Only up to 3 dimensions currently supported"); \
+  static_assert(_nDimensions <= maxDimensions, "Only up to 3 dimensions currently supported"); \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \

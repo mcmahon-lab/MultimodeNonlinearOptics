@@ -216,6 +216,53 @@ namespace Eigen {
 
       inv3(&dst(dstInd, 0), &src(srcInd, 0), nfft0, nfft1, nfft2);
     }
+
+    inline
+    void fwdPartial(Complex* dst, const Scalar* src, Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2), doDim0, doDim1, doDim2);
+    }
+
+    inline
+    void fwdPartial(Complex* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      m_impl.fwd(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2), doDim0, doDim1, doDim2);
+    }
+
+    template<typename InputDerived, typename ComplexDerived>
+    inline
+    void fwdPartial(DenseBase<ComplexDerived>& dst, const DenseBase<InputDerived>& src,
+                    Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      typedef typename ComplexDerived::Scalar dst_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<dst_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(InputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      fwdPartial(&dst[0], &src[0], nfft0, nfft1, nfft2, doDim0, doDim1, doDim2);
+    }
+
+    inline
+    void invPartial(Complex* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2), doDim0, doDim1, doDim2);
+    }
+
+    inline
+    void invPartial(Scalar* dst, const Complex* src, Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      m_impl.inv(dst, src, static_cast<int>(nfft0), static_cast<int>(nfft1), static_cast<int>(nfft2), doDim0, doDim1, doDim2);
+    }
+
+    template<typename OutputDerived, typename ComplexDerived>
+    inline
+    void invPartial(DenseBase<OutputDerived>& dst, const DenseBase<ComplexDerived>& src,
+                    Index nfft0, Index nfft1, Index nfft2, bool doDim0, bool doDim1, bool doDim2) {
+      typedef typename ComplexDerived::Scalar src_type;
+      EIGEN_STATIC_ASSERT((internal::is_same<src_type, Complex>::value),
+                          YOU_MIXED_DIFFERENT_NUMERIC_TYPES__YOU_NEED_TO_USE_THE_CAST_METHOD_OF_DenseBase_TO_CAST_NUMERIC_TYPES_EXPLICITLY)
+      EIGEN_STATIC_ASSERT(int(OutputDerived::Flags)&int(ComplexDerived::Flags)&DirectAccessBit,
+                          THIS_METHOD_IS_ONLY_FOR_EXPRESSIONS_WITH_DIRECT_MEMORY_ACCESS_SUCH_AS_MAP_OR_PLAIN_MATRICES)
+
+      invPartial(&dst[0], &src[0], nfft0, nfft1, nfft2, doDim0, doDim1, doDim2);
+    }
+
 #endif
 
   private:
