@@ -111,24 +111,16 @@ PYBIND11_MODULE(nonlinearmedium, m) {
                "Read-only frequency axis of the system.", "i"_a = 0);
   _NLMBase.def("tau", &_NonlinearMedium::getTime, py::return_value_policy::reference,
                "Read-only time axis of the system", "i"_a = 0);
-  _NLMBase.def_property_readonly("signalFreq", [](_NonlinearMedium& nlm){return nlm.getSignalFreq();}, py::return_value_policy::reference,
-                                 "Read-only array of the signal frequency profile along the length of the medium.");
-  _NLMBase.def_property_readonly("signalTime", [](_NonlinearMedium& nlm){return nlm.getSignalTime();}, py::return_value_policy::reference,
-                                 "Read-only array of a signal time profile along the length of the medium.");
-  _NLMBase.def_property_readonly("pumpFreq", [](_NonlinearMedium& nlm){return nlm.getPumpFreq();}, py::return_value_policy::reference,
-                                 "Read-only array of the pump frequency profile along the length of the medium.");
-  _NLMBase.def_property_readonly("pumpTime", [](_NonlinearMedium& nlm){return nlm.getPumpTime();}, py::return_value_policy::reference,
-                                 "Read-only array of the pump time profile along the length of the medium.");
-  _NLMBase.def("signalFreqs", &_NonlinearMedium::getSignalFreq, py::return_value_policy::reference,
+  _NLMBase.def("signalFreq", &_NonlinearMedium::getSignalFreq, py::return_value_policy::reference,
                "Read-only array of a signal frequency profile along the length of the medium.", "i"_a = 0);
-  _NLMBase.def("signalTimes", &_NonlinearMedium::getSignalTime, py::return_value_policy::reference,
+  _NLMBase.def("signalTime", &_NonlinearMedium::getSignalTime, py::return_value_policy::reference,
                "Read-only array of a signal time profile along the length of the medium.", "i"_a = 0);
-  _NLMBase.def("pumpFreqs", &_NonlinearMedium::getPumpFreq, py::return_value_policy::reference,
+  _NLMBase.def("pumpFreq", &_NonlinearMedium::getPumpFreq, py::return_value_policy::reference,
                "Read-only array of a pump frequency profile along the length of the medium.", "i"_a = 0);
-  _NLMBase.def("pumpTimes", &_NonlinearMedium::getPumpTime, py::return_value_policy::reference,
+  _NLMBase.def("pumpTime", &_NonlinearMedium::getPumpTime, py::return_value_policy::reference,
                "Read-only array of a pump time profile along the length of the medium.", "i"_a = 0);
-  _NLMBase.def_property_readonly("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
-                                 "Read-only array of the domain poling along the length of a Chi(2) medium.");
+  _NLMBase.def("poling", &_NonlinearMedium::getPoling, py::return_value_policy::reference,
+               "Read-only array of the domain poling along the length of a Chi(2) medium.");
   _NLMBase.def("field", &_NonlinearMedium::getField, py::return_value_policy::reference,
                "Writeable array for some arbitrary field profile. Has the same shape as the pump arrays.", "i"_a = 0);
 
@@ -219,12 +211,12 @@ PYBIND11_MODULE(nonlinearmedium, m) {
               "medium"_a, "connection"_a,
               py::keep_alive<1, 2>());
 
-  Cascade.def_property_readonly("omega", &Cascade::getFrequency, py::return_value_policy::reference);
-  Cascade.def_property_readonly("tau", &Cascade::getTime, py::return_value_policy::reference);
+  Cascade.def("omega", &Cascade::getFrequency, py::return_value_policy::reference);
+  Cascade.def("tau", &Cascade::getTime, py::return_value_policy::reference);
 
   Cascade.def("__getitem__", &Cascade::getMedium, py::return_value_policy::reference);
-  Cascade.def_property_readonly("media", &Cascade::getMedia, py::return_value_policy::reference);
-  Cascade.def_property_readonly("nMedia", &Cascade::getNMedia);
+  Cascade.def("media", &Cascade::getMedia, py::return_value_policy::reference);
+  Cascade.def("nMedia", &Cascade::getNMedia);
 
 /*
  * Solvers
