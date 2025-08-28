@@ -11,9 +11,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
 # Eigen (might be located in various places)
 include_directories(/usr/include/eigen3 /usr/local/include/eigen3)
 
-# Hack: recent GCC has issues with our usage of EigenFFT
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
-
 # FFTW (optional)
 find_package(FFTW QUIET)
 

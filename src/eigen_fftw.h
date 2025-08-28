@@ -28,10 +28,10 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftwf_destroy_plan(_plan);}
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftwf_complex*>(static_cast<const fftwf_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           if (inv) {
             if (n2)      _plan = fftwf_plan_dft_3d(nfft, n1, n2, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwf_plan_dft_2d(nfft, n1, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -43,14 +43,14 @@ namespace Eigen {
           }
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             if (n2)      _plan = fftwf_plan_dft_c2r_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwf_plan_dft_c2r_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftwf_plan_dft_c2r_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           } else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftwf_complex*>(static_cast<const fftwf_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             if (n2)      _plan = fftwf_plan_dft_r2c_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwf_plan_dft_r2c_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftwf_plan_dft_r2c_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -58,7 +58,7 @@ namespace Eigen {
         }
       }
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
         int rank = (static_cast<int>(doDim0) + doDim1) + doDim2;
         int howmany = (doDim0? 1 : n0) * (doDim1? 1 : n1) * (doDim2? 1 : n2);
         int stride = doDim2? 1 : n2 * (doDim1? 1 : n1 * (doDim0? 1 : n0));
@@ -71,15 +71,15 @@ namespace Eigen {
         if (doDim0) dimensions[i++] = n0;
 
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftwf_complex*>(static_cast<const fftwf_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           _plan = fftwf_plan_many_dft(rank, dimensions.data(), howmany,
                                       src, NULL, stride, distance,
                                       dst, NULL, stride, distance,
                                       (inv? FFTW_BACKWARD : FFTW_FORWARD), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             _plan = fftwf_plan_many_dft_c2r(rank, dimensions.data(), howmany,
                                             src, NULL, stride, distance,
@@ -87,8 +87,8 @@ namespace Eigen {
                                             FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           }
           else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftwf_complex*>(static_cast<const fftwf_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             _plan = fftwf_plan_many_dft_r2c(rank, dimensions.data(), howmany,
                                             src, NULL, stride, distance,
                                             dst, NULL, stride, distance,
@@ -111,10 +111,10 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftw_destroy_plan(_plan);}
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftw_complex*>(static_cast<const fftw_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           if (inv) {
             if (n2)      _plan = fftw_plan_dft_3d(nfft, n1, n2, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftw_plan_dft_2d(nfft, n1, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -126,14 +126,14 @@ namespace Eigen {
           }
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             if (n2)      _plan = fftw_plan_dft_c2r_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftw_plan_dft_c2r_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftw_plan_dft_c2r_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           } else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftw_complex*>(static_cast<const fftw_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             if (n2)      _plan = fftw_plan_dft_r2c_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftw_plan_dft_r2c_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftw_plan_dft_r2c_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -141,7 +141,7 @@ namespace Eigen {
         }
       }
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
         int rank = (static_cast<int>(doDim0) + doDim1) + doDim2;
         int howmany = (doDim0? 1 : n0) * (doDim1? 1 : n1) * (doDim2? 1 : n2);
         int stride = doDim2? 1 : n2 * (doDim1? 1 : n1 * (doDim0? 1 : n0));
@@ -154,15 +154,15 @@ namespace Eigen {
         if (doDim0) dimensions[i++] = n0;
 
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftw_complex*>(static_cast<const fftw_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           _plan = fftw_plan_many_dft(rank, dimensions.data(), howmany,
                                      src, NULL, stride, distance,
                                      dst, NULL, stride, distance,
                                      (inv? FFTW_BACKWARD : FFTW_FORWARD), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             _plan = fftw_plan_many_dft_c2r(rank, dimensions.data(), howmany,
                                            src, NULL, stride, distance,
@@ -170,8 +170,8 @@ namespace Eigen {
                                            FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           }
           else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftw_complex*>(static_cast<const fftw_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             _plan = fftw_plan_many_dft_r2c(rank, dimensions.data(), howmany,
                                            src, NULL, stride, distance,
                                            dst, NULL, stride, distance,
@@ -194,10 +194,10 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftwl_destroy_plan(_plan);}
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftwl_complex*>(static_cast<const fftwl_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           if (inv) {
             if (n2)      _plan = fftwl_plan_dft_3d(nfft, n1, n2, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwl_plan_dft_2d(nfft, n1, src, dst, FFTW_BACKWARD, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -209,14 +209,14 @@ namespace Eigen {
           }
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             if (n2)      _plan = fftwl_plan_dft_c2r_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwl_plan_dft_c2r_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftwl_plan_dft_c2r_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           } else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftwl_complex*>(static_cast<const fftwl_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             if (n2)      _plan = fftwl_plan_dft_r2c_3d(nfft, n1, n2, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else if (n1) _plan = fftwl_plan_dft_r2c_2d(nfft, n1, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
             else         _plan = fftwl_plan_dft_r2c_1d(nfft, src, dst, FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
@@ -224,7 +224,7 @@ namespace Eigen {
         }
       }
 
-      fftwPlan(void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int n0, int n1, int n2, bool doDim0, bool doDim1, bool doDim2, bool isC2C) {
         int rank = (static_cast<int>(doDim0) + doDim1) + doDim2;
         int howmany = (doDim0? 1 : n0) * (doDim1? 1 : n1) * (doDim2? 1 : n2);
         int stride = doDim2? 1 : n2 * (doDim1? 1 : n1 * (doDim0? 1 : n0));
@@ -237,15 +237,15 @@ namespace Eigen {
         if (doDim0) dimensions[i++] = n0;
 
         if (isC2C) {
-          complex_type* src = static_cast<complex_type*>(_src);
-          complex_type* dst = const_cast<fftwl_complex*>(static_cast<const fftwl_complex*>(_dst));
+          complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
+          complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
           _plan = fftwl_plan_many_dft(rank, dimensions.data(), howmany,
                                       src, NULL, stride, distance,
                                       dst, NULL, stride, distance,
                                       (inv? FFTW_BACKWARD : FFTW_FORWARD), FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
         } else {
           if (inv) {
-            complex_type* src = static_cast<complex_type*>(_src);
+            complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
             scalar_type* dst = const_cast<scalar_type*>(static_cast<const scalar_type*>(_dst));
             _plan = fftwl_plan_many_dft_c2r(rank, dimensions.data(), howmany,
                                             src, NULL, stride, distance,
@@ -253,8 +253,8 @@ namespace Eigen {
                                             FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
           }
           else {
-            scalar_type* src = static_cast<scalar_type*>(_src);
-            complex_type* dst = const_cast<fftwl_complex*>(static_cast<const fftwl_complex*>(_dst));
+            scalar_type* src = const_cast<scalar_type*>(static_cast<const scalar_type*>(_src));
+            complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
             _plan = fftwl_plan_many_dft_r2c(rank, dimensions.data(), howmany,
                                             src, NULL, stride, distance,
                                             dst, NULL, stride, distance,
