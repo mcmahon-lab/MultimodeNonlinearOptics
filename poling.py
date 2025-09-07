@@ -445,7 +445,7 @@ def domainsToSpace(poling, nZSteps):
   if np.any(poling <= 0):
     raise ValueError("Poling contains non-positive length domains")
 
-  poleDomains = np.cumsum(poling, dtype=np.float_)
+  poleDomains = np.cumsum(poling)
   poleDomains *= nZSteps / poleDomains[-1]
 
   _poling = np.empty(nZSteps)

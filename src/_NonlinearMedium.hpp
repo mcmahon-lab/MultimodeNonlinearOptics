@@ -2,8 +2,7 @@
 #define NONLINEARMEDIUM
 
 #include <eigen3/Eigen/Core>
-//#include <eigen3/unsupported/Eigen/FFT>
-#include "CustomEigenFFT.h" // Note: using modified version instead
+#include "CustomEigenFFT.h"
 #include <utility>
 
 
@@ -42,8 +41,8 @@ public:
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
   virtual std::pair<Array2Dcd, Array2Dcd>
-      computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
-                            const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
+  computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
+                        const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
   virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
                                           bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<uint8_t>& useOutput={});
 
@@ -219,12 +218,12 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   if (nInputChannels > 1) inputMode = 0;
   if constexpr (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
 
-  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j){
+  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
     if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
     else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
   };
-  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j){
+  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
     if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
     else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
