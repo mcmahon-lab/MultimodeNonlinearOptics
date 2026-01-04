@@ -189,6 +189,16 @@ protected:
   inline void IFFT3i(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.inv3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
   }
+  inline void FFTpi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn,
+                    bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.fwdPartial(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
+  inline void IFFTpi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn,
+                     bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.invPartial(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
 };
 
 
