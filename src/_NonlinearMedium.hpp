@@ -83,6 +83,8 @@ protected:
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, uint ratioStepsToRecord);
+  template<class T>
+  inline void DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq);
 
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
 
@@ -205,7 +207,7 @@ protected:
 // Repeated code for each NLM ODE class. This takes care of:
 // - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
 // - Overriding runSignalSimulation with the function created from the template
-#define NLM(T, modes, dimensions) \
+#define NLM_BaseMacro(T, modes, dimensions) \
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
@@ -214,10 +216,19 @@ protected: \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
-                         std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
+                         std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, \
                          uint ratioStepsToRecord) override \
-     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, ratioStepsToRecord); };
+    { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, ratioStepsToRecord); }; \
+  inline void Dispersion(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq)
 
+// this version defines Dispersion based on the template
+#define NLM(T, modes, dimensions) \
+NLM_BaseMacro(T, modes, dimensions) \
+    { DispersionTemplate<T>(m, gridIndex, signalTime, signalFreq); };
+
+// this version only declares Dispersion, to allow a custom implementation
+#define NLM_CustomDispersion(T, modes, dimensions) \
+NLM_BaseMacro(T, modes, dimensions);
 
 template<class T>
 void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
@@ -286,9 +297,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
       signalTime[m].row(gridIndex) = signalTime[m].row(prevGridIndex) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
 
       // Dispersion step
-      fft(signalFreq[m], signalTime[m], gridIndex, gridIndex);
-      signalFreq[m].row(gridIndex) *= _dispStepSign[m];
-      ifft(signalTime[m], signalFreq[m], gridIndex, gridIndex);
+      static_cast<T*>(this)->Dispersion(m, gridIndex, signalTime, signalFreq);
     }
   }
 
@@ -298,5 +307,23 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
   }
 }
 
+
+template<class T>
+inline void _NonlinearMedium::DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq) {
+  // functions defined as above
+  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
+  };
+  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
+  };
+  fft(signalFreq[m], signalTime[m], gridIndex, gridIndex);
+  signalFreq[m].row(gridIndex) *= _dispStepSign[m];
+  ifft(signalTime[m], signalFreq[m], gridIndex, gridIndex);
+}
 
 #endif //NONLINEARMEDIUM
