@@ -5,7 +5,7 @@
 
 Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
 
-_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPumpModes, bool canBePoled, uint nFieldModes,
+_NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPumpModes, bool canBePoled, uint nTemps, uint nFieldModes,
                                    double relativeLength, std::initializer_list<double> nlLength,
                                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
                                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
@@ -14,7 +14,7 @@ _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPu
                                    std::initializer_list<double> tMax, std::initializer_list<uint> tPrecision,
                                    uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                                    const Eigen::Ref<const Arrayd>& poling) :
-  _nSignalModes(nSignalModes), _nPumpModes(nPumpModes), _nFieldModes(nFieldModes), _nDimensions(nDimensions)
+  _nSignalModes(nSignalModes), _nDimensions(nDimensions), _nPumpModes(nPumpModes), _nTemps(nTemps), _nFieldModes(nFieldModes)
 {
   if (intensityProfile == IntensityProfile::Constant) rayleighLength = std::numeric_limits<double>::infinity();
 

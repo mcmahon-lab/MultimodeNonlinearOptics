@@ -23,17 +23,17 @@ public:
     throw std::runtime_error("Object does not have this method.");
   }
   std::pair<Array2Dcd, Array2Dcd>
-      computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
-                            const std::vector<uint8_t>& useInput, const std::vector<uint8_t>& useOutput) override {
+  computeGreensFunction(bool inTimeDomain, bool runPump, uint nThreads, bool normalize,
+                        const std::vector<uint8_t>& useInput, const std::vector<uint8_t>& useOutput) override {
     throw std::runtime_error("Object does not have this method.");
   }
 
 protected:
-  _FullyNonlinearMedium(uint nSignalModes, uint nDimensions, bool canBePoled, uint nFieldModes, double relativeLength, std::initializer_list<double> nlLength,
+  _FullyNonlinearMedium(uint nSignalModes, uint nDimensions, bool canBePoled, uint nTemps, uint nFieldModes, double relativeLength, std::initializer_list<double> nlLength,
                         std::initializer_list<double> beta2s, std::initializer_list<double> beta1s, std::initializer_list<double> beta3s,
                         std::initializer_list<double> diffBeta0, double rayleighLength, std::initializer_list<double> tMax, std::initializer_list<uint> tPrecision, uint zPrecision,
                         uint _ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{})) :
-  _NonlinearMedium(nSignalModes, nDimensions, 0, canBePoled, nFieldModes, relativeLength, nlLength, {}, beta2s, {}, beta1s, {}, beta3s,
+  _NonlinearMedium(nSignalModes, nDimensions, 0, canBePoled, nTemps, nFieldModes, relativeLength, nlLength, {}, beta2s, {}, beta1s, {}, beta3s,
                    diffBeta0, rayleighLength, tMax, tPrecision, zPrecision, _ratioStepsToRecord, intensityProfile, poling)
   {_dzp = _nZStepsP = 0;};
 
