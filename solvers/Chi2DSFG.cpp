@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2DSFG : public _FullyNonlinearMedium {
-  NLM(Chi2DSFG, 3, 1)
+  NLM(Chi2DSFG, 3, 1, 0)
 public:
   Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, double nlLengthD,
            double beta2p, double beta2s, double beta2d, double beta1p=0, double beta1s=0, double beta1d=0,
@@ -19,13 +19,13 @@ Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, do
                    double beta2p, double beta2s, double beta2d, double beta1p, double beta1s, double beta1d,
                    double beta3p, double beta3s, double beta3d, double diffBeta0, double rayleighLength, double tMax,
                    uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, 0, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, _nTemps, 0, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
                         {beta1p, beta1s, beta1d}, {beta3p, beta3s, beta3d}, {diffBeta0}, rayleighLength, {tMax},
                         {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prvP = signal[0].row(iPrevSig);
   const auto& prvS = signal[1].row(iPrevSig);
   const auto& prvD = signal[2].row(iPrevSig);

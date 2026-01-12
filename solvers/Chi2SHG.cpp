@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2SHG : public _FullyNonlinearMedium {
-  NLM(Chi2SHG, 2, 1)
+  NLM(Chi2SHG, 2, 1, 0)
 public:
   Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
           double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0=0,
@@ -17,13 +17,13 @@ Chi2SHG::Chi2SHG(double relativeLength, double nlLengthH, double nlLengthP, doub
                  double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
                  double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord,
                  IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, 0, relativeLength, {nlLengthP, nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, _nTemps, 0, relativeLength, {nlLengthP, nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
                         {beta3p, beta3h}, {diffBeta0}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling)
 {}
 
 
 void Chi2SHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 

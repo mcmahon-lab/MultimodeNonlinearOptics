@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi3 : public _NonlinearMedium {
-  NLM(Chi3, 1, 1)
+  NLM(Chi3, 1, 1, 0)
 public:
   Chi3(double relativeLength, double nlLength, double beta2, double beta3=0,
        double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
@@ -16,7 +16,7 @@ public:
 
 Chi3::Chi3(double relativeLength, double nlLength, double beta2, double beta3, double rayleighLength, double tMax,
            uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
-  _NonlinearMedium(_nSignalModes, _nDimensions, 1, false, 0, relativeLength, {nlLength}, {beta2}, {beta2}, {0}, {0}, {beta3}, {beta3},
+  _NonlinearMedium(_nSignalModes, _nDimensions, 1, false, _nTemps, 0, relativeLength, {nlLength}, {beta2}, {beta2}, {0}, {0}, {beta3}, {beta3},
                    {}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile)
 {}
 
@@ -54,7 +54,7 @@ void Chi3::runPumpSimulation() {
 
 
 void Chi3::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                  std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                  std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prev = signal[0].row(iPrevSig);
 
   const auto& prevP = pumpTime[0].row(2*i-2);

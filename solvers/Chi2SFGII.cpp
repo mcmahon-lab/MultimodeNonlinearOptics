@@ -4,7 +4,7 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2SFGII : public _NonlinearMedium {
-  NLM(Chi2SFGII, 4, 1)
+  NLM(Chi2SFGII, 4, 1, 0)
 public:
   Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ,
             double beta2, double beta2sz, double beta2sy, double beta2oz, double beta2oy,
@@ -23,14 +23,14 @@ Chi2SFGII::Chi2SFGII(double relativeLength, double nlLengthZY, double nlLengthZZ
                      double diffBeta0z, double diffBeta0y, double diffBeta0, double rayleighLength,
                      double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                      const Eigen::Ref<const Arrayd>& poling) :
-    _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, 0, relativeLength, {nlLengthZY, nlLengthZZ},
+    _NonlinearMedium(_nSignalModes, _nDimensions, 1, true, _nTemps, 0, relativeLength, {nlLengthZY, nlLengthZZ},
                      {beta2}, {beta2sz, beta2sy, beta2oz, beta2oy}, {beta1}, {beta1sz, beta1sy, beta1oz, beta1oy},
                      {beta3}, {beta3sz, beta3sy, beta3oz, beta3oy}, {diffBeta0z, diffBeta0y, diffBeta0},
                      rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
 
   const auto& prevSz = signal[0].row(iPrevSig);
   const auto& prevSy = signal[1].row(iPrevSig);
@@ -81,10 +81,10 @@ void Chi2SFGII::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vec
   k3[2] =  intmPolDir * intrP.conjugate() * (_nlStep[0] * intmInvMsmchCy * (prevSy + 0.5 * k2[1]) + _nlStep[1] * intmInvMsmchSz * (prevSz + 0.5 * k2[0]));
   k3[3] = (intmPolDir * _nlStep[0]  * intmInvMsmchCz) * intrP.conjugate() * (prevSz + 0.5 * k2[0]);
 
-  k4[0] =  prevPolDir * currP * (_nlStep[0] * currMismatchCz * (prevOy + k3[3]) + _nlStep[1] * currMismatchSz * (prevOz + k3[2]));
-  k4[1] = (prevPolDir * _nlStep[0]  * currMismatchCy) * currP * (prevOz + k3[2]);
-  k4[2] =  prevPolDir * currP.conjugate() * (_nlStep[0] * currInvMsmchCy * (prevSy + k3[1]) + _nlStep[1] * currInvMsmchSz * (prevSz + k3[0]));
-  k4[3] = (prevPolDir * _nlStep[0]  * currInvMsmchCz) * currP.conjugate() * (prevSz + k3[0]);
+  k4[0] =  currPolDir * currP * (_nlStep[0] * currMismatchCz * (prevOy + k3[3]) + _nlStep[1] * currMismatchSz * (prevOz + k3[2]));
+  k4[1] = (currPolDir * _nlStep[0]  * currMismatchCy) * currP * (prevOz + k3[2]);
+  k4[2] =  currPolDir * currP.conjugate() * (_nlStep[0] * currInvMsmchCy * (prevSy + k3[1]) + _nlStep[1] * currInvMsmchSz * (prevSz + k3[0]));
+  k4[3] = (currPolDir * _nlStep[0]  * currInvMsmchCz) * currP.conjugate() * (prevSz + k3[0]);
 }
 
 #endif //CHI2SFGII

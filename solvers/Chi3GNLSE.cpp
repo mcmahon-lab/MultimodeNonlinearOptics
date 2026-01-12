@@ -4,7 +4,7 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi3GNLSE : public _FullyNonlinearMedium {
-  NLM(Chi3GNLSE, 1, 1)
+  NLM(Chi3GNLSE, 1, 1, 0)
 public:
   Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
             double beta2, double beta3=0, double rayleighLength=std::numeric_limits<double>::infinity(),
@@ -19,7 +19,7 @@ private:
 
 Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLength, double fr, double fb, double tau1, double tau2, double tau3,
                      double beta2, double beta3, double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
-  _FullyNonlinearMedium(_nSignalModes, _nDimensions, false, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, false, _nTemps, 0, relativeLength, {nlLength, selfSteepLength}, {beta2}, {0}, {beta3}, {},
                         rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile)
 {
   // Precompute Raman response for the convolution
@@ -42,58 +42,54 @@ Chi3GNLSE::Chi3GNLSE(double relativeLength, double nlLength, double selfSteepLen
 
 
 void Chi3GNLSE::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                       std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prev = signal[0].row(iPrevSig);
 
   const double relIntPrv = relativeIntensity(i- 1);
   const double relIntInt = relativeIntensity(i-.5);
   const double relIntCur = relativeIntensity(i);
 
-  // Need a temporary, thread safe storage array. Hack (Caution) to avoid allocating each time:
-  if (i == 1) {k1.emplace_back(_nFreqs);}
-  Arraycd& temp = k1[1];
-
   // Convolution between Raman response function and |A|^2, ie (R * |A|^2)
   k1[0] = relIntPrv * prev.abs2();
-  FFT(temp, k1[0]);
-  temp *= ramanResponse;
-  IFFT(k1[0], temp);
+  FFT(temps[0], k1[0]);
+  temps[0] *= ramanResponse;
+  IFFT(k1[0], temps[0]);
   // Multiply convolution by A, ie A (R * |A|^2)
   k1[0] *= prev;
   // take derivative, ie i (gamma + i gamma' d/dt) (A (R * |A|^2)) = i IF[(gamma + omega gamma') F[A (R * |A|^2)]]
-  FFT(temp, k1[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
-  IFFT(k1[0], temp);
+  FFT(temps[0], k1[0]);
+  temps[0] *= _nlStep[0] + _nlStep[1] * _omega[0];
+  IFFT(k1[0], temps[0]);
 
   // Repeat for k2
   k2[0] = relIntInt * (prev + 0.5 * k1[0]).abs2();
-  FFT(temp, k2[0]);
-  temp *= ramanResponse;
-  IFFT(k2[0], temp);
+  FFT(temps[0], k2[0]);
+  temps[0] *= ramanResponse;
+  IFFT(k2[0], temps[0]);
   k2[0] *= prev + 0.5 * k1[0];
-  FFT(temp, k2[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
-  IFFT(k2[0], temp);
+  FFT(temps[0], k2[0]);
+  temps[0] *= _nlStep[0] + _nlStep[1] * _omega[0];
+  IFFT(k2[0], temps[0]);
 
   // Repeat for k3
   k3[0] = relIntInt * (prev + 0.5 * k2[0]).abs2();
-  FFT(temp, k3[0]);
-  temp *= ramanResponse;
-  IFFT(k3[0], temp);
+  FFT(temps[0], k3[0]);
+  temps[0] *= ramanResponse;
+  IFFT(k3[0], temps[0]);
   k3[0] *= prev + 0.5 * k2[0];
-  FFT(temp, k3[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
-  IFFT(k3[0], temp);
+  FFT(temps[0], k3[0]);
+  temps[0] *= _nlStep[0] + _nlStep[1] * _omega[0];
+  IFFT(k3[0], temps[0]);
 
   // Repeat for k4
   k4[0] = relIntCur * (prev + k3[0]).abs2();
-  FFT(temp, k4[0]);
-  temp *= ramanResponse;
-  IFFT(k4[0], temp);
+  FFT(temps[0], k4[0]);
+  temps[0] *= ramanResponse;
+  IFFT(k4[0], temps[0]);
   k4[0] *= prev + k3[0];
-  FFT(temp, k4[0]);
-  temp *= _nlStep[0] + _nlStep[1] * _omega[0];
-  IFFT(k4[0], temp);
+  FFT(temps[0], k4[0]);
+  temps[0] *= _nlStep[0] + _nlStep[1] * _omega[0];
+  IFFT(k4[0], temps[0]);
 }
 
 #endif //CHI3GNLSE
