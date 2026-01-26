@@ -28,7 +28,7 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftwf_destroy_plan(_plan);}
 
-      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1, int n2, bool isC2C) {
         if (isC2C) {
           complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
           complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
@@ -111,7 +111,7 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftw_destroy_plan(_plan);}
 
-      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1, int n2, bool isC2C) {
         if (isC2C) {
           complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
           complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
@@ -194,7 +194,7 @@ namespace Eigen {
 
       ~fftwPlan() {if (_plan) fftwl_destroy_plan(_plan);}
 
-      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1=0, int n2=0, bool isC2C=true) {
+      fftwPlan(const void* _src, const void* _dst, bool inv, int nfft, int n1, int n2, bool isC2C) {
         if (isC2C) {
           complex_type* src = const_cast<complex_type*>(static_cast<const complex_type*>(_src));
           complex_type* dst = const_cast<complex_type*>(static_cast<const complex_type*>(_dst));
@@ -344,7 +344,7 @@ namespace Eigen {
         bool inplace = (dst == src);
         bool aligned = ((reinterpret_cast<size_t>(src) & 0b1111) | (reinterpret_cast<size_t>(dst) & 0b1111)) == 0;
 
-        uint64_t keyValue1 = ((((((static_cast<uint64_t>(inverse) + (inplace << 1)) << 1) + aligned) << 1) + isC2C) << 32) + n0;
+        uint64_t keyValue1 = (((((((static_cast<uint64_t>(inverse) << 1) + inplace) << 1) + aligned) << 1) + isC2C) << 32) + n0;
         uint64_t keyValue2 = (static_cast<uint64_t>(n1) << 32) + n2;
 
         return (*_plans.try_emplace({keyValue1, keyValue2}, src, dst, inverse, n0, n1, n2, isC2C).first).second;
@@ -355,7 +355,7 @@ namespace Eigen {
         bool inplace = (dst == src);
         bool aligned = ((reinterpret_cast<size_t>(src) & 0b1111) | (reinterpret_cast<size_t>(dst) & 0b1111)) == 0;
 
-        uint64_t keyValue1 = ((((((((((((static_cast<uint64_t>(doDim0) + (doDim1 << 1)) << 1) + doDim2) << 1) + inverse) << 1) + inplace) << 1) + aligned) + isC2C) << 1) << 32) + n0;
+        uint64_t keyValue1 = (((((((((((((static_cast<uint64_t>(doDim0) << 1) + doDim1) << 1) + doDim2) << 1) + inverse) << 1) + inplace) << 1) + aligned) + isC2C) << 1) << 32) + n0;
         uint64_t keyValue2 = (static_cast<uint64_t>(n1) << 32) + n2;
 
         return (*_plans.try_emplace({keyValue1, keyValue2}, src, dst, inverse, n0, n1, n2, doDim0, doDim1, doDim2, isC2C).first).second;
