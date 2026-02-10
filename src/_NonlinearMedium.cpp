@@ -4,6 +4,9 @@
 #include <thread>
 
 Eigen::FFT<double> _NonlinearMedium::fftObj = Eigen::FFT<double>();
+#ifdef USE_GPU
+FFTGPU<double> _NonlinearMedium::fftObjGPU = FFTGPU<double>();
+#endif
 
 _NonlinearMedium::_NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPumpModes, bool canBePoled, uint nTemps, uint nFieldModes,
                                    double relativeLength, std::initializer_list<double> nlLength,

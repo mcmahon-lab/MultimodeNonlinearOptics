@@ -5,6 +5,41 @@
 #include "CustomEigenFFT.h"
 #include <utility>
 
+#ifdef USE_GPU
+#include <ATen/ATen.h>
+#include <c10/cuda/CUDAStream.h>
+#include "CustomCuFFT.h"
+#include "rk4.hpp"
+
+static constexpr int gpuIndex = 0;
+
+// TODO declare in class and define in cpp
+static const at::Device theGPUdevice(at::kCUDA, gpuIndex);
+static const auto options = // for initializing tensors directly on the GPU
+at::TensorOptions()
+  .dtype(at::kComplexDouble)
+  .layout(at::kStrided)
+  .device(theGPUdevice)
+  .requires_grad(false);
+static const auto optionsMM = // for tensors in main memory (for copying existing data use this and then send .to(CUDA))
+at::TensorOptions()
+  .dtype(at::kComplexDouble)
+  .layout(at::kStrided)
+  .device(at::kCPU)
+  .requires_grad(false);
+static const auto optionsR = // for real-valued tensors in main memory
+at::TensorOptions()
+  .dtype(at::kDouble)//kFloat64)
+  .layout(at::kStrided)
+  .requires_grad(false);
+
+// single global CUDA stream for solver calculations, since we do not have multi-threading/multi-streaming for GPU solvers
+const static at::cuda::CUDAStream stream = at::cuda::getStreamFromPool(true, gpuIndex); // limited number of streams allocated, then reassigned
+const static cudaStream_t _stream = stream.stream();
+const static at::cuda::CUDAStream defaultStream = at::cuda::getDefaultCUDAStream();
+const static cudaStream_t _defaultStream = defaultStream.stream();
+#endif // USE_GPU
+
 
 // Eigen default 1D Array is defined with X rows, 1 column, which does not work with row-major order 2D arrays.
 // Thus define custom double and complex double 1D arrays. Also define the row-major order 2D double and complex arrays.
@@ -83,9 +118,14 @@ protected:
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, uint ratioStepsToRecord);
+#ifndef USE_GPU
   template<class T>
   inline void DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq,
                                  std::vector<Arraycd>& temps);
+#else
+  template<class T>
+  inline void DispersionTemplate(at::Tensor& signalTime, at::Tensor& signalFreq, at::Tensor& temps);
+#endif // USE_GPU
 
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
 
@@ -135,6 +175,16 @@ protected:
   std::vector<Array2Dcd> signalTime; /// grid for numerically solving PDE, representing signal propagation in time domain
 
   std::vector<Array2Dcd> field; /// grid for a user-defined field to include in the PDE
+
+#ifdef USE_GPU
+  at::Tensor _dispStepPumpGPU;
+  at::Tensor _dispStepSignGPU;
+
+  at::Tensor pumpFreqGPU;
+  at::Tensor pumpTimeGPU;
+
+  static FFTGPU<double> fftObjGPU; /// fft class object for performing dft
+#endif
 
   static Eigen::FFT<double> fftObj; /// fft class object for performing dft
 
@@ -211,26 +261,66 @@ protected:
     fftObj.invPartial(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
                       doDim0, doDim1, doDim2);
   }
+
+#ifdef USE_GPU
+  inline void FFT(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.fwd(output, input, _nFreqs);
+  }
+  inline void FFT2(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.fwd2(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+  }
+  inline void FFT3(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.fwd3(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+  }
+  inline void IFFT(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.inv(output, input, _nFreqs);
+  }
+  inline void IFFT2(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.inv2(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+  }
+  inline void IFFT3(at::Tensor& output, const at::Tensor& input) const {
+    fftObjGPU.inv3(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+  }
+  inline void FFTp(at::Tensor& output, const at::Tensor& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObjGPU.fwdPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2],
+                         doDim0, doDim1, doDim2);
+  }
+  inline void IFFTp(at::Tensor& output, const at::Tensor& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObjGPU.invPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
+                         doDim0, doDim1, doDim2);
+  }
+#endif
 };
 
 
 // Repeated code for each NLM ODE class. This takes care of:
 // - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
 // - Overriding runSignalSimulation with the function created from the template
-#define NLM_BaseMacro(T, modes, dimensions, nTemps) \
+#define NLM_BaseMacro_(T, modes, dimensions, nTemps) \
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
   constexpr static uint _nDimensions = dimensions; \
   constexpr static uint _nTemps = nTemps; \
   static_assert(_nDimensions <= maxDimensions, "Only up to 3 dimensions currently supported"); \
-  inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
                          std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, \
                          uint ratioStepsToRecord) override \
-    { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, ratioStepsToRecord); }; \
+    { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, ratioStepsToRecord); };
+
+#ifndef USE_GPU // different function signatures for CPU- and GPU-based solvers
+#define NLM_BaseMacro(T, modes, dimensions, nTemps) \
+NLM_BaseMacro_(T, modes, dimensions, nTemps) \
+  inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps); \
   inline void Dispersion(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq, std::vector<Arraycd>& temps)
+#else
+#define NLM_BaseMacro(T, modes, dimensions, nTemps) \
+NLM_BaseMacro_(T, modes, dimensions, nTemps) \
+  inline void DiffEq(uint i, at::Tensor& k1, at::Tensor& k2, at::Tensor& k3, at::Tensor& k4, \
+                     const at::Tensor& signal, at::Tensor& temps); \
+  inline void Dispersion(at::Tensor& signalTime, at::Tensor& signalFreq, at::Tensor& temps)
+#endif // USE_GPU
 
 // this version defines Dispersion based on the template
 #define NLM(T, modes, dimensions, nTemps) \
@@ -293,6 +383,7 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
       signalTime[m].row(0) = 0;
   }
 
+#ifndef USE_GPU
   std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes), temps(T::_nTemps);
   for (uint m = 0; m < T::_nSignalModes; m++) {
     k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
@@ -315,23 +406,87 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     }
   }
 
+#else
+
+  std::vector<std::int64_t> dims;
+  if constexpr      (T::_nDimensions == 1) dims = std::vector<std::int64_t>{T::_nSignalModes, _nFreqs};
+  else if constexpr (T::_nDimensions == 2) dims = std::vector<std::int64_t>{T::_nSignalModes, _nFreqsPerDim[0], _nFreqsPerDim[1]};
+  else if constexpr (T::_nDimensions == 3) dims = std::vector<std::int64_t>{T::_nSignalModes, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]};
+
+  at::Tensor
+  k1 = at::empty(dims, options), k2 = at::empty(dims, options),
+  k3 = at::empty(dims, options), k4 = at::empty(dims, options),
+  signalFreqGPU = at::empty(dims, options),
+  signalTimeGPU = at::empty(dims, options);
+
+  dims[0] = T::_nTemps;
+  at::Tensor temps = at::empty(dims, options);
+
+  if constexpr      (T::_nDimensions == 1) dims = std::vector<std::int64_t>{_nFreqs};
+  else if constexpr (T::_nDimensions == 2) dims = std::vector<std::int64_t>{_nFreqsPerDim[0], _nFreqsPerDim[1]};
+  else if constexpr (T::_nDimensions == 3) dims = std::vector<std::int64_t>{_nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]};
+
+  for (uint m = 0; m < T::_nSignalModes; m++) {
+    signalTimeGPU[m].copy_(at::from_blob(signalTime[m].row(0).data(), dims, optionsMM));
+  }
+
+  at::cuda::setCurrentCUDAStream(stream); // this should be thread local?
+  fftObjGPU.setStream(_stream); // not thread safe
+
+  for (uint i = 1, gridIndex = 0; i < _nZSteps; i++) {
+    uint prevGridIndex = gridIndex;
+    gridIndex = i / ratioStepsToRecord; // only saving one out of every n steps, otherwise overwrite with next step
+
+    if (prevGridIndex != gridIndex) { // transfer from device to main memory, after synchronizing stream
+      // cudaStreamSynchronize(_stream);
+      at::Tensor sigTimeT, sigFreqT;
+      for (uint m = 0; m < T::_nSignalModes; m++) {
+        sigTimeT = at::from_blob(signalTime[m].row(prevGridIndex).data(), dims, optionsMM);
+        sigTimeT.copy_(signalTimeGPU[m]);
+        sigFreqT = at::from_blob(signalFreq[m].row(prevGridIndex).data(), dims, optionsMM);
+        sigFreqT.copy_(signalFreqGPU[m]);
+      }
+      cudaStreamSynchronize(_stream); // TODO before or after copying?
+    }
+
+    // Do a Runge-Kutta step for the nonlinear propagation
+    static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTimeGPU, temps);
+    RK4Step(k1, k2, k3, k4, signalTimeGPU, _stream);
+    // Dispersion step
+    static_cast<T*>(this)->Dispersion(signalTimeGPU, signalFreqGPU, temps);
+  }
+  {
+    at::Tensor sigTimeT, sigFreqT;
+    for (uint m = 0; m < T::_nSignalModes; m++) {
+      sigTimeT = at::from_blob(signalTime[m].bottomRows<1>().data(), dims, optionsMM);
+      sigTimeT.copy_(signalTimeGPU[m]);
+      sigFreqT = at::from_blob(signalFreq[m].bottomRows<1>().data(), dims, optionsMM);
+      sigFreqT.copy_(signalFreqGPU[m]);
+    }
+  }
+  // set CUDA stream back to default
+  at::cuda::setCurrentCUDAStream(defaultStream);
+  fftObjGPU.setStream(_defaultStream);
+#endif // USE_GPU
+
   for (uint m = 0; m < T::_nSignalModes; m++) {
     signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp(); // note *no* scale factor included for FFT
     ifft(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1);
   }
 }
 
+#ifndef USE_GPU
 
 template<class T>
 inline void _NonlinearMedium::DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime,
                                                  std::vector<Array2Dcd>& signalFreq, std::vector<Arraycd>& temps) {
   // functions defined as above
-  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+  auto fft = [this](Array2Dcd& a, const Array2Dcd& b, uint i, uint j) {
     if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
     else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
   };
-  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+  auto ifft = [this](Array2Dcd& a, const Array2Dcd& b, uint i, uint j) {
     if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
     else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
     else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
@@ -340,5 +495,26 @@ inline void _NonlinearMedium::DispersionTemplate(uint m, uint gridIndex, std::ve
   signalFreq[m].row(gridIndex) *= _dispStepSign[m];
   ifft(signalTime[m], signalFreq[m], gridIndex, gridIndex);
 }
+
+#else
+
+template<class T>
+inline void _NonlinearMedium::DispersionTemplate(at::Tensor& signalTime, at::Tensor& signalFreq, at::Tensor& temps) {
+  auto fft = [this](at::Tensor& a, const at::Tensor& b) {
+    if constexpr      (T::_nDimensions == 1) FFT(a, b);
+    else if constexpr (T::_nDimensions == 2) FFT2(a, b);
+    else if constexpr (T::_nDimensions == 3) FFT3(a, b);
+  };
+  auto ifft = [this](at::Tensor& a, const at::Tensor& b) {
+    if constexpr      (T::_nDimensions == 1) IFFT(a, b);
+    else if constexpr (T::_nDimensions == 2) IFFT2(a, b);
+    else if constexpr (T::_nDimensions == 3) IFFT3(a, b);
+  };
+  FFT(signalFreq, signalTime);
+  signalFreq *= _dispStepSignGPU;
+  IFFT(signalTime, signalFreq);
+}
+
+#endif // USE_GPU
 
 #endif //NONLINEARMEDIUM
