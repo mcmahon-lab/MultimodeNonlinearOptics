@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.5.0)
 
 project(nonlinearmedium)
 
@@ -17,10 +17,20 @@ find_package(FFTW QUIET)
 # Pybind11
 find_package(pybind11 REQUIRED)
 
+# LibTorch
+find_package(Torch QUIET)
+
 # Generate Python module
 include_directories(src solvers)
 file(GLOB sourceFiles "src/*.cpp")
 pybind11_add_module(nonlinearmedium ${sourceFiles})
+if (Torch_FOUND)
+  message("-- Torch installation found!")
+  pybind11_add_module(nonlinearmediumGPU ${sourceFiles})
+  target_compile_definitions(nonlinearmediumGPU PUBLIC USE_GPU)
+else()
+  message("-- Torch not found")
+endif()
 
 # Compile options for optimization
 set(COMPILE_FLAGS -Wall)
@@ -34,9 +44,22 @@ if (FFTW_FOUND)
   set(COMPILE_FLAGS ${COMPILE_FLAGS} -DEIGEN_FFTW_DEFAULT -lfftw3)
   target_link_libraries(nonlinearmedium PRIVATE fftw3)
   message("-- FFTW installation found!")
+else()
+  message("-- FFTW not found")
 endif()
 
 target_compile_options(nonlinearmedium PUBLIC ${COMPILE_FLAGS})
 
 # Create the output in the source directory
 set_target_properties(nonlinearmedium PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+# Use LibTorch if found
+if (Torch_FOUND)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+  include_directories("${TORCH_INCLUDE_DIRS}")
+  target_link_libraries(nonlinearmediumGPU PRIVATE "${TORCH_LIBRARIES}")
+  target_link_libraries(nonlinearmediumGPU PRIVATE fftw3)
+
+  target_compile_options(nonlinearmediumGPU PUBLIC ${COMPILE_FLAGS})
+  set_target_properties(nonlinearmediumGPU PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+endif()

@@ -5,11 +5,20 @@
 #include "_NonlinearMedium.hpp"
 #include "_FullyNonlinearMedium.hpp"
 #include "Cascade.hpp"
+#ifndef USE_GPU
 #include "RegisteredSolvers.hpp"
+#else
+#include "RegisteredSolversGPU.hpp"
+#endif
 
 // Pybind11 Python binding
 #define NLMMODULE
+
+#ifndef USE_GPU
 PYBIND11_MODULE(nonlinearmedium, m) {
+#else
+PYBIND11_MODULE(nonlinearmediumGPU, m) {
+#endif
 
   namespace py = pybind11;
   using namespace pybind11::literals;
@@ -221,6 +230,10 @@ PYBIND11_MODULE(nonlinearmedium, m) {
 /*
  * Solvers
  */
+#ifndef USE_GPU
   #include "RegisteredSolvers.hpp"
+#else
+  #include "RegisteredSolversGPU.hpp"
+#endif
 }
 #undef NLMMODULE
