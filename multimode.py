@@ -19,7 +19,7 @@ def calcQuadratureGreens(greenC, greenS):
   Derived using x = a^† + a, p = i(a^† - a).
   """
   Z = np.block([[np.real(greenC + greenS), -np.imag(greenC - greenS)],
-                [np.imag(greenC + greenS),  np.real(greenC - greenS)]]).astype(dtype=np.float_)
+                [np.imag(greenC + greenS),  np.real(greenC - greenS)]])
 
   return Z
 

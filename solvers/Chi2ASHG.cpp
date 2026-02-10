@@ -4,25 +4,25 @@
 #include "_NonlinearMedium.hpp"
 
 class Chi2ASHG : public _FullyNonlinearMedium {
-  NLM(Chi2ASHG, 2)
+  NLM(Chi2ASHG, 2, 1, 0)
 public:
   Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
            double beta1h=0, double beta1p=0, double beta3h=0, double beta3p=0, double diffBeta0Start=0,
            double diffBeta0End=0, double rayleighLength=std::numeric_limits<double>::infinity(),
-           double tMax=10, uint tPrecision=512, uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{});
+           double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1, IntensityProfile intensityProfile=IntensityProfile{});
 };
 
 
 Chi2ASHG::Chi2ASHG(double relativeLength, double nlLengthH, double nlLengthP, double beta2h, double beta2p,
                    double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0Start, double diffBeta0End,
-                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile) :
-    _FullyNonlinearMedium(_nSignalModes, false, 0, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
-                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile)
+                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile) :
+    _FullyNonlinearMedium(_nSignalModes, _nDimensions, false, _nTemps, 0, relativeLength, {0.5 * M_PI * nlLengthP, 0.5 * M_PI * nlLengthH}, {beta2p,  beta2h}, {beta1p, beta1h},
+                          {beta3p, beta3h}, {diffBeta0Start, diffBeta0End}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile)
 {}
 
 
 void Chi2ASHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 
@@ -61,8 +61,8 @@ void Chi2ASHG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
 py::class_<Chi2ASHG, _FullyNonlinearMedium> Chi2ASHG(m, "Chi2ASHG", "Fully nonlinear adiabatic second harmonic generation");
 Chi2ASHG.def(
     py::init<double, double, double, double, double, double, double, double, double, double, double,
-             double, double, uint, uint, _NonlinearMedium::IntensityProfile>(),
+             double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile>(),
     "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
     "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0Start"_a = 0, "diffBeta0End"_a = 0, "rayleighLength"_a = infinity,
-    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{});
 #endif

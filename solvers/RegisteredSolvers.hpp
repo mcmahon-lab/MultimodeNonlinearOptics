@@ -15,3 +15,4 @@
 #include "Chi2SHGXPM.cpp"
 #include "Chi2ASHG.cpp"
 #include "Chi3GNLSE.cpp"
+#include "Chi3SPM3D.cpp"

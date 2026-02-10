@@ -2,8 +2,7 @@
 #define NONLINEARMEDIUM
 
 #include <eigen3/Eigen/Core>
-//#include <eigen3/unsupported/Eigen/FFT>
-#include "CustomEigenFFT.h" // Note: using modified version instead
+#include "CustomEigenFFT.h"
 #include <utility>
 
 
@@ -33,15 +32,17 @@ public:
     GaussianApodization = 2,
   };
 
-  virtual void setPump(PulseType pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
-  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0);
-  virtual void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength=0, uint pumpIndex=0);
+  static constexpr uint maxDimensions = 3;
+
+  virtual void setPump(PulseType pulseType, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
+  virtual void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0);
+  virtual void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength={}, uint pumpIndex=0);
 
   virtual void runPumpSimulation();
   virtual void runSignalSimulation(const Eigen::Ref<const Arraycd>& inputProf, bool inTimeDomain=true, uint inputMode=0);
   virtual std::pair<Array2Dcd, Array2Dcd>
-      computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
-                            const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
+  computeGreensFunction(bool inTimeDomain=false, bool runPump=true, uint nThreads=1, bool normalize=false,
+                        const std::vector<uint8_t>& useInput={}, const std::vector<uint8_t>& useOutput={});
   virtual Array2Dcd batchSignalSimulation(const Eigen::Ref<const Array2Dcd>& inputProfs, bool inTimeDomain=false,
                                           bool runPump=true, uint nThreads=1, uint inputMode=0, const std::vector<uint8_t>& useOutput={});
 
@@ -49,55 +50,66 @@ public:
   const Array2Dcd& getPumpTime(uint i=0) {return pumpTime.at(i);};
   const Array2Dcd& getSignalFreq(uint i=0) {return signalFreq.at(i);};
   const Array2Dcd& getSignalTime(uint i=0) {return signalTime.at(i);};
-  const Arrayd& getTime()      {return _tau;};
-  const Arrayd& getFrequency() {return _omega;};
+  const Arrayd& getTime(uint i=0)      {return _tau.at(i);};
+  const Arrayd& getFrequency(uint i=0) {return _omega.at(i);};
 
   Array2Dcd& getField(uint i=0) {return field.at(i);};
   const Arrayd& getPoling() {return _poling;};
 
 protected:
-  _NonlinearMedium(uint nSignalModes, uint nPumpModes, bool canBePoled, uint nFieldModes,
+  _NonlinearMedium(uint nSignalModes, uint nDimensions, uint nPumpModes, bool canBePoled, uint nTemps, uint nFieldModes,
                    double relativeLength, std::initializer_list<double> nlLength,
                    std::initializer_list<double> beta2, std::initializer_list<double> beta2s,
-                   const Eigen::Ref<const Arraycd>& customPump, PulseType pulseType,
                    std::initializer_list<double> beta1, std::initializer_list<double> beta1s,
                    std::initializer_list<double> beta3, std::initializer_list<double> beta3s,
-                   std::initializer_list<double> diffBeta0,
-                   double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
-                   double chirp, double delay, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
+                   std::initializer_list<double> diffBeta0, double rayleighLength,
+                   std::initializer_list<double> tMax, std::initializer_list<uint> tPrecision,
+                   uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
+                   const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 
   void setLengths(double relativeLength, const std::vector<double>& nlLength, uint zPrecision, double rayleighLength,
                   const std::vector<double>& beta2, const std::vector<double>& beta2s, const std::vector<double>& beta1,
                   const std::vector<double>& beta1s, const std::vector<double>& beta3, const std::vector<double>& beta3s);
-  void resetGrids(uint nFreqs, double tMax);
+  void resetGrids(const std::vector<uint>& nFreqs, const std::vector<double>& tMax, uint ratioStepsToRecord);
   void setDispersion(const std::vector<double>& beta2, const std::vector<double>& beta2s, const std::vector<double>& beta1,
                      const std::vector<double>& beta1s, const std::vector<double>& beta3, const std::vector<double>& beta3s,
                      std::initializer_list<double> diffBeta0);
-  _NonlinearMedium() : _nSignalModes(), _nPumpModes(), _nFieldModes() {};
+  _NonlinearMedium() : _nSignalModes(), _nDimensions(), _nPumpModes(), _nTemps(), _nFieldModes() {};
 
   virtual void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                  std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
-                                 bool optimized) = 0;
+                                 uint ratioStepsToRecord) = 0;
 
   template<class T>
   void signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
-                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, bool optimized);
+                                std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, uint ratioStepsToRecord);
+  template<class T>
+  inline void DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq,
+                                 std::vector<Arraycd>& temps);
 
   void setPoling(const Eigen::Ref<const Arrayd>& poling);
 
   static inline Arrayd fftshift(const Arrayd& input);
   static inline Array2Dcd fftshift2(const Array2Dcd& input);
 
+  template<typename ArrayType, bool doMultiply>
+  void multiDimensionalArithmetic(ArrayType& ndArray, const std::vector<ArrayType>& factor);
+  void setPhases(const std::vector<double>& chirpLength, const std::vector<double>& delayLength, uint pumpIndex);
+
   const uint _nSignalModes; /// Number of separate signal modes (eg polarizations, wavelengths, etc)
+  const uint _nDimensions;  /// Number of dimensions
   const uint _nPumpModes;   /// Number of separate pump modes (eg polarizations, wavelengths, etc)
-  const uint _nFieldModes;   /// Number of separate field modes (eg index variation, 2D poling, etc)
+  const uint _nTemps;       /// Number of temporary arrays to make available in the solver loop for intermediate computations (eg convolutional ffts)
+  const uint _nFieldModes;  /// Number of separate field modes (eg index variation, 2D poling, etc)
   double _z;      /// length of medium
   double _dz;     /// length increment of the signal simulation
   double _dzp;    /// length increment of the pump simulation
   uint _nZSteps;  /// number of length steps in simulating the PDE
   uint _nZStepsP; /// number of length steps in simulating the pump, larger to calculate values at RK4 intermediate steps
-  uint _nFreqs;   /// number of frequency/time bins in the simulating the PDE
-  double _tMax;   /// positive and negative extent of the simulation window in time
+  uint _nFreqs;   /// number of frequency/time bins in simulating the PDE
+  uint _ratioStepsToRecord; /// number of steps to skip when filling in signalFreq and signalTime
+  std::vector<uint> _nFreqsPerDim; /// number of frequency/time bins per dimension
+  std::vector<double> _tMax;   /// positive and negative extent of the simulation window in time
   double _rayleighLength; /// Rayleigh length of propagation (or characteristic length of intensity profile), assumes focused at medium's center
   IntensityProfile _intensityProfile; /// Encodes the intensity profile type, if not Gaussian beam propagation
   std::vector<double> _beta2;  /// second order dispersion of the pump
@@ -109,8 +121,8 @@ protected:
   std::vector<Arraycd> _envelope; /// initial envelope of the pump
   Arrayd _poling; /// array representing the poling direction at a given point on the grid.
 
-  Arrayd _tau;   /// array representing the time axis
-  Arrayd _omega; /// array representing the frequency axis
+  std::vector<Arrayd> _tau;   /// array representing the time or transverse axis (one per dimension)
+  std::vector<Arrayd> _omega; /// array representing the frequency axis (one per dimension)
 
   std::vector<Arrayd> _dispersionPump; /// dispersion profile of pump
   std::vector<Arrayd> _dispersionSign; /// dispersion profile of signal
@@ -128,16 +140,76 @@ protected:
 
   // DFT Convenience Functions, indexed (for 2D arrays) and regular (for 1D arrays):
   inline void FFT(Arraycd& output, const Arraycd& input) const {
-    fftObj.fwd(output, input, _nFreqs);
+    switch (_nDimensions) {
+      default:
+      case 1:
+        fftObj.fwd(output, input, _nFreqs);
+        break;
+      case 2:
+        fftObj.fwd2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+        break;
+      case 3:
+        fftObj.fwd3(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+        break;
+    }
   }
   inline void IFFT(Arraycd& output, const Arraycd& input) const {
-    fftObj.inv(output, input, _nFreqs);
+    switch (_nDimensions) {
+      default:
+      case 1:
+        fftObj.inv(output, input, _nFreqs);
+        break;
+      case 2:
+        fftObj.inv2(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+        break;
+      case 3:
+        fftObj.inv3(output, input, 0, 0, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+        break;
+    }
   }
-  inline void FFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+  inline void FFTp(Arraycd& output, const Arraycd& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.fwdPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
+  inline void IFFTp(Arraycd& output, const Arraycd& input, bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.invPartial(output, input, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
+  template<typename outputType, typename inputType>
+  inline void FFTi(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.fwd(output, input, rowOut, rowIn, _nFreqs);
   }
-  inline void IFFTi(Array2Dcd& output, const Array2Dcd& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+  template<typename outputType, typename inputType>
+  inline void IFFTi(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
     fftObj.inv(output, input, rowOut, rowIn, _nFreqs);
+  }
+  template<typename outputType, typename inputType>
+  inline void FFT2i(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.fwd2(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+  }
+  template<typename outputType, typename inputType>
+  inline void IFFT2i(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.inv2(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1]);
+  }
+  template<typename outputType, typename inputType>
+  inline void FFT3i(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.fwd3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+  }
+  template<typename outputType, typename inputType>
+  inline void IFFT3i(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn) const {
+    fftObj.inv3(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2]);
+  }
+  template<typename outputType, typename inputType>
+  inline void FFTpi(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn,
+                    bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.fwdPartial(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1], _nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
+  }
+  template<typename outputType, typename inputType>
+  inline void IFFTpi(outputType& output, const inputType& input, Eigen::DenseIndex rowOut, Eigen::DenseIndex rowIn,
+                     bool doDim0, bool doDim1, bool doDim2) const {
+    fftObj.invPartial(output, input, rowOut, rowIn, _nFreqsPerDim[0], _nFreqsPerDim[1],_nFreqsPerDim[2],
+                      doDim0, doDim1, doDim2);
   }
 };
 
@@ -145,38 +217,61 @@ protected:
 // Repeated code for each NLM ODE class. This takes care of:
 // - Allowing _NonlinearMedium friend access to the protected DiffEq function, to use in signalSimulationTemplate
 // - Overriding runSignalSimulation with the function created from the template
-#define NLM(T, modes) \
+#define NLM_BaseMacro(T, modes, dimensions, nTemps) \
 protected: \
   friend _NonlinearMedium; \
   constexpr static uint _nSignalModes = modes; \
+  constexpr static uint _nDimensions = dimensions; \
+  constexpr static uint _nTemps = nTemps; \
+  static_assert(_nDimensions <= maxDimensions, "Only up to 3 dimensions currently supported"); \
   inline void DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3, \
-                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal); \
+                     std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps); \
   void dispatchSignalSim(const Arraycd& inputProf, bool inTimeDomain, uint inputMode, \
-                         std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,         \
-                         bool optimized) override \
-     { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, optimized); };
+                         std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime, \
+                         uint ratioStepsToRecord) override \
+    { signalSimulationTemplate<T>(inputProf, inTimeDomain, inputMode, signalFreq, signalTime, ratioStepsToRecord); }; \
+  inline void Dispersion(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime, std::vector<Array2Dcd>& signalFreq, std::vector<Arraycd>& temps)
 
+// this version defines Dispersion based on the template
+#define NLM(T, modes, dimensions, nTemps) \
+NLM_BaseMacro(T, modes, dimensions, nTemps) \
+    { DispersionTemplate<T>(m, gridIndex, signalTime, signalFreq, temps); };
+
+// this version only declares Dispersion, to allow a custom implementation
+#define NLM_CustomDispersion(T, modes, dimensions, nTemps) \
+NLM_BaseMacro(T, modes, dimensions, nTemps);
 
 template<class T>
 void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool inTimeDomain, uint inputMode,
                                                 std::vector<Array2Dcd>& signalFreq, std::vector<Array2Dcd>& signalTime,
-                                                bool optimized) {
+                                                uint ratioStepsToRecord) {
   // Can specify: input to any 1 mode by passing a length N array, or an input to the first x consecutive modes with a length x*N array
   uint nInputChannels = inputProf.size() / _nFreqs;
   if (nInputChannels > 1) inputMode = 0;
-  if (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
+  if constexpr (T::_nSignalModes <= 1) inputMode = 0; // compiler guarantee
+
+  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
+  };
+  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
+  };
 
   if (inTimeDomain)
     for (uint m = 0; m < T::_nSignalModes; m++) {
       if (m == inputMode) {
         signalTime[m].row(0) = inputProf.segment(0, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTi(signalFreq[m], signalTime[m], 0, 0);
-        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
+        fft(signalFreq[m], signalTime[m], 0, 0);
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
       }
       else if (inputMode < 1 && m < nInputChannels) {
         signalTime[m].row(0) = inputProf.segment(m*_nFreqs, _nFreqs); // hack: fft on inputProf sometimes fails
-        FFTi(signalFreq[m], signalTime[m], 0, 0);
-        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp();
+        fft(signalFreq[m], signalTime[m], 0, 0);
+        signalFreq[m].row(0) *= ((0.5_I * _dz) * _dispersionSign[m]).exp() * (1. / _nFreqs); // note scale factor included for FFT
       }
       else
         signalFreq[m].row(0) = 0;
@@ -191,52 +286,59 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
         signalFreq[m].row(0) = 0;
     }
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    if (m == inputMode || m < nInputChannels)
-      IFFTi(signalTime[m], signalFreq[m], 0, 0);
+    if (m == inputMode || m < nInputChannels) {
+      ifft(signalTime[m], signalFreq[m], 0, 0);
+    }
     else
       signalTime[m].row(0) = 0;
   }
 
-  std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes);
+  std::vector<Arraycd> k1(T::_nSignalModes), k2(T::_nSignalModes), k3(T::_nSignalModes), k4(T::_nSignalModes), temps(T::_nTemps);
   for (uint m = 0; m < T::_nSignalModes; m++) {
     k1[m].resize(_nFreqs); k2[m].resize(_nFreqs); k3[m].resize(_nFreqs); k4[m].resize(_nFreqs);
   }
-  if (optimized) { // for batchSignalSimulation or computeGreensFunction, where we use a single row instead of a grid
-    for (uint i = 1; i < _nZSteps; i++) {
-      // Do a Runge-Kutta step for the non-linear propagation
-      static_cast<T*>(this)->DiffEq(i, 0, k1, k2, k3, k4, signalTime);
-
-      for (uint m = 0; m < T::_nSignalModes; m++) {
-        signalTime[m].row(0) += (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
-
-        // Dispersion step
-        FFTi(signalFreq[m], signalTime[m], 0, 0);
-        signalFreq[m].row(0) *= _dispStepSign[m];
-        IFFTi(signalTime[m], signalFreq[m], 0, 0);
-      }
-    }
+  for (uint t = 0; t < T::_nTemps; t++) {
+    temps[t].resize(_nFreqs);
   }
-  else { // for the regular case of filling in the PDE grids
-    for (uint i = 1; i < _nZSteps; i++) {
-      // Do a Runge-Kutta step for the non-linear propagation
-      static_cast<T*>(this)->DiffEq(i, i-1, k1, k2, k3, k4, signalTime);
+  for (uint i = 1, gridIndex = 0; i < _nZSteps; i++) {
+    // Do a Runge-Kutta step for the nonlinear propagation
+    static_cast<T*>(this)->DiffEq(i, gridIndex, k1, k2, k3, k4, signalTime, temps);
 
-      for (uint m = 0; m < T::_nSignalModes; m++) {
-        signalTime[m].row(i) = signalTime[m].row(i - 1) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
+    uint prevGridIndex = gridIndex;
+    gridIndex = i / ratioStepsToRecord; // only saving one out of every n steps, otherwise overwrite with next step
 
-        // Dispersion step
-        FFTi(signalFreq[m], signalTime[m], i, i);
-        signalFreq[m].row(i) *= _dispStepSign[m];
-        IFFTi(signalTime[m], signalFreq[m], i, i);
-      }
+    for (uint m = 0; m < T::_nSignalModes; m++) {
+      signalTime[m].row(gridIndex) = signalTime[m].row(prevGridIndex) + (k1[m] + 2 * k2[m] + 2 * k3[m] + k4[m]) * (1. / 6.);
+
+      // Dispersion step
+      static_cast<T*>(this)->Dispersion(m, gridIndex, signalTime, signalFreq, temps);
     }
   }
 
   for (uint m = 0; m < T::_nSignalModes; m++) {
-    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp();
-    IFFTi(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1);
+    signalFreq[m].bottomRows<1>() *= ((-0.5_I * _dz) * _dispersionSign[m]).exp(); // note *no* scale factor included for FFT
+    ifft(signalTime[m], signalFreq[m], signalTime[m].rows() - 1, signalFreq[m].rows() - 1);
   }
 }
 
+
+template<class T>
+inline void _NonlinearMedium::DispersionTemplate(uint m, uint gridIndex, std::vector<Array2Dcd>& signalTime,
+                                                 std::vector<Array2Dcd>& signalFreq, std::vector<Arraycd>& temps) {
+  // functions defined as above
+  auto fft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  FFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) FFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) FFT3i(a, b, i, j);
+  };
+  auto ifft = [this](Array2Dcd& a, Array2Dcd& b, uint i, uint j) {
+    if constexpr      (T::_nDimensions == 1)  IFFTi(a, b, i, j);
+    else if constexpr (T::_nDimensions == 2) IFFT2i(a, b, i, j);
+    else if constexpr (T::_nDimensions == 3) IFFT3i(a, b, i, j);
+  };
+  fft(signalFreq[m], signalTime[m], gridIndex, gridIndex);
+  signalFreq[m].row(gridIndex) *= _dispStepSign[m];
+  ifft(signalTime[m], signalFreq[m], gridIndex, gridIndex);
+}
 
 #endif //NONLINEARMEDIUM

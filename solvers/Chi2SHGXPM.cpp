@@ -4,26 +4,26 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2SHGXPM : public _FullyNonlinearMedium {
-  NLM(Chi2SHGXPM, 2)
+  NLM(Chi2SHGXPM, 2, 1, 0)
 public:
   Chi2SHGXPM(double relativeLength, double nlLength, double nlLengthP, double nlLengthChi3, double beta2, double beta2s,
              double beta1=0, double beta1s=0, double beta3=0, double beta3s=0, double diffBeta0=0,
-             double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100,
+             double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512, uint zPrecision=100, uint ratioStepsToRecord=1,
              IntensityProfile intensityProfile=IntensityProfile{}, const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
 
 Chi2SHGXPM::Chi2SHGXPM(double relativeLength, double nlLengthH, double nlLengthP, double nlLengthChi3, double beta2h, double beta2p,
-               double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0,
-               double rayleighLength, double tMax, uint tPrecision, uint zPrecision, IntensityProfile intensityProfile,
+               double beta1h, double beta1p, double beta3h, double beta3p, double diffBeta0, double rayleighLength,
+               double tMax, uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile,
                const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
-                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, tMax, tPrecision, zPrecision, intensityProfile, poling)
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, _nTemps, 0, relativeLength, {nlLengthP, nlLengthH, nlLengthChi3}, {beta2p, beta2h}, {beta1p, beta1h},
+                        {beta3p, beta3h}, {diffBeta0}, rayleighLength, {tMax}, {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling)
 {}
 
 
 void Chi2SHGXPM::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                    std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                    std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prvPp = signal[0].row(iPrevSig);
   const auto& prvSH = signal[1].row(iPrevSig);
 
@@ -70,9 +70,9 @@ void Chi2SHGXPM::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::ve
 py::class_<Chi2SHGXPM, _FullyNonlinearMedium> Chi2SHGXPM(m, "Chi2SHGXPM", "Fully nonlinear second harmonic generation with self and cross phase modulation");
 Chi2SHGXPM.def(
     py::init<double, double, double, double, double, double, double, double, double, double, double,
-        double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
+        double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
     "relativeLength"_a, "nlLengthH"_a, "nlLengthP"_a, "nlLengthChi3"_a, "beta2h"_a, "beta2p"_a, "beta1h"_a = 0, "beta1p"_a = 0,
     "beta3h"_a = 0, "beta3p"_a = 0, "diffBeta0"_a = 0, "rayleighLength"_a = infinity,
-    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
+    "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1, "intensityProfile"_a = _NonlinearMedium::IntensityProfile{},
     "poling"_a = defArrayf);
 #endif

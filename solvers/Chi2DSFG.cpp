@@ -4,13 +4,13 @@
 #include "_FullyNonlinearMedium.hpp"
 
 class Chi2DSFG : public _FullyNonlinearMedium {
-  NLM(Chi2DSFG, 3)
+  NLM(Chi2DSFG, 3, 1, 0)
 public:
   Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, double nlLengthD,
            double beta2p, double beta2s, double beta2d, double beta1p=0, double beta1s=0, double beta1d=0,
            double beta3p=0, double beta3s=0, double beta3d=0, double diffBeta0=0,
            double rayleighLength=std::numeric_limits<double>::infinity(), double tMax=10, uint tPrecision=512,
-           uint zPrecision=100, IntensityProfile intensityProfile=IntensityProfile{},
+           uint zPrecision=100, uint ratioStepsToRecord=1, IntensityProfile intensityProfile=IntensityProfile{},
            const Eigen::Ref<const Arrayd>& poling=Eigen::Ref<const Arrayd>(Arrayd{}));
 };
 
@@ -18,14 +18,14 @@ public:
 Chi2DSFG::Chi2DSFG(double relativeLength, double nlLengthP, double nlLengthS, double nlLengthD,
                    double beta2p, double beta2s, double beta2d, double beta1p, double beta1s, double beta1d,
                    double beta3p, double beta3s, double beta3d, double diffBeta0, double rayleighLength, double tMax,
-                   uint tPrecision, uint zPrecision, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
-  _FullyNonlinearMedium(_nSignalModes, true, 0, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
-                        {beta1p, beta1s, beta1d}, {beta3p, beta3s, beta3d}, {diffBeta0}, rayleighLength, tMax,
-                        tPrecision, zPrecision, intensityProfile, poling) {}
+                   uint tPrecision, uint zPrecision, uint ratioStepsToRecord, IntensityProfile intensityProfile, const Eigen::Ref<const Arrayd>& poling) :
+  _FullyNonlinearMedium(_nSignalModes, _nDimensions, true, _nTemps, 0, relativeLength, {nlLengthP, nlLengthS, nlLengthD}, {beta2p, beta2s, beta2d},
+                        {beta1p, beta1s, beta1d}, {beta3p, beta3s, beta3d}, {diffBeta0}, rayleighLength, {tMax},
+                        {tPrecision}, zPrecision, ratioStepsToRecord, intensityProfile, poling) {}
 
 
 void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vector<Arraycd>& k2, std::vector<Arraycd>& k3,
-                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal) {
+                      std::vector<Arraycd>& k4, const std::vector<Array2Dcd>& signal, std::vector<Arraycd>& temps) {
   const auto& prvP = signal[0].row(iPrevSig);
   const auto& prvS = signal[1].row(iPrevSig);
   const auto& prvD = signal[2].row(iPrevSig);
@@ -72,9 +72,9 @@ void Chi2DSFG::DiffEq(uint i, uint iPrevSig, std::vector<Arraycd>& k1, std::vect
 py::class_<Chi2DSFG, _FullyNonlinearMedium> Chi2DSFG(m, "Chi2DSFG", "Sum (or difference) frequency generation with pump depletion (fully nonlinear)");
 Chi2DSFG.def(
     py::init<double, double, double, double, double, double, double, double, double, double, double, double, double,
-             double, double, double, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
+             double, double, double, uint, uint, uint, _NonlinearMedium::IntensityProfile, const Eigen::Ref<const Arrayd>&>(),
     "relativeLength"_a, "nlLengthP"_a, "nlLengthS"_a, "nlLengthD"_a, "beta2p"_a, "beta2s"_a, "beta2d"_a,
     "beta1p"_a = 0, "beta1s"_a = 0, "beta1d"_a = 0, "beta3p"_a = 0, "beta3s"_a = 0, "beta3d"_a = 0, "diffBeta0"_a = 0,
-    "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100,
+    "rayleighLength"_a = infinity, "tMax"_a = 10, "tPrecision"_a = 512, "zPrecision"_a = 100, "ratioStepsToRecord"_a = 1,
     "intensityProfile"_a = _NonlinearMedium::IntensityProfile{}, "poling"_a = defArrayf);
 #endif

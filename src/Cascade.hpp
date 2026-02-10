@@ -9,9 +9,9 @@ public:
           const std::vector<std::map<uint, uint>>& connections, bool sharePump);
   void addMedium(_NonlinearMedium& medium, const std::map<uint, uint>& connection);
 
-  void setPump(PulseType pulseType, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
-  void setPump(const Eigen::Ref<const Arraycd>& customPump, double chirpLength=0, double delayLength=0, uint pumpIndex=0) override;
-  void setPump(const _NonlinearMedium& other, uint signalIndex, double delayLength, uint pumpIndex) override {
+  void setPump(PulseType pulseType, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0) override;
+  void setPump(const Eigen::Ref<const Arraycd>& customPump, const std::vector<double>& chirpLength={}, const std::vector<double>& delayLength={}, uint pumpIndex=0) override;
+  void setPump(const _NonlinearMedium& other, uint signalIndex, const std::vector<double>& delayLength, uint pumpIndex) override {
     throw std::runtime_error("Object does not have this method.");
   }
 
@@ -35,7 +35,7 @@ private: // Disable functions (note: still accessible from base class)
   using _NonlinearMedium::getSignalFreq;
   using _NonlinearMedium::getSignalTime;
   using _NonlinearMedium::getPoling;
-  void dispatchSignalSim(const Arraycd&, bool, uint, std::vector<Array2Dcd>&, std::vector<Array2Dcd>&, bool) override {};
+  void dispatchSignalSim(const Arraycd&, bool, uint, std::vector<Array2Dcd>&, std::vector<Array2Dcd>&, uint) override {};
 
 protected:
   std::vector<std::reference_wrapper<_NonlinearMedium>> media; /// collection of nonlinear media objects
