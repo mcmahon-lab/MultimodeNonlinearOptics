@@ -9,6 +9,7 @@
 #include <ATen/ATen.h>
 #include <cuda/std/complex>
 #include <cufft.h>
+#include <cuda_runtime.h> // cudaStream_t
 
 // note not multi CUDA stream (thread) safe
 // for multiple streams (eg across different threads; one stream per thread)
@@ -215,54 +216,54 @@ public:
   FFTGPU() = default;
 
   inline void fwd(at::Tensor& dst, const at::Tensor& src, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.fwd(dstPtr, srcPtr, n0);
   };
 
   inline void inv(at::Tensor& dst, const at::Tensor& src, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.inv(dstPtr, srcPtr, n0);
   };
 
   inline void fwd2(at::Tensor& dst, const at::Tensor& src, int n1, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.fwd(dstPtr, srcPtr, n0, n1);
   };
 
   inline void inv2(at::Tensor& dst, const at::Tensor& src, int n1, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.inv(dstPtr, srcPtr, n0, n1);
   };
 
   inline void fwd3(at::Tensor& dst, const at::Tensor& src, int n2, int n1, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.fwd(dstPtr, srcPtr, n0, n1, n2);
   };
 
   inline void inv3(at::Tensor& dst, const at::Tensor& src, int n2, int n1, int n0) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.inv(dstPtr, srcPtr, n0, n1, n2);
   };
 
   inline void fwdPartial(at::Tensor& dst, const at::Tensor& src,
                          int n2, int n1, int n0,
                          bool doDim0, bool doDim1, bool doDim2) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.fwd(dstPtr, srcPtr, n0, n1, n2, doDim0, doDim1, doDim2);
   };
 
   inline void invPartial(at::Tensor& dst, const at::Tensor& src,
                          int n2, int n1, int n0,
                          bool doDim0, bool doDim1, bool doDim2) {
-    const auto* srcPtr = src.data_ptr<cuda::std::complex<T>>();
-    auto* dstPtr = dst.data_ptr<cuda::std::complex<T>>();
+    const auto* srcPtr = reinterpret_cast<const cuda::std::complex<T>*>(src.data_ptr());
+    auto* dstPtr = reinterpret_cast<cuda::std::complex<T>*>(dst.data_ptr());
     impl.fwd(dstPtr, srcPtr, n0, n1, n2, doDim0, doDim1, doDim2);
   };
 

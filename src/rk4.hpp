@@ -16,11 +16,11 @@ inline
 void RK4Step(const at::Tensor& k1, const at::Tensor& k2,
              const at::Tensor& k3, const at::Tensor& k4,
              at::Tensor& signal, cudaStream_t stream) {
-  const auto* k1ptr = k1.data_ptr<cuda::std::complex<double>>();
-  const auto* k2ptr = k2.data_ptr<cuda::std::complex<double>>();
-  const auto* k3ptr = k3.data_ptr<cuda::std::complex<double>>();
-  const auto* k4ptr = k4.data_ptr<cuda::std::complex<double>>();
-  auto* signalptr = signal.data_ptr<cuda::std::complex<double>>();
+  const auto* k1ptr = reinterpret_cast<cuda::std::complex<double>*>(k1.data_ptr());
+  const auto* k2ptr = reinterpret_cast<cuda::std::complex<double>*>(k2.data_ptr());
+  const auto* k3ptr = reinterpret_cast<cuda::std::complex<double>*>(k3.data_ptr());
+  const auto* k4ptr = reinterpret_cast<cuda::std::complex<double>*>(k4.data_ptr());
+  auto* signalptr = reinterpret_cast<cuda::std::complex<double>*>(signal.data_ptr());
 
   auto numel = signal.numel();
   RK4StepLaunch(numel, k1ptr, k2ptr, k3ptr, k4ptr, signalptr, stream);
@@ -29,9 +29,9 @@ void RK4Step(const at::Tensor& k1, const at::Tensor& k2,
 inline
 void RK4Incr(bool halve, at::Tensor& newSignal, const at::Tensor& k,
              const at::Tensor& signal, cudaStream_t stream) {
-  auto* newSignalptr = newSignal.data_ptr<cuda::std::complex<double>>();
-  const auto* kptr = k.data_ptr<cuda::std::complex<double>>();
-  const auto* signalptr = signal.data_ptr<cuda::std::complex<double>>();
+  auto* newSignalptr = reinterpret_cast<cuda::std::complex<double>*>(newSignal.data_ptr());
+  const auto* kptr = reinterpret_cast<cuda::std::complex<double>*>(k.data_ptr());
+  const auto* signalptr = reinterpret_cast<cuda::std::complex<double>*>(signal.data_ptr());
 
   auto numel = signal.numel();
   RK4IncrLaunch(numel, halve, newSignalptr, kptr, signalptr, stream);
