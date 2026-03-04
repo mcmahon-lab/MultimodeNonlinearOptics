@@ -308,3 +308,28 @@ def covLumpLoss(cov, transmission, abasis=False):
     sqrtTrans = np.sqrt(transmission)
     return np.outer(sqrtTrans, sqrtTrans) * cov + ((1 - transmission) * vacuumVar) * np.identity(cov.shape[0])
 
+
+def gaussianFidelity(V0, V1, x0=0, x1=0):
+  """
+  Compute the quantum (Uhlmann) fidelity of two Gaussian states, where at least one is pure,
+  given the quadrature covariance matrices and displacements, as given in:
+  'A limit formula for the quantum fidelity' Spedalieri, Weedbrook & Pirandola
+  The general case requires an additional term as given in:
+  'Quantum fidelity for arbitrary Gaussian states' Banchi, Braunstein & Pirandola
+  """
+  n = V0.shape[0]
+  if V0.shape[1] != n or V1.shape[0] != n or V1.shape[1] != n:
+    raise ValueError("Covariance dimensions do not match")
+  if x0 and x0.shape != n:
+    raise ValueError("x0 dimensions does not match covariance matrix")
+  if x1 and x1.shape != n:
+    raise ValueError("x1 dimensions does not match covariance matrix")
+
+  vtot = V0 + V1
+  f = 2**n / np.sqrt(det(V0 + V1))
+
+  if x0 or x1:
+    d = x1 - x0
+    f *= np.exp(0.5 * d @ inv(vtot) @ d)
+
+  return f
