@@ -410,7 +410,9 @@ void _NonlinearMedium::signalSimulationTemplate(const Arraycd& inputProf, bool i
     }
     // Do a Runge-Kutta step for the nonlinear propagation
     static_cast<T*>(this)->DiffEq(i, k1, k2, k3, k4, signalTimeGPU);
-    signalTimeGPU += (k1 + 2 * k2 + 2 * k3 + k4) * (1. / 6.);
+    // equivalent to: signalTimeGPU += (k1 + 2 * k2 + 2 * k3 + k4) * (1. / 6.);
+    k1.add_(k2, 2); k4.add_(k3, 2); k1 += k4;
+    signalTimeGPU.add_(k1, 1. / 6.);
     // Dispersion step
     static_cast<T*>(this)->Dispersion(signalTimeGPU, signalFreqGPU);
   }
@@ -457,19 +459,19 @@ inline void _NonlinearMedium::DispersionTemplate(uint m, uint gridIndex, std::ve
 
 template<class T>
 inline void _NonlinearMedium::DispersionTemplate(at::Tensor& signalTime, at::Tensor& signalFreq) {
-  auto fft = [this](const at::Tensor& a) {
-    if constexpr      (T::_nDimensions == 1) return at::fft_fft(a, std::nullopt, -1, "backward");
-    else if constexpr (T::_nDimensions == 2) return at::fft_fft2(a, std::nullopt, {-2, -1}, "backward");
-    else if constexpr (T::_nDimensions == 3) return at::fft_fftn(a, std::nullopt, {-3, -2, -1}, "backward");
+  auto fft = [this](at::Tensor& out, const at::Tensor& in) {
+    if constexpr      (T::_nDimensions == 1) return at::fft_fft_out(out, in, std::nullopt, -1, "backward");
+    else if constexpr (T::_nDimensions == 2) return at::fft_fft2_out(out, in, std::nullopt, {-2, -1}, "backward");
+    else if constexpr (T::_nDimensions == 3) return at::fft_fftn_out(out, in, std::nullopt, {-3, -2, -1}, "backward");
   };
-  auto ifft = [this](const at::Tensor& a) {
-    if constexpr      (T::_nDimensions == 1) return at::fft_ifft(a, std::nullopt, -1, "forward");
-    else if constexpr (T::_nDimensions == 2) return at::fft_ifft2(a, std::nullopt, {-2, -1}, "forward");
-    else if constexpr (T::_nDimensions == 3) return at::fft_ifftn(a, std::nullopt, {-3, -2, -1}, "forward"); // forward for no norm
+  auto ifft = [this](at::Tensor& out, const at::Tensor& in) {
+    if constexpr      (T::_nDimensions == 1) return at::fft_ifft_out(out, in, std::nullopt, -1, "forward");
+    else if constexpr (T::_nDimensions == 2) return at::fft_ifft2_out(out, in, std::nullopt, {-2, -1}, "forward");
+    else if constexpr (T::_nDimensions == 3) return at::fft_ifftn_out(out, in, std::nullopt, {-3, -2, -1}, "forward"); // forward for no norm
   };
-  signalFreq.index_put_({0}, fft(signalTime));
+  fft(signalFreq, signalTime);
   signalFreq *= _dispStepSignGPU;
-  signalTime.index_put_({0}, ifft(signalFreq));
+  ifft(signalTime, signalFreq);
 }
 
 #endif // USE_GPU
