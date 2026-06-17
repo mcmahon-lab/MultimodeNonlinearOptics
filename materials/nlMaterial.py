@@ -30,6 +30,7 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
     c = 299792458 # m / s
 
     groupInd = cls.ind - l0 * diff(cls.ind, l0)
+    beta1 = groupInd / c
     GVD = -l0**2 / (1e6 * 2 * pi * c**2) * diff(groupInd, l0)
 
     cls.n = lambdify(methodArguments, cls.ind)
@@ -45,7 +46,7 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
     cls.gvd = staticmethod(cls.gvd)
     cls.beta2 = cls.gvd
 
-    cls.beta1 = lambdify(methodArguments, groupInd / c)
+    cls.beta1 = lambdify(methodArguments, beta1)
     cls.beta1.__doc__ = "Calculate 1st order dispersion (inverse group velocity) from the Sellmeier equation"
     cls.beta1 = staticmethod(cls.beta1)
 
@@ -54,7 +55,7 @@ def nlMaterial(deleteInd=True, angleTuning=False, temperatureTuning=True):
     cls.beta0 = staticmethod(cls.beta0)
 
     cls.beta3 = lambdify(methodArguments,
-                         diff(groupInd.subs(l0, (2 * pi * c * 1e6) / symbols("w")), symbols("w"), 3).
+                         diff(beta1.subs(l0, (2 * pi * c * 1e6) / symbols("w")), symbols("w"), 2).
                          subs(symbols("w"), (2 * pi * c * 1e6) / l0))
     cls.beta3.__doc__ = "Calculate 3rd order dispersion from the Sellmeier equation"
     cls.beta3 = staticmethod(cls.beta3)
